@@ -11,7 +11,11 @@
 		}
 	],
 	"require": {
-		"php": "8.4 - 8.6"
+		"php": "8.4 - 8.6",
+		"nette/neon": "^3.4 || ^4.0",
+		"nette/utils": "^4.1",
+		"phpsyntax/phpsyntax": "^1.0",
+		"composer/semver": "^3.4"
 	},
 	"require-dev": {
 		"nette/tester": "^2.6",

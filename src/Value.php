@@ -1,0 +1,261 @@
+<?php declare(strict_types=1);
+
+/**
+ * This file is part of the DressCode, a coding style and upgrade tool for PHP (https://dresscode.run)
+ * Copyright (c) 2026 David Grudl (https://davidgrudl.com)
+ */
+
+namespace DressCode;
+
+use DressCode\Config\Layer;
+use DressCode\Domains\{Count, Flag, Map, Names, Shapes, Text, Words};
+use Nette\Neon\Neon;
+use function count, is_array, is_bool, is_string;
+
+
+/**
+ * A decided value, normalized by its domain, with the layer that said it. Each getter belongs to one domain and
+ * throws for a value of another, which is a mistake of the rule asking.
+ */
+final readonly class Value
+{
+	/** @internal made by a domain */
+	public function __construct(
+		public Domain $domain,
+		/**
+		 * normalized: a list of words, shapes or texts, the first being the one written (Words, Shapes, Text), a range
+		 * `[min, max]` or a word (Count), a bool (Flag), a list of names (Names) or the entries by their names (Map),
+		 * each entry a Value; null for `keep`
+		 */
+		public mixed $content,
+		/** the value as the layer wrote it, for the export */
+		public mixed $raw,
+		/** the layer that said it */
+		public ?Layer $origin = null,
+		private bool $keep = false,
+	) {
+	}
+
+
+	/** @internal */
+	public static function keep(Domain $domain, ?Layer $origin = null): self
+	{
+		return new self($domain, null, 'keep', $origin, keep: true);
+	}
+
+
+	/** The value said by the layer, its entries included. */
+	public function withOrigin(Layer $origin): self
+	{
+		$content = $this->holdsEntries()
+			? array_map(fn(self $entry) => $entry->withOrigin($origin), $this->content)
+			: $this->content;
+		return new self($this->domain, $content, $this->raw, $origin, $this->keep);
+	}
+
+
+	/**
+	 * The normalized content as plain data, `keep` as the word and every entry as its own data; the
+	 * identity of the value.
+	 */
+	public function toData(): mixed
+	{
+		return match (true) {
+			$this->keep => 'keep',
+			$this->holdsEntries() => array_map(fn(self $entry) => $entry->toData(), $this->content),
+			default => $this->content,
+		};
+	}
+
+
+	/**
+	 * The data the way a configuration writes them: a word, an example or a text for a tolerance of it alone, a number for
+	 * an exact count, `1-2` for a range and `1+` for an open one.
+	 */
+	public function toWrittenData(): mixed
+	{
+		$data = match (true) {
+			$this->holdsEntries() => array_map(fn(self $entry) => $entry->toWrittenData(), $this->content),
+			$this->domain instanceof Shapes && !$this->keep => array_map($this->domain->getExample(...), $this->content),
+			default => $this->toData(),
+		};
+		$tolerant = $this->domain instanceof Words || $this->domain instanceof Shapes || $this->domain instanceof Text;
+		return match (true) {
+			$tolerant && is_array($data) && count($data) === 1 => $data[0],
+			$this->domain instanceof Count && is_array($data) && $data[0] === $data[1] => $data[0],
+			$this->domain instanceof Count && is_array($data) => $data[0] . ($data[1] === null ? '+' : "-$data[1]"),
+			default => $data,
+		};
+	}
+
+
+	/**
+	 * The value on one line as a configuration writes it, which every output shows: a word bare, an example always in
+	 * single quotes, `yes` or `no` for a flag, a list and a map inline, and quotes around a text NEON would read otherwise.
+	 */
+	public function toWrittenText(): string
+	{
+		$data = $this->toWrittenData();
+		return match (true) {
+			!$this->domain instanceof Shapes || $this->keep => self::formatData($data),
+			is_array($data) => '[' . implode(', ', array_map(Shapes::quote(...), $data)) . ']',
+			default => Shapes::quote($data),
+		};
+	}
+
+
+	private static function formatData(mixed $data): string
+	{
+		return match (true) {
+			is_bool($data) => $data ? 'yes' : 'no',
+			is_array($data) && array_is_list($data) => '[' . implode(', ', array_map(self::formatData(...), $data)) . ']',
+			is_array($data) => '{' . implode(', ', array_map(
+				fn($key, $item) => self::formatData((string) $key) . ': ' . self::formatData($item),
+				array_keys($data),
+				$data,
+			)) . '}',
+			is_string($data)
+				&& preg_match('~^[^\s,\[\]{}()\'"#:=]+( [^\s,\[\]{}()\'"#:=]+)*$~D', $data)
+				&& Neon::decode($data) === $data => $data,
+			default => Neon::encode($data),
+		};
+	}
+
+
+	/** Whether the thing stays as it is written for the sake of this value: `keep`, or a map whose every entry is. */
+	public function isKept(): bool
+	{
+		return $this->keep || ($this->domain instanceof Map && array_all($this->content, fn(self $entry) => $entry->isKept()));
+	}
+
+
+	/** The word: of a single word, the first of a tolerance, or the word of a count. */
+	public function getWord(): string
+	{
+		$this->checkNotKept();
+		if ($this->domain instanceof Count && is_string($this->content)) {
+			return $this->content;
+		}
+
+		$this->checkDomain(Words::class);
+		return $this->content[0];
+	}
+
+
+	/**
+	 * The words of a tolerance, the first being the one written where none matches.
+	 * @return list<string>
+	 */
+	public function getWords(): array
+	{
+		$this->checkNotKept();
+		$this->checkDomain(Words::class);
+		return $this->content;
+	}
+
+
+	/** The shape: the one given, or the first of a tolerance. */
+	public function getShape(): string
+	{
+		return $this->getShapes()[0];
+	}
+
+
+	/**
+	 * The shapes of a tolerance, the first being the one written where none matches.
+	 * @return list<string>
+	 */
+	public function getShapes(): array
+	{
+		$this->checkNotKept();
+		$this->checkDomain(Shapes::class);
+		return $this->content;
+	}
+
+
+	/**
+	 * The count as a range, an exact one having both ends the same and an open one null at the top.
+	 * @return array{int, ?int}
+	 */
+	public function getCountRange(): array
+	{
+		$this->checkNotKept();
+		$this->checkDomain(Count::class);
+		return is_string($this->content) ? throw new \LogicException("The count is the word `$this->content`.") : $this->content;
+	}
+
+
+	/** The text: the one given, or the first of a tolerance. */
+	public function getText(): string
+	{
+		return $this->getTexts()[0];
+	}
+
+
+	/**
+	 * The texts of a tolerance, the first being the one written.
+	 * @return list<string>
+	 */
+	public function getTexts(): array
+	{
+		$this->checkNotKept();
+		$this->checkDomain(Text::class);
+		return $this->content;
+	}
+
+
+	public function getFlag(): bool
+	{
+		$this->checkNotKept();
+		$this->checkDomain(Flag::class);
+		return $this->content;
+	}
+
+
+	/** @return list<string> */
+	public function getNames(): array
+	{
+		$this->checkNotKept();
+		$this->checkDomain(Names::class);
+		return $this->content;
+	}
+
+
+	/**
+	 * The entries of a map by their names or patterns, withdrawn ones included as `keep`.
+	 * @return array<string, self>
+	 */
+	public function getEntries(): array
+	{
+		$this->checkNotKept();
+		if (!$this->holdsEntries()) {
+			throw new \LogicException('The value is no map.');
+		}
+
+		return $this->content;
+	}
+
+
+	/** Whether the content is a map of entries, each a Value. */
+	private function holdsEntries(): bool
+	{
+		return !$this->keep && $this->domain instanceof Map;
+	}
+
+
+	/** @param class-string<Domain> $class */
+	private function checkDomain(string $class): void
+	{
+		if (!$this->domain instanceof $class) {
+			throw new \LogicException('The value is of ' . $this->domain::class . ', not of ' . $class . '.');
+		}
+	}
+
+
+	private function checkNotKept(): void
+	{
+		if ($this->keep) {
+			throw new \LogicException('The value is `keep`; ask isKept() first.');
+		}
+	}
+}
