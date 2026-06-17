@@ -8,7 +8,7 @@
 namespace DressCode\Config;
 
 use Composer\Semver\Constraint\ConstraintInterface;
-use Composer\Semver\VersionParser;
+use Composer\Semver\{Intervals, VersionParser};
 use function count;
 
 
@@ -62,6 +62,13 @@ final class Versions
 			fn(string $part) => "$part, >=$version",
 			preg_split('~\s*\|\|?\s*~', trim($constraint)) ?: [],
 		));
+	}
+
+
+	/** Whether every version the first constraint allows is one the second allows too. */
+	public static function isSubset(string $constraint, string $of): bool
+	{
+		return Intervals::isSubsetOf(self::parse($constraint), self::parse($of));
 	}
 
 
