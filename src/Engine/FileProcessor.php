@@ -11,7 +11,7 @@ use DressCode\{ConfigurationException, ConvergenceException, FileResult, RuleExc
 
 
 /**
- * Processes one file: a pure function of the path and the text.
+ * Processes the files of one kind, told by their extension: a pure function of the path and the text.
  * @internal
  */
 interface FileProcessor
