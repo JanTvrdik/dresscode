@@ -23,6 +23,7 @@ final class CorePlugin implements Plugin
 		return $manifest ??= new PluginManifest(
 			rules: [
 				Rules\Files\NoBomRule::class,
+				Rules\Files\OpeningTagNotationRule::class,
 			],
 		);
 	}
