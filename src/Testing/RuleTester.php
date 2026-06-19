@@ -17,8 +17,8 @@ use Nette\Neon\Neon;
 use PhpSyntax\Analyses\NamespacedSymbols;
 use PhpSyntax\{Lexer, Node, ParseException, Parser, Printer};
 use PhpSyntax\Nodes\FileNode;
-use function array_key_exists, count, is_array, strlen;
-use const JSON_INVALID_UTF8_SUBSTITUTE, JSON_THROW_ON_ERROR, JSON_UNESCAPED_SLASHES, JSON_UNESCAPED_UNICODE;
+use function array_key_exists, count, is_array, sprintf, strlen;
+use const JSON_INVALID_UTF8_SUBSTITUTE, JSON_THROW_ON_ERROR, JSON_UNESCAPED_SLASHES, JSON_UNESCAPED_UNICODE, PHP_OS_FAMILY, PHP_SAPI;
 
 
 /**
@@ -40,7 +40,8 @@ final class RuleTester
 	 * comments that open it: the values of the decisions `// {"key": value}`, a key without its section taking the
 	 * one section of the rule, over those of `values.neon` beside the fixtures, the version of PHP it is
 	 * written for `// php 8.4`, the widest line `// lineLength 80` (120 without it), that the run allows a fix that
-	 * changes what the code does `// risky`, and what the namespaces declare outside it
+	 * changes what the code does `// risky`, that the code before and after the fix is run and must print the same
+	 * and exit alike `// run`, and what the namespaces declare outside it
 	 * `// namespacedFunctions Acme\helper, Acme\Text\{format}`, `// namespacedConstants Acme\LIMIT` and
 	 * `// nameResolution certain`. Returns the count.
 	 * @param class-string<Rule>|\Closure(): Rule $rule
@@ -99,6 +100,9 @@ final class RuleTester
 				analyses: $analyses,
 				values: $values,
 			);
+			if (self::readRun($code)) {
+				self::checkBehaviour($code, $expected ?? $code);
+			}
 
 		} catch (TestFailure $e) {
 			throw new TestFailure("`$file`: {$e->getMessage()}", previous: $e);
@@ -563,6 +567,49 @@ final class RuleTester
 	private static function readRisky(string $code): bool
 	{
 		return array_any(self::readHeader($code), fn(string $line) => preg_match('~^//\s*risky\s*$~i', $line) === 1);
+	}
+
+
+	/** `// run` in the header runs the code before and after the fix, which must print the same and exit alike. */
+	private static function readRun(string $code): bool
+	{
+		return array_any(self::readHeader($code), fn(string $line) => preg_match('~^//\s*run\s*$~i', $line) === 1);
+	}
+
+
+	/**
+	 * Runs the code and the fixed code in a process of their own each, under the CLI binary of PHP beside the running
+	 * one, the two written to files of one name so that a path in a message is the same.
+	 * @throws TestFailure
+	 */
+	private static function checkBehaviour(string $code, string $fixed): void
+	{
+		$php = PHP_SAPI === 'cli' ? PHP_BINARY : dirname(PHP_BINARY) . '/php' . (PHP_OS_FAMILY === 'Windows' ? '.exe' : '');
+		$results = [];
+		foreach (['before' => $code, 'after' => $fixed] as $side => $text) {
+			$dir = sys_get_temp_dir() . '/dresscode-run-' . bin2hex(random_bytes(8));
+			@mkdir($dir); // @ is checked by the write below
+			$file = "$dir/fixture.php";
+			if (@file_put_contents($file, $text) === false) { // @ is escalated to exception
+				throw new TestFailure("Cannot write `$file`.");
+			}
+
+			exec(escapeshellarg($php) . ' -d display_errors=stdout ' . escapeshellarg($file) . ' 2>&1', $output, $exit);
+			$results[$side] = [str_replace([$file, strtr($file, '/', '\\')], 'fixture.php', implode("\n", $output)), $exit];
+			$output = [];
+			@unlink($file); // @ a scanner may hold the file
+			@rmdir($dir); // @ and so the directory
+		}
+
+		if ($results['before'] !== $results['after']) {
+			throw new TestFailure(sprintf(
+				"The fixed code behaves otherwise than the code: it printed\n%s\nexiting with %d, where the code printed\n%s\nexiting with %d.",
+				$results['after'][0],
+				$results['after'][1],
+				$results['before'][0],
+				$results['before'][1],
+			));
+		}
 	}
 
 

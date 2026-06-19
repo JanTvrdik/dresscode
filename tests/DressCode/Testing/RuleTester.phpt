@@ -266,6 +266,25 @@ test('check of a single code', function () {
 });
 
 
+test('a fixture saying run runs the code before and after the fix, which must print the same', function () {
+	$dir = createTempDir('rule-tester-run');
+	$header = "<?php\n// run\n// {\"rename\": \"\$b\"}\n";
+	file_put_contents("$dir/same.code", "$header\$a = 1;\necho \$a;\n");
+	file_put_contents("$dir/same.expected", "$header\$b = 1;\necho \$b;\n");
+	file_put_contents("$dir/same.violations", "4: Rename \$a.\n5: Rename \$a.\n");
+	Assert::noError(fn() => RuleTester::runFixture(TestedRename::class, "$dir/same.code"));
+
+	file_put_contents("$dir/other.code", "$header\$a = 1;\n\$b = 2;\necho \$a;\n");
+	file_put_contents("$dir/other.expected", "$header\$b = 1;\n\$b = 2;\necho \$b;\n");
+	file_put_contents("$dir/other.violations", "4: Rename \$a.\n6: Rename \$a.\n");
+	Assert::exception(
+		fn() => RuleTester::runFixture(TestedRename::class, "$dir/other.code"),
+		TestFailure::class,
+		"%a%The fixed code behaves otherwise than the code: it printed\n2\nexiting with 0, where the code printed\n1\nexiting with 0.",
+	);
+});
+
+
 test('contract checks', function () {
 	Assert::exception(
 		fn() => RuleTester::check(new Broken('silent'), "<?php \$a;\n"),
