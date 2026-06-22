@@ -28,6 +28,7 @@ final class CorePlugin implements Plugin
 				Rules\Files\LineEndingRule::class,
 				Rules\Files\NoBomRule::class,
 				Rules\Files\NoClosingTagRule::class,
+				Rules\Files\NoInvisibleCharactersRule::class,
 				Rules\Files\NoTrailingWhitespaceRule::class,
 				Rules\Files\OpeningTagNotationRule::class,
 			],
