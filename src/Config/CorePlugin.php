@@ -37,6 +37,7 @@ final class CorePlugin implements Plugin
 				Rules\Files\NoInvisibleCharactersRule::class,
 				Rules\Files\NoTrailingWhitespaceRule::class,
 				Rules\Files\OpeningTagNotationRule::class,
+				Rules\Files\StrictTypesRequiredRule::class,
 				Rules\Literals\BuiltinCasingRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,
 			],

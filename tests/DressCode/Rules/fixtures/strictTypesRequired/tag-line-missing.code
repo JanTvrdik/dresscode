@@ -1,0 +1,4 @@
+<?php
+// {"strictTypes.position": "sameLine"}
+// risky
+namespace Foo;
