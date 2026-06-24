@@ -1,0 +1,6 @@
+<?php
+// {"padding.argument": "keep", "padding.parameter": "keep", "padding.closureUse": "keep", "padding.controlStructure": "keep", "padding.grouping": "keep", "padding.array": "keep", "padding.list": "keep", "padding.offset": "forbidden"}
+$a[0];
+foo( $a[1], [ 1, 2 ] );
+if ( $x ) {
+}

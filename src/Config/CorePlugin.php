@@ -40,6 +40,7 @@ final class CorePlugin implements Plugin
 				Rules\Files\StrictTypesRequiredRule::class,
 				Rules\Literals\BuiltinCasingRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,
+				Rules\Whitespace\DelimiterSpacingRule::class,
 			],
 			// the decisions no single rule owns, each turning on the rules that name it in `RuleInfo::$decisions`
 			decisions: [
