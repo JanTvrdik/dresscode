@@ -1,0 +1,154 @@
+<?php declare(strict_types=1);
+
+/**
+ * This file is part of the DressCode, a coding style and upgrade tool for PHP (https://dresscode.run)
+ * Copyright (c) 2026 David Grudl (https://davidgrudl.com)
+ */
+
+namespace DressCode\Rules\Comments;
+
+use DressCode\{Decision, Domain, NodeRule, RuleContext, RuleInfo, Stage, Values};
+use PhpSyntax\{Node, Token, Trivia};
+use function count;
+
+
+/**
+ * No comment with nothing in it; one alone on its line takes the line with it. An empty line of a block of line
+ * comments is a paragraph break, not an empty comment. A doc comment with nothing in it but asterisks is
+ * `phpdoc.empty`.
+ */
+#[RuleInfo(Stage::Finishing, modifiesComments: true)]
+final class NoEmptyCommentsRule extends NodeRule
+{
+	private const Comments = 'comments.empty';
+	private const Phpdoc = 'phpdoc.empty';
+
+	private bool $comments = true;
+	private bool $phpdoc = true;
+
+
+	public static function getDecisions(): array
+	{
+		return [
+			new Decision(self::Comments, Domain::state('forbidden'), 'An empty comment, which is removed'),
+			new Decision(self::Phpdoc, Domain::state('forbidden'), 'An empty doc comment, which is removed'),
+		];
+	}
+
+
+	public function configure(Values $values): void
+	{
+		$this->comments = !$values->isKept(self::Comments);
+		$this->phpdoc = !$values->isKept(self::Phpdoc);
+	}
+
+
+	public function getVisitedNodes(): array
+	{
+		return [Token::class];
+	}
+
+
+	public function enter(Node|Token $node, RuleContext $context): void
+	{
+		if (!$node instanceof Token || !$node->hasComment()) {
+			return;
+		}
+
+		if ($this->comments) {
+			$this->removeComments($node, $context);
+		}
+
+		if ($this->phpdoc) {
+			$this->removeDocComments($node, $context);
+		}
+	}
+
+
+	/** The blocks of comments of the token with nothing in any of them, removed whole. */
+	private function removeComments(Token $node, RuleContext $context): void
+	{
+		$blocks = [
+			...self::groupComments($node->leadingTrivia, atLineStart: true),
+			...self::groupComments($node->trailingTrivia, atLineStart: false),
+		];
+		foreach ($blocks as $block) {
+			if (!array_all($block, fn(Trivia $comment) => $comment->getCommentText() === '' || self::isOnlyStars($comment))) {
+				continue;
+			}
+
+			foreach ($block as $comment) {
+				if ($context->report($node, 'Empty comment.', decision: self::Comments, trivia: $comment)) {
+					$node->removeTrivia($comment);
+				}
+			}
+		}
+	}
+
+
+	/** A block comment of nothing but asterisks between its delimiters, which PHP does not take for a doc comment. */
+	private static function isOnlyStars(Trivia $comment): bool
+	{
+		return $comment->is(Trivia::Comment) && preg_match('~^/\*+/$~D', $comment->text) === 1;
+	}
+
+
+	/**
+	 * The comments among the trivia, in blocks: line comments alone on their lines, one under another and written
+	 * with the same marker, are one block; a blank line ends it. Every other comment is a block of its own.
+	 * @param  list<Trivia>  $trivia
+	 * @return list<list<Trivia>>
+	 */
+	private static function groupComments(array $trivia, bool $atLineStart): array
+	{
+		$lines = [[]];
+		foreach ($trivia as $item) {
+			if (!$item->isWhitespace()) {
+				$lines[array_key_last($lines)][] = $item;
+			}
+
+			if ($item->isLineEnding()) {
+				$lines[] = [];
+			}
+		}
+
+		$blocks = [];
+		$block = []; // the one still open, of line comments alone on their lines
+		foreach ($lines as $i => $line) {
+			$lone = ($atLineStart || $i > 0) && count($line) === 1 && $line[0]->isLineComment() && !$line[0]->inInterpolation
+				? $line[0]
+				: null;
+			if ($block && $lone?->text[0] !== $block[0]->text[0]) {
+				$blocks[] = $block;
+				$block = [];
+			}
+
+			if ($lone) {
+				$block[] = $lone;
+				continue;
+			}
+
+			foreach ($line as $comment) {
+				if ($comment->is(Trivia::Comment) && !$comment->inInterpolation) {
+					$blocks[] = [$comment];
+				}
+			}
+		}
+
+		return $block ? [...$blocks, $block] : $blocks;
+	}
+
+
+	/** The doc comments of the token with nothing in them but asterisks, removed. */
+	private function removeDocComments(Token $node, RuleContext $context): void
+	{
+		foreach ($node->getDocComments() as $trivia) {
+			if (
+				$trivia->getCommentText() === ''
+				&& $context->report($node, 'Empty doc comment.', decision: self::Phpdoc, trivia: $trivia)
+			) {
+				$node->removeTrivia($trivia);
+			}
+		}
+	}
+}

@@ -1,0 +1,8 @@
+<?php
+// {"phpdoc.empty": "forbidden"}
+$a = 1;
+$b = 2;
+/** Keep me. */
+$c = 3;
+/* plain */
+$e = 5;
