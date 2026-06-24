@@ -7,7 +7,7 @@
  */
 
 use DressCode\Config\{Catalogue, CorePlugin, DecisionResolver, Layer, LayerKind, PluginRegistry, RuleBuilder};
-use DressCode\{Decision, DecisionKind, GapRule, Space, Style};
+use DressCode\{Decision, DecisionKind, Domain, GapRule, Space, Style};
 use DressCode\Domains\{Count, Flag, Shapes, Words};
 use DressCode\Engine\{Gaps, RulePlan};
 use Nette\Neon\Neon;
@@ -36,6 +36,20 @@ test(
 		Assert::same(array_unique($paths), $paths);
 	},
 );
+
+
+test('an alignment is said in the words of every alignment', function () use ($catalogue) {
+	$words = Domain::alignment()->words;
+	$checked = 0;
+	foreach ($catalogue->getDecisions() as $path => $decision) {
+		if (str_starts_with($path, 'spacing.alignment.') && $decision->domain instanceof Words) {
+			Assert::same(array_intersect_key($words, $decision->domain->words), $decision->domain->words, $path);
+			$checked++;
+		}
+	}
+
+	Assert::true($checked > 0, 'no decision of `spacing.alignment` was found');
+});
 
 
 test('a word several decisions share comes from the lexicon, in its meaning', function () use ($catalogue) {

@@ -1,0 +1,4 @@
+spacing:
+	comma: '$a, $b'
+	alignment:
+		comma: tabs

@@ -1,0 +1,4 @@
+<?php
+// {"spacing.alignment.comma": "forbidden"}
+$t = [1,	2];
+$s = [1,   2];
