@@ -1,0 +1,4 @@
+<?php
+// {"spacing.alignment.binaryOperator": "tabs"}
+$a  =  1;
+$c	=	3;

@@ -1,0 +1,10 @@
+<?php
+// {"spacing.concatenation": "$a . $b"}
+$a = "x" . $b;
+$a = "x" . $b;
+$a = "x"
+	. $b;
+$a = "x" .
+	$b;
+$a = "x" . // c
+	$b;

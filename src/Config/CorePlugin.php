@@ -7,7 +7,7 @@
 
 namespace DressCode\Config;
 
-use DressCode\{Decision, Plugin, PluginManifest, Rules};
+use DressCode\{Decision, Domain, Plugin, PluginManifest, Rules};
 use DressCode\Domains\Words;
 
 
@@ -29,6 +29,7 @@ final class CorePlugin implements Plugin
 				Rules\Comments\NoHashCommentsRule::class,
 				Rules\ControlFlow\ElseifNotationRule::class,
 				Rules\ControlFlow\NoEmptyStatementsRule::class,
+				Rules\Expressions\BinaryOperatorSpacingRule::class,
 				Rules\Expressions\NotEqualsNotationRule::class,
 				Rules\Files\FinalLineEndingsRule::class,
 				Rules\Files\LineEndingRule::class,
@@ -52,6 +53,11 @@ final class CorePlugin implements Plugin
 					'CRLF' => 'every line ends with CRLF',
 					'majority' => 'every line ends as most lines of the file do, LF on a tie',
 				]), 'The line ending of every line, which the code written new takes too; under `keep` that follows the file'),
+				new Decision(
+					'multiline.operatorPosition.comparison',
+					Domain::operatorPosition(),
+					'Where a comparison stands at a line break: one ending its line moves only where the line joined after it would be too wide, one opening its line joins the line before it, what follows staying on its line unless it would be too wide',
+				),
 			],
 		);
 	}

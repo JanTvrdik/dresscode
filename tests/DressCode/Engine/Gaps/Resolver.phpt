@@ -7,7 +7,7 @@
  */
 
 use DressCode\{
-	Analyses, Claim, Config, ConfigurationException, Gap, GapRule, Line, Rule, RuleInfo, Rules, Space, Stage, Style,
+	Analyses, Claim, Config, ConfigurationException, Decision, Domain, Gap, GapRule, Line, Rule, RuleInfo, Rules, Space, Stage, Style,
 };
 use DressCode\Config\{PluginRegistry, RuleBuilder};
 use DressCode\Engine\{PhpFileProcessor, ReportPolicy};
@@ -53,6 +53,37 @@ test('a claim on the whitespace and the line reports the line under its own deci
 	Assert::same([
 		'4: Expected no whitespace before the semicolon. [spacing.semicolon.before]',
 		'8: Expected no line break before the semicolon. [multiline.semicolon]',
+	], $violations);
+});
+
+
+test('two rules may govern one operator when each abstains where the other decides', function () {
+	$concatenation = new #[RuleInfo(Stage::Formatting)] class extends GapRule {
+		public static function getDecisions(): array
+		{
+			return [new Decision('project.concatenation', Domain::state(), 'No space around `.`')];
+		}
+
+
+		public function getClaims(): array
+		{
+			$claim = fn(Gap $gap): ?Claim => $gap->token->text === '.' ? Claim::noSpace() : null;
+			return [Nodes\Expression\BinaryOpNode::class => ['operator' => [$claim, $claim]]];
+		}
+	};
+	[$output, $violations] = apply([
+		RuleBuilder::createRule(
+			Rules\Expressions\BinaryOperatorSpacingRule::class,
+			['spacing.binaryOperator' => '$a + $b', 'spacing.alignment.binaryOperator' => 'forbidden'],
+		),
+		$concatenation,
+	], "<?php\n\$a = \$b  +  \$c . \$d;\n");
+	Assert::same("<?php\n\$a = \$b + \$c.\$d;\n", $output);
+	Assert::same([
+		'2: Expected a single space before the `+` operator. [spacing.binaryOperator]',
+		'2: Expected a single space after the `+` operator. [spacing.binaryOperator]',
+		'2: Expected no whitespace before the `.` operator. [project.concatenation]',
+		'2: Expected no whitespace after the `.` operator. [project.concatenation]',
 	], $violations);
 });
 

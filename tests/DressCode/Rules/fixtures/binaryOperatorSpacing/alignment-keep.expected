@@ -1,0 +1,5 @@
+<?php
+// {"spacing.alignment.binaryOperator": "optional"}
+$a  =  1;
+$c	=	3;
+$d = 4;

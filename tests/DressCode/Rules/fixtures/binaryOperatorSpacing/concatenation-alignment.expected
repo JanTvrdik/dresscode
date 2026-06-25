@@ -1,0 +1,4 @@
+<?php
+// {"spacing.concatenation": "$a . $b"}
+$a      = 'x' . $b;
+$longer = 'y' . $c;
