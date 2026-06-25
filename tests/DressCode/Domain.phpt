@@ -7,6 +7,27 @@ use Tester\Assert;
 require __DIR__ . '/../bootstrap.php';
 
 
+test('a shape with a tolerance takes a list of examples, each passing and the first written', function () {
+	$shapes = new Shapes(['compact' => ['!$x', ''], 'spaced' => ['! $x', '']], tolerance: true);
+	$value = $shapes->accept(['! $x', '!$x'], 'spacing.logicalNot');
+	Assert::same(
+		[['spaced', 'compact'], 'spaced', ['! $x', '!$x'], "['! \$x', '!\$x']"],
+		[$value->getShapes(), $value->getShape(), $value->toWrittenData(), $value->toWrittenText()],
+	);
+	Assert::same(['compact'], $shapes->accept('!$x', 'spacing.logicalNot')->getShapes());
+	Assert::exception(
+		fn() => $shapes->accept(['!$x', '!$x'], 'spacing.logicalNot'),
+		ConfigurationException::class,
+		'%a%a shape given twice%a%',
+	);
+	Assert::exception(
+		fn() => $shapes->accept(['!$x', '!  $x'], 'spacing.logicalNot'),
+		ConfigurationException::class,
+		"Key `spacing.logicalNot` does not take `!  \$x`; write `'!\$x'`, `'! \$x'` or a list of them.",
+	);
+});
+
+
 test('a count is a number, a range in any notation, an open one, or a word', function () {
 	$count = new Count(words: ['none' => 'no limit']);
 	Assert::same([2, 2], $count->accept(2, 'x.y')->getCountRange());

@@ -1,0 +1,6 @@
+spacing:
+	unaryOperator: '-$x'
+	logicalNot: '!$x'
+	cast: '(int) $x'
+	reference: '&$x'
+	spread: '...$x'

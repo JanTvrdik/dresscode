@@ -1,0 +1,7 @@
+<?php
+// {"spacing.unaryOperator": "keep", "spacing.logicalNot": "keep", "spacing.reference": "keep", "spacing.spread": "keep"}
+$a = (int)$b;
+$c = & $d;
+foo(... $e);
+$f = ! $g;
+$h = - $i;

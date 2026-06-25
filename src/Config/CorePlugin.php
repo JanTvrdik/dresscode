@@ -31,6 +31,7 @@ final class CorePlugin implements Plugin
 				Rules\ControlFlow\NoEmptyStatementsRule::class,
 				Rules\Expressions\BinaryOperatorSpacingRule::class,
 				Rules\Expressions\NotEqualsNotationRule::class,
+				Rules\Expressions\OperandSpacingRule::class,
 				Rules\Files\FinalLineEndingsRule::class,
 				Rules\Files\LineEndingRule::class,
 				Rules\Files\NoBomRule::class,
