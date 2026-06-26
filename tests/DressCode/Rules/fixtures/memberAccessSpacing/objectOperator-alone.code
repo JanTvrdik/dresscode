@@ -1,0 +1,5 @@
+<?php
+// {"spacing.doubleColon": "keep"}
+$a -> b();
+A :: c();
+A :: $d;
