@@ -32,6 +32,7 @@ final class CorePlugin implements Plugin
 				Rules\Expressions\BinaryOperatorSpacingRule::class,
 				Rules\Expressions\NotEqualsNotationRule::class,
 				Rules\Expressions\OperandSpacingRule::class,
+				Rules\Expressions\TernaryOperatorSpacingRule::class,
 				Rules\Files\FinalLineEndingsRule::class,
 				Rules\Files\LineEndingRule::class,
 				Rules\Files\NoBomRule::class,
@@ -54,6 +55,11 @@ final class CorePlugin implements Plugin
 					'CRLF' => 'every line ends with CRLF',
 					'majority' => 'every line ends as most lines of the file do, LF on a tie',
 				]), 'The line ending of every line, which the code written new takes too; under `keep` that follows the file'),
+				new Decision(
+					'multiline.operatorPosition.ternary',
+					Domain::operatorPosition(),
+					'Where `?`, `:` and `?:` of a ternary stand at a line break, of a ternary spread over lines too',
+				),
 				new Decision(
 					'multiline.operatorPosition.comparison',
 					Domain::operatorPosition(),

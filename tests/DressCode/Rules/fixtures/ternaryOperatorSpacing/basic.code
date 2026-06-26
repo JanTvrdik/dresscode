@@ -1,0 +1,9 @@
+<?php
+// {"spacing.alignment.ternary": "forbidden"}
+$a = $b?$c:$d;
+$a = $b  ?  $c  :  $d;
+$a = $b ? : $d;
+$a = $b?:$d;
+$a = $b
+	? $c
+	: $d;
