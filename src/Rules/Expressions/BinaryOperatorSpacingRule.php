@@ -135,6 +135,7 @@ final class BinaryOperatorSpacingRule extends GapRule
 	{
 		$assignment = [$this->claimBeforeAssignment(...), fn(Gap $gap) => $this->claimAfterAssignment($gap, 'assignment')];
 		$arrow = ['doubleArrow' => [$this->claimBeforeAssignment(...), $this->claim]];
+		// the equals of declare(strict_types=1) is `DeclareSpacingRule`'s
 		$declared = fn(Gap $gap) => $gap->token->parent instanceof DeclareItemNode;
 		return [
 			BinaryOpNode::class => ['operator' => [$this->claimBeforeOperator(...), $this->claimAfterOperator(...)]],
