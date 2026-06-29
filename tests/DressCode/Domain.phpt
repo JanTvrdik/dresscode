@@ -7,6 +7,29 @@ use Tester\Assert;
 require __DIR__ . '/../bootstrap.php';
 
 
+test('a shape is written by its example, one of the known ones and never read', function () {
+	$shapes = new Shapes(['compact' => ['foo($a, $b)', 'no space'], 'spaced' => ['foo ($a, $b)', 'a single space']]);
+	$value = $shapes->accept('foo ($a, $b)', 'spacing.call');
+	Assert::same(['spaced', 'foo ($a, $b)', "'foo (\$a, \$b)'"], [$value->getShape(), $value->toWrittenData(), $value->toWrittenText()]);
+	Assert::exception(
+		fn() => $shapes->accept('foo( $a )', 'spacing.call', keep: true),
+		ConfigurationException::class,
+		"Key `spacing.call` does not take `foo( \$a )`; write `'foo(\$a, \$b)'`, `'foo (\$a, \$b)'` or `keep`.",
+	);
+	Assert::exception(
+		fn() => $shapes->accept('spaced', 'spacing.call'),
+		ConfigurationException::class,
+		"Key `spacing.call` does not take `spaced`, a word where the shape is written by its example; write `'foo(\$a, \$b)'` or `'foo (\$a, \$b)'`.",
+	);
+	Assert::exception(
+		fn() => $shapes->accept(new Nette\Neon\Entity('foo', ['$a', '$b']), 'spacing.call'),
+		ConfigurationException::class,
+		"Key `spacing.call` does not take %a%, which NEON read as no text; an example is written in quotes; write `'foo(\$a, \$b)'` or `'foo (\$a, \$b)'`.",
+	);
+	Assert::exception(fn() => $shapes->accept(['foo($a, $b)'], 'spacing.call'), ConfigurationException::class);
+});
+
+
 test('a shape with a tolerance takes a list of examples, each passing and the first written', function () {
 	$shapes = new Shapes(['compact' => ['!$x', ''], 'spaced' => ['! $x', '']], tolerance: true);
 	$value = $shapes->accept(['! $x', '!$x'], 'spacing.logicalNot');
