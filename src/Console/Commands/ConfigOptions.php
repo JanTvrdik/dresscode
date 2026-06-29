@@ -32,7 +32,7 @@ final readonly class ConfigOptions
 		public array $use = [],
 		/** @var list<string> */
 		#[Cli\Option(
-			'Set a decision over the configuration as `path=value`, the value in NEON',
+			'Set a decision over the configuration as `path=value`, the value in NEON: `spacing.arrowFunction="fn ($x) => $x"`',
 			valueName: 'path=value',
 			repeatable: true,
 			normalizer: [self::class, 'checkDecision'],

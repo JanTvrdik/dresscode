@@ -8,7 +8,7 @@
 namespace DressCode\Config;
 
 use DressCode\{Decision, Domain, Plugin, PluginManifest, Rules};
-use DressCode\Domains\Words;
+use DressCode\Domains\{Shapes, Words};
 
 
 /**
@@ -45,6 +45,7 @@ final class CorePlugin implements Plugin
 				Rules\Literals\BuiltinCasingRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,
 				Rules\Whitespace\CommaSpacingRule::class,
+				Rules\Whitespace\ConstructSpacingRule::class,
 				Rules\Whitespace\DelimiterSpacingRule::class,
 				Rules\Whitespace\SemicolonSpacingRule::class,
 			],
@@ -56,6 +57,11 @@ final class CorePlugin implements Plugin
 					'CRLF' => 'every line ends with CRLF',
 					'majority' => 'every line ends as most lines of the file do, LF on a tie',
 				]), 'The line ending of every line, which the code written new takes too; under `keep` that follows the file'),
+				new Decision(
+					'spacing.keyword',
+					new Shapes(['spaced' => ['return $x', 'a single space']]),
+					'The space after a keyword followed by code on its line, `return`, `new`, `if`, `function`, a modifier and the words of the head of a class among them, and around a keyword continuing a statement, `else`, `catch`, `finally`, the `while` of a `do`, `as`, `insteadof` and the `use` of a closure, which stay on the line of what is before them',
+				),
 				new Decision(
 					'multiline.operatorPosition.ternary',
 					Domain::operatorPosition(),

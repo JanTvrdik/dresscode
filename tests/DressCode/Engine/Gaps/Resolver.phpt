@@ -42,6 +42,29 @@ function apply(array $rules, string $code): array
 }
 
 
+test('the stricter side of a gap wins: nothing before the semicolon, whatever the keyword asks for after itself', function () {
+	[$output, $violations] = apply([
+		RuleBuilder::createRule(Rules\Whitespace\ConstructSpacingRule::class, [
+			'spacing.keyword' => 'return $x', 'spacing.openBrace' => 'if ($a) {',
+			'spacing.alternativeSyntax' => 'if ($a):', 'spacing.body' => 'function () { return 1; }',
+			'spacing.import' => 'use Acme\\{Foo, Bar};',
+			'spacing.arrowFunction' => 'fn($x) => $x', 'multiline.expressionStart' => 'sameLine',
+		]),
+		RuleBuilder::createRule(Rules\Whitespace\SemicolonSpacingRule::class, [
+			'spacing.semicolon.before' => '$a;',
+			'spacing.semicolon.after' => 'for ($i = 0; $i < 5; $i++)',
+			'multiline.semicolon' => 'sameLine',
+		]),
+	], "<?php\nreturn  ;\nreturn  \$a ;\n");
+	Assert::same("<?php\nreturn;\nreturn \$a;\n", $output);
+	Assert::same([
+		'2: Expected no whitespace before the semicolon. [spacing.semicolon.before]',
+		'3: Expected a single space after the `return` keyword. [spacing.keyword]',
+		'3: Expected no whitespace before the semicolon. [spacing.semicolon.before]',
+	], $violations);
+});
+
+
 test('a claim on the whitespace and the line reports the line under its own decision where it names one', function () {
 	[$output, $violations] = apply([
 		RuleBuilder::createRule(Rules\Whitespace\SemicolonSpacingRule::class, [
@@ -54,6 +77,16 @@ test('a claim on the whitespace and the line reports the line under its own deci
 		'4: Expected no whitespace before the semicolon. [spacing.semicolon.before]',
 		'8: Expected no line break before the semicolon. [multiline.semicolon]',
 	], $violations);
+});
+
+
+test('a keyword alone knows what closes it', function () {
+	[$output] = apply([RuleBuilder::createRule(Rules\Whitespace\ConstructSpacingRule::class, [
+		'spacing.keyword' => 'return $x', 'spacing.openBrace' => 'if ($a) {',
+		'spacing.alternativeSyntax' => 'if ($a):', 'spacing.body' => 'function () { return 1; }',
+		'spacing.import' => 'use Acme\\{Foo, Bar};', 'spacing.arrowFunction' => 'fn($x) => $x', 'multiline.expressionStart' => 'sameLine',
+	])], "<?php\nreturn;\nswitch (\$a) {\n\tdefault:\n}\n");
+	Assert::same("<?php\nreturn;\nswitch (\$a) {\n\tdefault:\n}\n", $output);
 });
 
 
@@ -88,6 +121,35 @@ test('two rules may govern one operator when each abstains where the other decid
 });
 
 
+test('a plain claim and a closure deciding one component of one slot are refused at the first gap they meet on', function () {
+	$other = new #[RuleInfo(Stage::Formatting)] class extends GapRule {
+		public static function getDecisions(): array
+		{
+			return [new Decision('project.returnSpacing', Domain::state(), 'No space after `return`')];
+		}
+
+
+		public function getClaims(): array
+		{
+			return ['*' => ['returnKeyword' => [null, Claim::noSpace()]]];
+		}
+	};
+	Assert::exception(
+		fn() => apply([
+			RuleBuilder::createRule(Rules\Whitespace\ConstructSpacingRule::class, [
+				'spacing.keyword' => 'return $x', 'spacing.openBrace' => 'if ($a) {', 'spacing.alternativeSyntax' => 'if ($a):',
+				'spacing.body' => 'function () { return 1; }', 'spacing.import' => 'use Acme\\{Foo, Bar};',
+				'spacing.arrowFunction' => 'fn($x) => $x',
+				'multiline.expressionStart' => 'sameLine',
+			]),
+			$other,
+		], "<?php\nreturn \$a;\n"),
+		ConfigurationException::class,
+		'Rules `DressCode\Rules\Whitespace\ConstructSpacingRule` and `%a%` both govern the whitespace after `*.returnKeyword`.',
+	);
+});
+
+
 test('the whitespace of a string, of a comment and of a line ending is not a gap', function () {
 	[$output, $violations] = apply([
 		RuleBuilder::createRule(Rules\Whitespace\DelimiterSpacingRule::class, ['spacing.padding' => 'forbidden']),
@@ -95,6 +157,52 @@ test('the whitespace of a string, of a comment and of a line ending is not a gap
 	], "<?php\nfoo( \"{\$a -> b}\" );\nfoo( // c\n\t\$a\n);\n\$x ?>\n<b> ?> </b>\n");
 	Assert::same("<?php\nfoo(\"{\$a -> b}\");\nfoo( // c\n\t\$a\n);\n\$x ?>\n<b> ?> </b>\n", $output);
 	Assert::count(2, $violations);
+});
+
+
+test('whitespace a mutation left in the leading trivia of a token is part of the gap before it', function () {
+	// renames the returned variable and moves the whitespace after `return` into its leading trivia, where it does
+	// not belong, once
+	$misplacing = new #[RuleInfo(Stage::Structure)] class extends DressCode\NodeRule {
+		public bool $done = false;
+
+
+		public static function getDecisions(): array
+		{
+			return [new Decision('project.misplacing', Domain::state(), 'The returned variable is renamed')];
+		}
+
+
+		public function getVisitedNodes(): array
+		{
+			return [Nodes\Statement\ReturnNode::class];
+		}
+
+
+		public function enter(PhpSyntax\Node|PhpSyntax\Token $node, DressCode\RuleContext $context): void
+		{
+			$first = $node instanceof Nodes\Statement\ReturnNode ? $node->expression?->getFirstToken() : null;
+			$space = $node instanceof Nodes\Statement\ReturnNode ? $node->returnKeyword->getTrailingSpace() : null;
+			if (!$this->done && $first !== null && $space !== null && $space !== '' && $context->report($node, 'Misplaced.')) {
+				$this->done = true;
+				$node->returnKeyword->setTrailingSpace('');
+				$first->setText('$b')->setLeadingTrivia([new PhpSyntax\Trivia(PhpSyntax\Trivia::Whitespace, $space)]);
+			}
+		}
+	};
+	$spacing = RuleBuilder::createRule(Rules\Whitespace\ConstructSpacingRule::class, [
+		'spacing.keyword' => 'return $x', 'spacing.openBrace' => 'keep', 'spacing.alternativeSyntax' => 'keep', 'spacing.body' => 'keep',
+		'spacing.import' => 'keep', 'spacing.arrowFunction' => 'keep', 'multiline.expressionStart' => 'keep',
+	]);
+
+	[$output, $violations] = apply([$misplacing, $spacing], "<?php\nreturn \$a;\n");
+	Assert::same("<?php\nreturn \$b;\n", $output);
+	Assert::same(['2: Misplaced. [project.misplacing]'], $violations);
+
+	$misplacing->done = false;
+	[$output, $violations] = apply([$misplacing, $spacing], "<?php\nreturn   \$a;\n");
+	Assert::same("<?php\nreturn \$b;\n", $output);
+	Assert::contains('2: Expected a single space after the `return` keyword. [spacing.keyword]', $violations);
 });
 
 
