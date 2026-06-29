@@ -44,6 +44,7 @@ final class CorePlugin implements Plugin
 				Rules\Files\OpeningTagNotationRule::class,
 				Rules\Files\StrictTypesRequiredRule::class,
 				Rules\Functions\FunctionNameSpacingRule::class,
+				Rules\Functions\NamedArgumentSpacingRule::class,
 				Rules\Literals\BuiltinCasingRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,
 				Rules\Whitespace\CommaSpacingRule::class,
