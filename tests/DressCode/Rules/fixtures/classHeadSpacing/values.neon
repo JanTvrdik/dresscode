@@ -1,0 +1,3 @@
+spacing:
+	keyword: 'return $x'
+	anonymousClass: 'new class ($a)'
