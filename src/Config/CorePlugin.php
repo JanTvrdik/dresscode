@@ -55,6 +55,7 @@ final class CorePlugin implements Plugin
 				Rules\Whitespace\CommaSpacingRule::class,
 				Rules\Whitespace\ConstructSpacingRule::class,
 				Rules\Whitespace\DelimiterSpacingRule::class,
+				Rules\Whitespace\NoStatementsSharingLineRule::class,
 				Rules\Whitespace\SemicolonSpacingRule::class,
 			],
 			// the decisions no single rule owns, each turning on the rules that name it in `RuleInfo::$decisions`
