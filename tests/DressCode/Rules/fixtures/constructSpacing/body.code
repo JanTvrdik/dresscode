@@ -15,7 +15,7 @@ class A
 	}
 }
 
-// empty braces are written {}
+// an empty body is the business of braces.emptyBody, other empty braces are written {}
 if ($a) {  }
 $j = function () {  };
 switch ($a) {  }

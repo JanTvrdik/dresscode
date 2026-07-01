@@ -11,7 +11,7 @@ use DressCode\{Claim, Decision, Domain, Gap, GapRule, Line, RuleInfo, Space, Sta
 use DressCode\Domains\Shapes;
 use PhpSyntax\{Node, Token};
 use PhpSyntax\Nodes\{
-	AnonymousClassNode, CaseNode, CatchNode, ClosureUseListNode, ElseifNode,
+	AnonymousClassNode, CaseNode, CatchNode, ClassLikeNode, ClosureUseListNode, ElseifNode,
 	ElseNode, FinallyNode, ModifiersNode, ParameterNode, SeparatedNodeList, Statement, UseItemNode,
 };
 use PhpSyntax\Nodes\Expression\{ClosureNode, MatchNode};
@@ -111,7 +111,7 @@ final class ConstructSpacingRule extends GapRule
 			new Decision(
 				self::Body,
 				new Shapes(['spaced' => ['function () { return 1; }', 'a single space inside the braces']]),
-				'The space inside the braces of a body whose code stands on their line, of a function, a closure, a property hook and an anonymous class, and of abbreviated property hooks, `{ get; set; }`; none inside a pair of braces with nothing between them',
+				'The space inside the braces of a body whose code stands on their line, of a function, a closure, a property hook and an anonymous class, and of abbreviated property hooks, `{ get; set; }`; none inside a pair of braces with nothing between them whose empty form `braces.emptyBody` does not decide',
 			),
 			new Decision(
 				self::Import,
@@ -188,8 +188,11 @@ final class ConstructSpacingRule extends GapRule
 			fn(Gap $gap) => $gap->token->is(Token::OpenTagWithEcho) ? null : $this->claimAfterKeyword($gap),
 		];
 		$any['fnKeyword'] = [null, $this->spaceAfterFn];
-		// a pair of braces with nothing between them is written {}
-		$any['closeBrace'] = [fn(Gap $gap) => $gap->token->getPrevious()?->is('{') ?? false ? $bodyNone : null, null];
+		// a pair of braces with nothing between them is written {}, unless `braces.emptyBody` writes it
+		$any['closeBrace'] = [
+			fn(Gap $gap) => ($gap->token->getPrevious()?->is('{') ?? false) && !self::isBody($gap->token->parent) ? $bodyNone : null,
+			null,
+		];
 		// and an empty body of the alternative syntax is written `: endif`
 		$any['endKeyword'] = [fn(Gap $gap) => $gap->token->getPrevious()?->is(':') ?? false ? $colonSingle : null, null];
 		$claims = ['*' => $any];
@@ -304,6 +307,14 @@ final class ConstructSpacingRule extends GapRule
 		}
 
 		return $node;
+	}
+
+
+	/** Whether the braces enclose the body of a class, a function or a control structure, whose empty form `BracesPositionRule` writes. */
+	private static function isBody(?Node $braced): bool
+	{
+		return $braced instanceof ClassLikeNode
+			|| ($braced instanceof Statement\BlockNode && $braced->parent !== null && in_array($braced->parent::class, self::Bodied, true));
 	}
 
 
