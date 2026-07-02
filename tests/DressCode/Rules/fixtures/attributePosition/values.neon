@@ -1,0 +1,4 @@
+multiline:
+	attributePosition:
+		declaration: above
+		parameter: above

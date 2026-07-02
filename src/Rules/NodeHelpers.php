@@ -7,8 +7,8 @@
 
 namespace DressCode\Rules;
 
+use PhpSyntax\{Node, Token};
 use PhpSyntax\Nodes\Expression;
-use PhpSyntax\Token;
 
 
 /**
@@ -47,5 +47,18 @@ final class NodeHelpers
 		return $position === 'lineEnd'
 			? $operator->startsLine() && !($operator->getPrevious()?->hasCommentUpTo($operator) ?? true)
 			: $operator->isFollowedByLineEnding();
+	}
+
+
+	/**
+	 * Whether a list in brackets spans lines: a line break after the opening bracket, an item starting a line, or the
+	 * closing bracket doing so. A comment after the opening bracket ends its line without making the list span lines.
+	 * @param  list<Node>  $items
+	 */
+	public static function isMultiline(Token $open, array $items, Token $close): bool
+	{
+		return ($open->getTrailingSpace() === null && !$open->hasComment())
+			|| $close->startsLine()
+			|| array_any($items, fn(Node $item) => $item->getFirstToken()?->startsLine() === true);
 	}
 }
