@@ -1,0 +1,9 @@
+<?php
+
+namespace Foo {
+    use A;
+    use B;
+    class C
+    {
+    }
+}

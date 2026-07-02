@@ -1,0 +1,22 @@
+<?php
+// {"blankLines.belowComment.inlineVar": 0, "blankLines.afterOpeningTag": "keep"}
+
+/** @var App\Order $order */
+$order = load();
+
+
+function run(): int
+{
+	/** @var int $count */
+	$count = compute();
+
+	/** @phpstan-var list<string> $names */
+	$names = names();
+
+	/** A note, no type. */
+
+	tick();
+
+	/** @var int $total */
+	return $count;
+}

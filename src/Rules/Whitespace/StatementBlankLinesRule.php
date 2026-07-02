@@ -1,0 +1,370 @@
+<?php declare(strict_types=1);
+
+/**
+ * This file is part of the DressCode, a coding style and upgrade tool for PHP (https://dresscode.run)
+ * Copyright (c) 2026 David Grudl (https://davidgrudl.com)
+ */
+
+namespace DressCode\Rules\Whitespace;
+
+use DressCode\{Claim, ConfigurationException, Decision, Domain, Gap, GapRule, Line, RuleInfo, Stage, Values};
+use DressCode\Domains\Map;
+use PhpSyntax\{Node, Token, Trivia};
+use PhpSyntax\Nodes\{ClassLikeNode, Expression, FileNode, FunctionLikeNode, PlainNodeList, Statement, StatementNode};
+use function count, is_int, sprintf;
+
+
+/**
+ * How many blank lines stand between statements: in the header of a file, around declarations among statements, in
+ * the body of a function, and before and after a statement of a kind. Comments stay with the code below the blank
+ * lines, and a doc comment counts as part of what it documents.
+ */
+#[RuleInfo(Stage::Formatting, decisions: ['blankLines.afterPhpdoc'])]
+final class StatementBlankLinesRule extends GapRule
+{
+	private const Kinds = ['break', 'continue', 'do', 'for', 'foreach', 'if', 'return', 'switch', 'throw', 'try', 'while', 'yield'];
+	private const Counts = [
+		'afterOpeningTag' => 'After the line of `<?php`, which then carries no code but a declaration of `strict_types` that `file.strictTypes.position` puts there; a file with markup outside PHP keeps its tag',
+		'afterDeclare' => 'After `declare(...);`, before whatever follows it but a namespace declaration',
+		'beforeNamespace' => 'Before the namespace declaration and, where a doc comment of the file stands above it, also between the two',
+		'afterNamespace' => 'After an unbraced namespace declaration',
+		'afterImports' => 'After the last import, before the rest of the code',
+		'betweenImports' => 'Between two imports of one kind, two of classes for instance',
+		'betweenImportKinds' => 'Between the imports of classes, functions and constants',
+		'beforeDeclaration' => 'Before a class, interface, trait, enum or function that follows the namespace or the imports, which `afterNamespace` and `afterImports` then leave alone',
+		'aroundDeclarations' => 'Before and after a class, interface, trait, enum or function declared among statements, where the header above it does not decide',
+		'betweenStatementsInFunction' => 'Between two statements in the body of a function, a method or a closure, at any depth; a count of the kind of the statement before or after narrows it',
+		'afterAttributes' => 'Between the last group of attributes and the declaration, the member, the parameter or the closure it belongs to',
+		'belowComment.inlineVar' => 'Between a doc comment with `@var` and the statement below it that is no declaration, `/** @var Order $order */`',
+		'afterPhpdoc' => null,
+	];
+
+	/** @var array<string, int|array{int, ?int}|null>  the decision of a count => its count, null where it is kept */
+	private array $counts = [];
+
+	/** @var array<string, int|array{int, ?int}>  kind => count, a kind left as it is not being there */
+	private array $beforeStatement = [];
+
+	/** @var array<string, int|array{int, ?int}> */
+	private array $afterStatement = [];
+
+	private readonly BlankLineClaims $claims;
+
+
+	public function __construct()
+	{
+		$this->claims = new BlankLineClaims;
+	}
+
+
+	public static function getDecisions(): array
+	{
+		$count = Domain::blankLines();
+		$kinds = new Map($count, wildcards: false, words: array_fill_keys(self::Kinds, ''));
+		$decisions = [];
+		foreach (array_filter(self::Counts) as $key => $description) {
+			$decisions[] = new Decision("blankLines.$key", $count, $description);
+		}
+
+		$decisions[] = new Decision(
+			'blankLines.beforeStatement',
+			$kinds,
+			'Before a statement of the kind, `yield` meaning a statement made of a `yield` expression',
+		);
+		$decisions[] = new Decision('blankLines.afterStatement', $kinds, 'After a statement of the kind, before the next statement');
+		return $decisions;
+	}
+
+
+	public function configure(Values $values): void
+	{
+		foreach (array_keys(self::Counts) as $key) {
+			$this->counts[$key] = BlankLineClaims::readCount($values->get("blankLines.$key"));
+		}
+
+		$readKinds = fn(string $key) => $values->isKept("blankLines.$key")
+			? []
+			: array_filter(
+				array_map(BlankLineClaims::readCount(...), $values->get("blankLines.$key")->getEntries()),
+				fn($count) => $count !== null,
+			);
+		$this->beforeStatement = $readKinds('beforeStatement');
+		$this->afterStatement = $readKinds('afterStatement');
+
+		// a statement of any kind may follow one of any other kind, so two counts that exclude each other always meet
+		foreach ($this->afterStatement as $above => $after) {
+			foreach ($this->beforeStatement as $below => $before) {
+				[$min, $max] = Claim::toRange($after);
+				[$otherMin, $otherMax] = Claim::toRange($before);
+				if (($max !== null && $max < $otherMin) || ($otherMax !== null && $otherMax < $min)) {
+					throw new ConfigurationException(sprintf(
+						'Keys `blankLines.afterStatement` and `blankLines.beforeStatement` ask for %s and %s blank lines between `%s` and `%s`, which exclude each other; make the two counts meet.',
+						$values->get('blankLines.afterStatement')->getEntries()[$above]->toWrittenText(),
+						$values->get('blankLines.beforeStatement')->getEntries()[$below]->toWrittenText(),
+						$above,
+						$below,
+					));
+				}
+			}
+		}
+	}
+
+
+	public function getClaims(): array
+	{
+		$header = ['statements:item' => [fn(Gap $gap) => $this->claimInHeader($gap->value, $gap->index ?? 0), null]];
+		return [
+			FileNode::class => $header,
+			Statement\NamespaceNode::class => $header,
+			'*' => [
+				// a statement is asked about only where some decision can give it a count
+				'statements:item' => [
+					$this->counts['aroundDeclarations'] !== null
+					|| $this->counts['betweenStatementsInFunction'] !== null
+					|| $this->counts['afterPhpdoc'] !== null
+					|| $this->counts['belowComment.inlineVar'] !== null
+					|| $this->beforeStatement !== []
+						? fn(Gap $gap) => $this->claimBeforeStatement($gap->value, $gap->index ?? 0)
+						: null,
+					$this->counts['aroundDeclarations'] !== null || $this->afterStatement !== []
+						? fn(Gap $gap) => $this->claimAfterStatement($gap->value, $gap->index ?? 0)
+						: null,
+				],
+				'attributes' => [null, $this->claims->claim($this->counts['afterAttributes'], 'afterAttributes')],
+			],
+		];
+	}
+
+
+	/**
+	 * What the header asks for above the statement: the line of the opening tag above the first, the namespace
+	 * above its statements, the imports above what follows them, all of it where the statement follows
+	 * several of these. A gap where several of them meet is reported under the most specific one, the last.
+	 */
+	private function claimInHeader(Node|Token $stmt, int $index): ?Claim
+	{
+		$list = $stmt->parent;
+		if (!$stmt instanceof StatementNode || !$list instanceof PlainNodeList) {
+			return null;
+		}
+
+		$owner = $list->parent;
+		$previous = $list->getItems()[$index - 1] ?? null;
+		$counts = [];
+		$line = null;
+		$key = 'afterOpeningTag';
+		if (
+			$owner instanceof FileNode
+			&& $stmt === self::findFirstCode($owner)
+			&& $this->counts['afterOpeningTag'] !== null
+			&& self::isMonolithic($owner)
+		) {
+			$counts[] = $this->counts['afterOpeningTag'];
+			// the tag ends its line before the blank lines after it can be counted, except above the declaration
+			// of strict types, whose line `file.strictTypes.position` decides
+			$line = $stmt instanceof Statement\DeclareNode && $stmt->findDirective('strict_types') !== null ? null : Line::Next;
+		}
+
+		if ($stmt instanceof Statement\NamespaceNode && $this->counts['beforeNamespace'] !== null) {
+			$counts[] = $this->counts['beforeNamespace'];
+			$key = 'beforeNamespace';
+		}
+
+		if ($previous instanceof Statement\DeclareNode && $previous->semicolon !== null && !$stmt instanceof Statement\NamespaceNode) {
+			$counts[] = $this->counts['afterDeclare'];
+			$key = 'afterDeclare';
+		}
+
+		// a declaration below the namespace or the imports is beforeDeclaration's, and its keep claims a gap of any count
+		// so that no decision of the statements takes it
+		$declaration = $stmt instanceof ClassLikeNode || $stmt instanceof Statement\FunctionNode;
+		$declared = $this->counts['beforeDeclaration'] ?? [0, null];
+		if ($owner instanceof Statement\NamespaceNode && $owner->semicolon !== null && $index === 0) {
+			$counts[] = $declaration ? $declared : $this->counts['afterNamespace'];
+			$key = $declaration ? 'beforeDeclaration' : 'afterNamespace';
+		}
+
+		if ($previous instanceof Statement\UseNode) {
+			[$counts[], $key] = match (true) {
+				!$stmt instanceof Statement\UseNode => $declaration
+					? [$declared, 'beforeDeclaration']
+					: [$this->counts['afterImports'], 'afterImports'],
+				$previous->symbolKind === $stmt->symbolKind => [$this->counts['betweenImports'], 'betweenImports'],
+				default => [$this->counts['betweenImportKinds'], 'betweenImportKinds'],
+			};
+		}
+
+		$count = self::intersect(array_values(array_filter($counts, fn($count) => $count !== null)));
+		// a doc comment above a statement of the header is the docblock of the file, a block of the header of its own,
+		// whose blank lines below the boundary it stands on decides too; above other code it may be the `@var` of it
+		$comments = $stmt->getLeadingComments();
+		$headed = $stmt instanceof Statement\DeclareNode || $stmt instanceof Statement\NamespaceNode || $stmt instanceof Statement\UseNode;
+		$below = $headed && $comments !== [] && $comments[count($comments) - 1]->is(Trivia::DocComment) ? $count : null;
+		$var = $headed || $declaration ? null : BlankLineClaims::findBelowInlineVar($stmt, $this->counts['belowComment.inlineVar']);
+		return $var === null
+			? $this->claims->claim($count, $key, $below, $key, $line)
+			: $this->claims->claim($count, $key, $var, 'belowComment.inlineVar', $line);
+	}
+
+
+	/**
+	 * The range all the counts allow; when two exclude each other, the one given last wins.
+	 * @param list<int|array{int, ?int}> $counts
+	 * @return int|array{int, ?int}|null
+	 */
+	private static function intersect(array $counts): int|array|null
+	{
+		$result = null;
+		foreach ($counts as $count) {
+			[$min, $max] = is_int($count) ? [$count, $count] : $count;
+			if ($result !== null) {
+				[$currentMin, $currentMax] = $result;
+				$min = max($min, $currentMin);
+				$max = $max === null ? $currentMax : ($currentMax === null ? $max : min($max, $currentMax));
+				if ($max !== null && $min > $max) {
+					[$min, $max] = is_int($count) ? [$count, $count] : $count;
+				}
+			}
+
+			$result = [$min, $max];
+		}
+
+		return $result === null ? null : ($result[0] === $result[1] ? $result[0] : $result);
+	}
+
+
+	/**
+	 * Before a declaration among statements and below its doc comment, else what the kind of the statement
+	 * asks for within what a body of a function allows; the two never answer for the same statement.
+	 */
+	private function claimBeforeStatement(Node|Token $stmt, int $index): ?Claim
+	{
+		$declaration = $stmt instanceof Statement\FunctionNode || $stmt instanceof ClassLikeNode ? $stmt : null;
+		$blank = $declaration !== null && $index > 0 ? $this->counts['aroundDeclarations'] : null;
+		$below = $declaration === null ? null : BlankLineClaims::findBelowDocComment($declaration, $this->counts['afterPhpdoc']);
+		if ($blank !== null || $below !== null) {
+			return $this->claims->claim($blank, 'aroundDeclarations', $below, 'afterPhpdoc');
+		}
+
+		$kind = $this->findCountByKind($stmt, $index - 1, $this->beforeStatement);
+		$body = $this->counts['betweenStatementsInFunction'] !== null
+			&& self::isPlainPair($stmt, $index - 1)
+			&& $stmt->findAncestor(FunctionLikeNode::class) !== null
+			? $this->counts['betweenStatementsInFunction']
+			: null;
+		$var = $stmt instanceof StatementNode ? BlankLineClaims::findBelowInlineVar($stmt, $this->counts['belowComment.inlineVar']) : null;
+		return $body === null
+			? $this->claims->claim($kind, 'beforeStatement', $var, 'belowComment.inlineVar')
+			: $this->claims->claim(
+				self::intersect($kind === null ? [$body] : [$body, $kind]),
+				$kind === null ? 'betweenStatementsInFunction' : 'beforeStatement',
+				$var,
+				'belowComment.inlineVar',
+			);
+	}
+
+
+	/** After a declaration among statements, before what is not one, else what the kind of the statement asks for. */
+	private function claimAfterStatement(Node|Token $stmt, int $index): ?Claim
+	{
+		$list = $stmt->parent;
+		if (($stmt instanceof Statement\FunctionNode || $stmt instanceof ClassLikeNode) && $list instanceof PlainNodeList) {
+			$next = $list->getItems()[$index + 1] ?? null;
+			return $next !== null
+				&& !$next instanceof Statement\FunctionNode
+				&& !$next instanceof ClassLikeNode
+				? $this->claims->claim($this->counts['aroundDeclarations'], 'aroundDeclarations')
+				: null;
+		}
+
+		return $this->claims->claim($this->findCountByKind($stmt, $index + 1, $this->afterStatement), 'afterStatement');
+	}
+
+
+	/**
+	 * The count the statement's kind asks for on the side of its neighbor at the index, when the two are a pair
+	 * the kinds speak of.
+	 * @param array<string, int|array{int, ?int}|null> $counts
+	 * @return int|array{int, ?int}|null
+	 */
+	private function findCountByKind(Node|Token $stmt, int $neighbor, array $counts): int|array|null
+	{
+		return self::isPlainPair($stmt, $neighbor)
+			? $counts[self::classifyStatement($stmt)] ?? null
+			: null;
+	}
+
+
+	/**
+	 * Whether the statement and its neighbor at the index are both statements, neither one `isForeign()` leaves to
+	 * the decisions of the header and the declarations.
+	 * @phpstan-assert-if-true StatementNode $stmt
+	 */
+	private static function isPlainPair(Node|Token $stmt, int $neighbor): bool
+	{
+		$list = $stmt->parent;
+		$other = $list instanceof PlainNodeList ? $list->getItems()[$neighbor] ?? null : null;
+		return $stmt instanceof StatementNode
+			&& $other instanceof StatementNode
+			&& !self::isForeign($stmt)
+			&& !self::isForeign($other);
+	}
+
+
+	/** The statement after the opening tag: the first one, or the one after the hashbang or the BOM. */
+	private static function findFirstCode(FileNode $file): ?StatementNode
+	{
+		$stmts = $file->statements->getItems();
+		$first = $stmts[0] ?? null;
+		$stmt = $first instanceof Statement\InlineHtmlNode ? $stmts[1] ?? null : $first;
+		return ($stmt?->getFirstToken()?->leadingTrivia[0] ?? null)?->is(Trivia::OpenTag) ? $stmt : null;
+	}
+
+
+	/** PHP only: no markup but a hashbang or BOM at the start, and no closing tag. */
+	private static function isMonolithic(FileNode $file): bool
+	{
+		foreach ($file->statements->getItems() as $i => $stmt) {
+			if ($stmt instanceof Statement\InlineHtmlNode && ($i > 0 || !$stmt->isPreamble())) {
+				return false;
+			}
+		}
+
+		return array_all($file->getTokens(), fn($token) => $token->id !== Token::CloseTag);
+	}
+
+
+	private static function classifyStatement(StatementNode $stmt): string
+	{
+		return match (true) {
+			$stmt instanceof Statement\BreakNode => 'break',
+			$stmt instanceof Statement\ContinueNode => 'continue',
+			$stmt instanceof Statement\DoWhileNode => 'do',
+			$stmt instanceof Statement\ForNode => 'for',
+			$stmt instanceof Statement\ForeachNode => 'foreach',
+			$stmt instanceof Statement\IfNode => 'if',
+			$stmt instanceof Statement\ReturnNode => 'return',
+			$stmt instanceof Statement\SwitchNode => 'switch',
+			$stmt instanceof Statement\TryNode => 'try',
+			$stmt instanceof Statement\WhileNode => 'while',
+			$stmt instanceof Statement\ExpressionStatementNode => match (true) {
+				$stmt->expression instanceof Expression\ThrowNode => 'throw',
+				$stmt->expression instanceof Expression\YieldNode, $stmt->expression instanceof Expression\YieldFromNode => 'yield',
+				default => '',
+			},
+			default => '',
+		};
+	}
+
+
+	/** Statements whose blank lines the decisions about the header and the declarations own. */
+	private static function isForeign(StatementNode $stmt): bool
+	{
+		return $stmt instanceof Statement\FunctionNode
+			|| $stmt instanceof ClassLikeNode
+			|| $stmt instanceof Statement\UseNode
+			|| $stmt instanceof Statement\NamespaceNode
+			|| $stmt instanceof Statement\DeclareNode
+			|| $stmt instanceof Statement\InlineHtmlNode;
+	}
+}

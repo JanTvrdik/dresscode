@@ -60,6 +60,7 @@ final class CorePlugin implements Plugin
 				Rules\Whitespace\DelimiterSpacingRule::class,
 				Rules\Whitespace\NoStatementsSharingLineRule::class,
 				Rules\Whitespace\SemicolonSpacingRule::class,
+				Rules\Whitespace\StatementBlankLinesRule::class,
 			],
 			// the decisions no single rule owns, each turning on the rules that name it in `RuleInfo::$decisions`
 			decisions: [
@@ -83,6 +84,13 @@ final class CorePlugin implements Plugin
 					'multiline.operatorPosition.comparison',
 					Domain::operatorPosition(),
 					'Where a comparison stands at a line break: one ending its line moves only where the line joined after it would be too wide, one opening its line joins the line before it, what follows staying on its line unless it would be too wide',
+				),
+
+				// the lines below a doc comment, of a declaration among statements
+				new Decision(
+					'blankLines.afterPhpdoc',
+					Domain::blankLines(),
+					'Between a doc comment and the declaration it belongs to, or the first attribute of the declaration',
 				),
 			],
 		);
