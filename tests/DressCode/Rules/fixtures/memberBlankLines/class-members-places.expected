@@ -1,0 +1,19 @@
+<?php
+// {"betweenMembers": {"constant": 1, "property": 1, "enumCase": 0}}
+// constants and properties set apart, enum cases together
+class A
+{
+	const A = 1;
+
+	const B = 2;
+	public $x;
+
+	public $y;
+}
+
+enum E
+{
+	case A;
+	case B;
+	case C;
+}

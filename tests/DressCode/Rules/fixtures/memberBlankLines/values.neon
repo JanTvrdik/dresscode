@@ -1,0 +1,11 @@
+blankLines:
+	aroundMethods: 2
+	aroundInterfaceMethods: 1
+	bodyStart: 0
+	bodyEnd: 0
+	betweenTraitUses: 0
+	afterTraitUses: 1
+	betweenMemberKinds: 0-1
+	betweenMembers: 0-1
+	beforeDocumentedMember: 1
+	afterPhpdoc: 0

@@ -1,0 +1,20 @@
+<?php
+// a documented trait use takes the blank line of a documented member, and the one below it stays
+class User
+{
+	use HasApiTokens;
+	/** @use HasFactory<UserFactory> */
+	use HasFactory;
+
+	use HasProfilePhoto;
+
+	use Notifiable;
+}
+
+class Plain
+{
+	use A;
+	/** @use B<int> */
+	use B;
+	use C;
+}

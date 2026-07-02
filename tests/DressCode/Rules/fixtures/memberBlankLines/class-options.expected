@@ -1,0 +1,14 @@
+<?php
+// {"aroundMethods": 1, "bodyStart": {"class": 1}, "bodyEnd": {"class": 1}}
+class A
+{
+
+	public function a()
+	{
+	}
+
+	public function b()
+	{
+	}
+
+}

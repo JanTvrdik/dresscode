@@ -58,6 +58,7 @@ final class CorePlugin implements Plugin
 				Rules\Whitespace\CommaSpacingRule::class,
 				Rules\Whitespace\ConstructSpacingRule::class,
 				Rules\Whitespace\DelimiterSpacingRule::class,
+				Rules\Whitespace\MemberBlankLinesRule::class,
 				Rules\Whitespace\NoStatementsSharingLineRule::class,
 				Rules\Whitespace\SemicolonSpacingRule::class,
 				Rules\Whitespace\StatementBlankLinesRule::class,
@@ -86,7 +87,7 @@ final class CorePlugin implements Plugin
 					'Where a comparison stands at a line break: one ending its line moves only where the line joined after it would be too wide, one opening its line joins the line before it, what follows staying on its line unless it would be too wide',
 				),
 
-				// the lines below a doc comment, of a declaration among statements
+				// the lines below a doc comment, of a member as of a declaration among statements
 				new Decision(
 					'blankLines.afterPhpdoc',
 					Domain::blankLines(),

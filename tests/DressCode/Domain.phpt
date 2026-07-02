@@ -243,7 +243,7 @@ test('the helpers keep the vocabulary of states, placements and counts', functio
 	Assert::same(['forbidden' => 'never there'], Domain::state()->words);
 	Assert::same(['forbidden', 'required'], array_keys(Domain::state('forbidden', 'required')->words));
 	Assert::same(['sameLine', 'nextLine'], array_keys(Domain::placement()->words));
-	Assert::same([1, 2], Domain::blankLines()->accept('1-2', 'blankLines.afterImports')->getCountRange());
+	Assert::same([1, 2], Domain::blankLines()->accept('1-2', 'blankLines.betweenMembers')->getCountRange());
 	Assert::exception(
 		fn() => Domain::state('allowed'),
 		InvalidArgumentException::class,
