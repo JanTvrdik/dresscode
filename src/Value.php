@@ -185,6 +185,15 @@ final readonly class Value
 	}
 
 
+	/** Whether a count holds one of its words, not a number. */
+	public function hasWord(): bool
+	{
+		$this->checkNotKept();
+		$this->checkDomain(Count::class);
+		return is_string($this->content);
+	}
+
+
 	/** The text: the one given, or the first of a tolerance. */
 	public function getText(): string
 	{

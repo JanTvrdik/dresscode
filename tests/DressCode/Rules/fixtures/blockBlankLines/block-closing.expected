@@ -1,0 +1,12 @@
+<?php
+// {"bodyEnd": {"blocks": 0}}
+function f()
+{
+	foo();
+}
+if ($x) {
+	foo();
+
+} else {
+	bar();
+}

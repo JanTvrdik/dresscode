@@ -1,0 +1,17 @@
+<?php
+
+// {"bodyEnd": {"controlStructure": 0}}
+// a kept branch leaves the end of every branch as it is, the end of the last one is a body end
+try {
+	foo();
+
+} catch (Exception) {
+	bar();
+}
+
+if ($a) {
+	foo();
+
+} else {
+	bar();
+}

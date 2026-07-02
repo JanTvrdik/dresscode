@@ -54,6 +54,7 @@ final class CorePlugin implements Plugin
 				Rules\Variables\NoGlobalStatementsRule::class,
 				Rules\Whitespace\AttributePositionRule::class,
 				Rules\Whitespace\AttributeSpacingRule::class,
+				Rules\Whitespace\BlockBlankLinesRule::class,
 				Rules\Whitespace\BracesPositionRule::class,
 				Rules\Whitespace\CommaSpacingRule::class,
 				Rules\Whitespace\ConstructSpacingRule::class,
