@@ -1,0 +1,7 @@
+<?php
+// {"indentation.heredoc": 0}
+function f() {
+	$a = <<<EOT
+	foo
+	EOT;
+}

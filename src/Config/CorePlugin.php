@@ -51,6 +51,7 @@ final class CorePlugin implements Plugin
 				Rules\Functions\FunctionNameSpacingRule::class,
 				Rules\Functions\NamedArgumentSpacingRule::class,
 				Rules\Literals\BuiltinCasingRule::class,
+				Rules\Literals\HeredocIndentationRule::class,
 				Rules\Types\TypeDeclarationSpacingRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,
 				Rules\Whitespace\AttributePositionRule::class,
