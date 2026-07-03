@@ -64,6 +64,7 @@ final class CorePlugin implements Plugin
 				Rules\Whitespace\MemberBlankLinesRule::class,
 				Rules\Whitespace\NoStatementsSharingLineRule::class,
 				Rules\Whitespace\SemicolonSpacingRule::class,
+				Rules\Whitespace\SingleLevelIndentationRule::class,
 				Rules\Whitespace\StatementBlankLinesRule::class,
 			],
 			// the decisions no single rule owns, each turning on the rules that name it in `RuleInfo::$decisions`
