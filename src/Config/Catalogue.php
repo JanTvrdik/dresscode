@@ -7,6 +7,7 @@
 
 namespace DressCode\Config;
 
+use DressCode\Analyses\IndentationPlan;
 use DressCode\{ConfigurationException, Decision, DecisionKind, Domains, Plugin, Rule, RuleInfo};
 use Nette\Utils\Helpers;
 use function array_key_exists, count, is_string;
@@ -17,9 +18,10 @@ use function array_key_exists, count, is_string;
  * declaring it. A decision of one rule is declared by that rule; one several rules share is declared by a tree, the
  * decisions of the manifest of the core or of a plugin, and named by each of the rules in `RuleInfo::$decisions`, which
  * turns them all on, or in `RuleInfo::$reads` by a rule that only reads it, which turns nothing on. A decision of a
- * tree no registered rule names is not in the catalogue. The core keeps to its sections, a plugin to the section named
- * after it and the rules of the project to `project`. The order of the registration is the order the rules run in, so
- * that no order of the keys of a file changes what a run does.
+ * tree no registered rule names is not in the catalogue, except those the style of a run is read from
+ * (`Analyses\IndentationPlan::Decisions`). The core keeps to its sections, a plugin to the section named after it and
+ * the rules of the project to `project`. The order of the registration is the order the rules run in, so that no order
+ * of the keys of a file changes what a run does.
  */
 final class Catalogue
 {
@@ -148,8 +150,9 @@ final class Catalogue
 			$this->register($rule, [self::ProjectSection], 'the project');
 		}
 
-		// a decision only read is known to the values, after those the rules enforce
-		foreach (array_keys($this->readers) as $path) {
+		// a decision only read is known to the values, after those the rules enforce, and so are those the style of the
+		// run is read from, which a rule writing code takes whether or not the rule enforcing them runs
+		foreach ([...array_keys($this->readers), ...IndentationPlan::Decisions] as $path) {
 			if (isset($this->trees[$path])) {
 				$this->decisions[$path] ??= $this->trees[$path];
 			}

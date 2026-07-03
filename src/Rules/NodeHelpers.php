@@ -7,8 +7,11 @@
 
 namespace DressCode\Rules;
 
+use DressCode\Analyses\IndentationSnapshot;
+use DressCode\Gap;
 use PhpSyntax\{Node, Token};
 use PhpSyntax\Nodes\Expression;
+use function strlen;
 
 
 /**
@@ -47,6 +50,34 @@ final class NodeHelpers
 		return $position === 'lineEnd'
 			? $operator->startsLine() && !($operator->getPrevious()?->hasCommentUpTo($operator) ?? true)
 			: $operator->isFollowedByLineEnding();
+	}
+
+
+	/**
+	 * Whether the lines of the tokens have the indentation the run gives them (`Analyses\IndentationSnapshot`), or nothing
+	 * places them: a decision by the width of a line waits for it, and a pass later takes it over the right indentation.
+	 */
+	public static function isLineInPlace(Gap $gap, Token ...$tokens): bool
+	{
+		$snapshot = $gap->findAnalysis(IndentationSnapshot::class);
+		return $snapshot === null || array_all($tokens, fn(Token $token) => $snapshot->isLineInPlace($token));
+	}
+
+
+	/** `2 tabs`, `4 spaces`, `1 tab and 2 spaces`, `none`. */
+	public static function describeWidth(string $whitespace): string
+	{
+		$tabs = substr_count($whitespace, "\t");
+		$spaces = strlen($whitespace) - $tabs;
+		$parts = [];
+		if ($tabs > 0) {
+			$parts[] = $tabs === 1 ? '1 tab' : "$tabs tabs";
+		}
+		if ($spaces > 0) {
+			$parts[] = $spaces === 1 ? '1 space' : "$spaces spaces";
+		}
+
+		return $parts ? implode(' and ', $parts) : 'none';
 	}
 
 

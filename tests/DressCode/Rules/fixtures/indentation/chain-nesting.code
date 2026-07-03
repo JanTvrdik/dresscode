@@ -1,0 +1,23 @@
+<?php
+// {"chain": "nested"}
+$class->addMethod('__construct')
+	->addPromotedParameter('container')
+		->setPrivate()
+		->setType($name);
+$builder->addDefinition('templates')
+	->setFactory(Engine::class)
+		->addSetup('setCacheDirectory', [$dir])
+		->addSetup('setLocale', [$locale]);
+$a = $foo
+  ->bar()
+->baz();
+$b = $foo
+			->bar()
+	->baz();
+// links written at one level too deep all move, keeping their step from the link before
+$method->addParameter('res')
+		->setReference()
+		->setType('array');
+$method->addParameter('res')
+		->setReference()
+			->setType('array');

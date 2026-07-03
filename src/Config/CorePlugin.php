@@ -7,8 +7,9 @@
 
 namespace DressCode\Config;
 
-use DressCode\{Decision, Domain, Plugin, PluginManifest, Rules};
-use DressCode\Domains\{Shapes, Words};
+use DressCode\Analyses\IndentationPlan;
+use DressCode\{Decision, DecisionKind, Domain, Plugin, PluginManifest, Rules};
+use DressCode\Domains\{Count, Shapes, Words};
 
 
 /**
@@ -59,6 +60,7 @@ final class CorePlugin implements Plugin
 				Rules\Whitespace\CommaSpacingRule::class,
 				Rules\Whitespace\ConstructSpacingRule::class,
 				Rules\Whitespace\DelimiterSpacingRule::class,
+				Rules\Whitespace\IndentationRule::class,
 				Rules\Whitespace\MemberBlankLinesRule::class,
 				Rules\Whitespace\NoStatementsSharingLineRule::class,
 				Rules\Whitespace\SemicolonSpacingRule::class,
@@ -72,6 +74,19 @@ final class CorePlugin implements Plugin
 					'CRLF' => 'every line ends with CRLF',
 					'majority' => 'every line ends as most lines of the file do, LF on a tie',
 				]), 'The line ending of every line, which the code written new takes too; under `keep` that follows the file'),
+				new Decision('indentation.unit', new Words([
+					'tab' => 'one tab per level',
+					'4 spaces' => 'four spaces per level',
+					'2 spaces' => 'two spaces per level',
+				]), 'Every line indented by the construct it continues, one level per nesting, the level being this unit; under `keep` a line stays where it is'),
+				new Decision(
+					'indentation.tabWidth',
+					new Count(1, 8, range: false),
+					'How many columns a tab counts for in the width of a line',
+					kind: DecisionKind::Parameter,
+					default: 4,
+				),
+				...self::createIndentationDecisions(),
 				new Decision(
 					'spacing.keyword',
 					new Shapes(['spaced' => ['return $x', 'a single space']]),
@@ -96,5 +111,25 @@ final class CorePlugin implements Plugin
 				),
 			],
 		);
+	}
+
+
+	/** @return list<Decision>  the levels of the lines continuing a construct, which a rule deciding by the width of a line waits for */
+	private static function createIndentationDecisions(): array
+	{
+		$level = new Count(0, 1, range: false);
+		return [
+			new Decision(
+				IndentationPlan::Binary,
+				$level,
+				'The levels a line opened by `&&`, `+`, `.` steps in by from the start of its expression, 1 at least where the expression shares its first line',
+			),
+			new Decision(IndentationPlan::Ternary, $level, 'The levels `?` and `:` opening a line step in by'),
+			new Decision(IndentationPlan::SwitchCase, $level, 'The levels `case` steps in by from `switch`'),
+			new Decision(IndentationPlan::Chain, new Words([
+				'flat' => 'every link one level below the start',
+				'nested' => 'a link one level deeper or shallower than the link before it',
+			]), 'Where the links of a chain spread over lines stand'),
+		];
 	}
 }
