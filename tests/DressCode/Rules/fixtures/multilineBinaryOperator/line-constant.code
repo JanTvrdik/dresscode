@@ -1,0 +1,4 @@
+<?php
+// lineLength 80
+$message = 'The error stands at ' . __FILE__ . ':' . (__LINE__ - 2) . ', two lines above.';
+$message = 'The error stands at ' . __FILE__ . ':' . $line . ', the line it was given here.';

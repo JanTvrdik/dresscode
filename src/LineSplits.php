@@ -23,6 +23,12 @@ final readonly class LineSplits
 		'closureUse' => 'multiline.items.closureUse',
 		'condition' => 'multiline.items.condition',
 		'for' => 'multiline.items.for',
+		'logical' => 'multiline.items.logical',
+		'concatenation' => 'multiline.items.concatenation',
+		'arithmetic' => 'multiline.items.arithmetic',
+		'bitwise' => 'multiline.items.bitwise',
+		'coalesce' => 'multiline.items.coalesce',
+		'pipe' => 'multiline.items.pipe',
 		'implements' => 'multiline.items.implements',
 	];
 

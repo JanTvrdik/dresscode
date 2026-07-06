@@ -136,6 +136,30 @@ final class NodeHelpers
 
 
 	/**
+	 * The outermost operation of the family the operation belongs to: the operands one operator of a place spread over
+	 * lines joins without parentheses between them, another operator or parentheses beginning another family. Null
+	 * for a comparison or an operator no place names, and for a boolean operator chaining a condition, which is its
+	 * statement's.
+	 */
+	public static function findOperatorFamily(Expression\BinaryOpNode $operation): ?Expression\BinaryOpNode
+	{
+		$place = self::findOperatorPlace($operation);
+		if ($place === null || $place === 'comparison') {
+			return null;
+		}
+
+		while (
+			$operation->parent instanceof Expression\BinaryOpNode
+			&& strcasecmp($operation->parent->operator->text, $operation->operator->text) === 0
+		) {
+			$operation = $operation->parent;
+		}
+
+		return $operation->isLogical() && self::findConditionStatement($operation) !== null ? null : $operation;
+	}
+
+
+	/**
 	 * Whether the operator at a line break stands on the other side of it than the position says: ending its line where
 	 * operators open lines (`lineStart`), opening its line where they end them (`lineEnd`); a comment between the operator
 	 * and the break keeps it where it is.
@@ -194,10 +218,10 @@ final class NodeHelpers
 	 * puts at the start of a line once spread, and whether it is spread over lines already; null for a node that is none
 	 * or has nothing to spread: a call, `new` or an attribute without arguments, a first-class callable, a signature
 	 * without parameters, a condition joined by no boolean operator unless it is a comparison, which splits at its
-	 * operator, a `for` with empty sections, a list of a single interface. The last is whether the construct is a
-	 * message, a call whose sole argument is a string, which is never spread for its width and leaves what it holds
-	 * whole too. A call left on its line by the author is not spread even where its last argument, a closure or an
-	 * array, spans lines.
+	 * operator, an inner link of a family of operators, a `for` with empty sections, a list of a single interface. The
+	 * last is whether the construct is a message, a call whose sole argument is a string, which is never spread for its
+	 * width and leaves what it holds whole too. A call left on its line by the author is not spread even where its last
+	 * argument, a closure or an array, spans lines.
 	 * @return ?array{string, Token, list<Token>, bool, bool}
 	 */
 	public static function findSplitFrame(Node $node): ?array
@@ -291,6 +315,20 @@ final class NodeHelpers
 				];
 
 		} elseif (
+			$node instanceof Expression\BinaryOpNode
+			&& self::findOperatorFamily($node) === $node
+			&& ($place = self::findOperatorPlace($node)) !== null
+		) {
+			$operators = self::collectFamilyOperators($node, $node->operator->text);
+			return [
+				$place,
+				$node->getFirstToken(),
+				$operators,
+				array_any($operators, fn(Token $operator) => $operator->startsLine() || $operator->isFollowedByLineEnding()),
+				false,
+			];
+
+		} elseif (
 			$node instanceof SeparatedNodeList
 			&& ((($node->parent instanceof Statement\ClassNode
 				|| $node->parent instanceof Statement\EnumNode
@@ -311,6 +349,27 @@ final class NodeHelpers
 		}
 
 		return null;
+	}
+
+
+	/**
+	 * The operators of the family the outermost operation stands for, in the order they are written.
+	 * @return list<Token>
+	 */
+	private static function collectFamilyOperators(Expression\BinaryOpNode $operation, string $operator): array
+	{
+		$operators = [];
+		foreach ([$operation->left, $operation->right] as $i => $operand) {
+			if ($i === 1) {
+				$operators[] = $operation->operator;
+			}
+
+			if ($operand instanceof Expression\BinaryOpNode && strcasecmp($operand->operator->text, $operator) === 0) {
+				array_push($operators, ...self::collectFamilyOperators($operand, $operator));
+			}
+		}
+
+		return $operators;
 	}
 
 

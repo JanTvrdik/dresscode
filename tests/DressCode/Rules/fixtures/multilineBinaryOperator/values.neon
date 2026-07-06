@@ -1,0 +1,6 @@
+multiline:
+	items:
+		logical: [perLine, fill]
+		concatenation: [perLine, fill]
+		arithmetic: [perLine, fill]
+		bitwise: [perLine, fill]
