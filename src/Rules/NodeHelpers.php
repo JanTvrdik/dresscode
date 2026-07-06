@@ -194,9 +194,10 @@ final class NodeHelpers
 	 * puts at the start of a line once spread, and whether it is spread over lines already; null for a node that is none
 	 * or has nothing to spread: a call, `new` or an attribute without arguments, a first-class callable, a signature
 	 * without parameters, a condition joined by no boolean operator unless it is a comparison, which splits at its
-	 * operator, a list of a single interface. The last is whether the construct is a message, a call whose sole
-	 * argument is a string, which is never spread for its width and leaves what it holds whole too. A call left on its
-	 * line by the author is not spread even where its last argument, a closure or an array, spans lines.
+	 * operator, a `for` with empty sections, a list of a single interface. The last is whether the construct is a
+	 * message, a call whose sole argument is a string, which is never spread for its width and leaves what it holds
+	 * whole too. A call left on its line by the author is not spread even where its last argument, a closure or an
+	 * array, spans lines.
 	 * @return ?array{string, Token, list<Token>, bool, bool}
 	 */
 	public static function findSplitFrame(Node $node): ?array
@@ -275,6 +276,20 @@ final class NodeHelpers
 					false,
 				];
 
+		} elseif ($node instanceof Statement\ForNode) {
+			$items = [...$node->initializers->getItems(), ...$node->conditions->getItems(), ...$node->updates->getItems()];
+			return $items === []
+				? null
+				: [
+					'for',
+					$node->openParen,
+					array_values(array_filter([$node->firstSemicolon->getNext(), $node->secondSemicolon->getNext(), $node->closeParen])),
+					self::isMultiline($node->openParen, $items, $node->closeParen)
+					|| $node->firstSemicolon->startsLine()
+					|| $node->secondSemicolon->startsLine(),
+					false,
+				];
+
 		} elseif (
 			$node instanceof SeparatedNodeList
 			&& ((($node->parent instanceof Statement\ClassNode
@@ -310,8 +325,8 @@ final class NodeHelpers
 	 * spread begins after it on the line (`isFollowedBySplit()`); and where what precedes it on the line, which stays on
 	 * its first line, or what follows it, which stays on its last line, is too wide by itself. The outer one is spread
 	 * first and the inner one measured on the line it is left on, up to the first token a spread outer frame puts at
-	 * the start of a line, which its rule moves away later in the pass: the next argument or operator, or the closing
-	 * parenthesis. The width is that of the code, a comment after it left out (`measureCodeLine()`).
+	 * the start of a line, which its rule moves away later in the pass: the next argument, section or operator, or the
+	 * closing parenthesis. The width is that of the code, a comment after it left out (`measureCodeLine()`).
 	 */
 	public static function measureOverflow(Node $construct, Token $open, Gap $gap): ?int
 	{
