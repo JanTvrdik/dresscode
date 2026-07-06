@@ -21,6 +21,7 @@ final readonly class LineSplits
 		'argument' => 'multiline.items.argument',
 		'parameter' => 'multiline.items.parameter',
 		'closureUse' => 'multiline.items.closureUse',
+		'implements' => 'multiline.items.implements',
 	];
 
 	private const Except = 'file.lineLengthExcept';

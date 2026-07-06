@@ -27,6 +27,7 @@ final class CorePlugin implements Plugin
 			rules: [
 				Rules\Arrays\ArraySyntaxRule::class,
 				Rules\Classes\ClassHeadSpacingRule::class,
+				Rules\Classes\MultilineImplementsRule::class,
 				Rules\Comments\CommentSpacingRule::class,
 				Rules\Comments\NoEmptyCommentsRule::class,
 				Rules\Comments\NoHashCommentsRule::class,
@@ -93,6 +94,7 @@ final class CorePlugin implements Plugin
 					'argument' => 'the arguments of a call, of `new` and of an attribute, the variables of `unset()` and `isset()`',
 					'parameter' => 'the parameters of a function or a method',
 					'closureUse' => 'the variables of the `use` of a closure',
+					'implements' => 'the interfaces a class implements or an interface extends',
 				], regularExpressions: true), 'What a line too wide leaves as it is: a construct named is not spread over lines for its width, and a line it stands on, one a regular expression matches, or with `strings` one wide only for its string literals, is not reported', kind: DecisionKind::Parameter, default: ['imports']),
 				new Decision('indentation.unit', new Words([
 					'tab' => 'one tab per level',
