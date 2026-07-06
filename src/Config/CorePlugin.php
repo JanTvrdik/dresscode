@@ -51,6 +51,7 @@ final class CorePlugin implements Plugin
 				Rules\Files\StrictTypesRequiredRule::class,
 				Rules\Functions\FunctionNameSpacingRule::class,
 				Rules\Functions\MultilineCallRule::class,
+				Rules\Functions\MultilineClosureUseRule::class,
 				Rules\Functions\MultilineSignatureRule::class,
 				Rules\Functions\NamedArgumentSpacingRule::class,
 				Rules\Literals\BuiltinCasingRule::class,
@@ -91,6 +92,7 @@ final class CorePlugin implements Plugin
 					'strings' => 'a line that would fit were each of its string literals an empty pair of quotes, a string being never split',
 					'argument' => 'the arguments of a call, of `new` and of an attribute, the variables of `unset()` and `isset()`',
 					'parameter' => 'the parameters of a function or a method',
+					'closureUse' => 'the variables of the `use` of a closure',
 				], regularExpressions: true), 'What a line too wide leaves as it is: a construct named is not spread over lines for its width, and a line it stands on, one a regular expression matches, or with `strings` one wide only for its string literals, is not reported', kind: DecisionKind::Parameter, default: ['imports']),
 				new Decision('indentation.unit', new Words([
 					'tab' => 'one tab per level',

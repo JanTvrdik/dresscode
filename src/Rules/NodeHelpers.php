@@ -12,7 +12,7 @@ use DressCode\{Claim, Gap, Line, Style};
 use PhpSyntax\{Indentation, Node, Token};
 use PhpSyntax\Nodes\{
 	AnonymousClassNode, ArgumentListNode, ArgumentNode, AttributeNode,
-	Expression, ExpressionNode,
+	ClosureUseListNode, Expression, ExpressionNode,
 	Scalar,
 	Statement, VariadicPlaceholderNode,
 };
@@ -151,6 +151,16 @@ final class NodeHelpers
 					self::isMultiline($node->openParen, $params, $node->closeParen),
 					false,
 				];
+
+		} elseif ($node instanceof ClosureUseListNode) {
+			$items = $node->items->getItems();
+			return [
+				'closureUse',
+				$node->openParen,
+				[...array_map(fn(Node $item) => $item->getFirstToken(), $items), $node->closeParen],
+				self::isMultiline($node->openParen, $items, $node->closeParen),
+				false,
+			];
 		}
 
 		return null;
@@ -222,7 +232,7 @@ final class NodeHelpers
 			} elseif ($frame[3]) {
 				foreach ($frame[2] as $token) {
 					$stops[spl_object_id($token)] = true;
-					if (in_array($frame[0], ['argument', 'parameter'], true)) {
+					if (in_array($frame[0], ['argument', 'parameter', 'closureUse'], true)) {
 						$items[spl_object_id($token)] = true;
 					}
 				}
@@ -318,7 +328,7 @@ final class NodeHelpers
 		return $frame !== null
 			&& $first !== null
 			&& $close instanceof Token
-			&& in_array($frame[0], ['argument', 'parameter'], true)
+			&& in_array($frame[0], ['argument', 'parameter', 'closureUse'], true)
 			&& self::measureCodeLine($frame[1], $style, [spl_object_id($close) => true])
 				- self::measureCodeLine($frame[1], $style, [spl_object_id($first) => true]) < intdiv((int) $style->maxLineLength, 10);
 	}
