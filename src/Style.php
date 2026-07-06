@@ -11,9 +11,10 @@ use PhpSyntax;
 
 
 /**
- * How the code of a project is written: the unit of indentation, the line ending, the width of a tab and the
- * widest line. PhpSyntax measures and writes whitespace with the first three, which `toPhpSyntax()` hands over; the
- * widest line is for the rules that break or report long lines.
+ * How the code of a project is written: the unit of indentation, the line ending, the width of a tab, the
+ * widest line and the kinds of construct spread for the width of their line. PhpSyntax measures and writes
+ * whitespace with the first three, which `toPhpSyntax()` hands over; the widest line and the kinds are for the rules
+ * that break or report long lines.
  */
 final readonly class Style
 {
@@ -26,6 +27,7 @@ final readonly class Style
 		public int $tabWidth = 4,
 		/** the widest line as the reader sees it, a tab counting to its next stop; null for none */
 		public ?int $maxLineLength = null,
+		public LineSplits $lineSplits = new LineSplits,
 	) {
 		$this->phpSyntax = new PhpSyntax\Style($indent, $lineEnding, $tabWidth);
 	}
@@ -40,7 +42,13 @@ final readonly class Style
 
 	public function withLineEnding(string $lineEnding): self
 	{
-		return new self($this->indent, $lineEnding, $this->tabWidth, $this->maxLineLength);
+		return new self($this->indent, $lineEnding, $this->tabWidth, $this->maxLineLength, $this->lineSplits);
+	}
+
+
+	public function withLineSplits(LineSplits $lineSplits): self
+	{
+		return new self($this->indent, $this->lineEnding, $this->tabWidth, $this->maxLineLength, $lineSplits);
 	}
 
 

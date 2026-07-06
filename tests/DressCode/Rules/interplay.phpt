@@ -120,6 +120,17 @@ test('the areas of blankLines never pull against one another', function () {
 });
 
 
+test('indentation and multilineCall settle on one shape', function () {
+	interplay([
+		Rules\Whitespace\IndentationRule::class => [
+			'indentation.unit' => 'tab', 'indentation.binaryOperator' => 0, 'indentation.ternary' => 1,
+			'indentation.switchCase' => 1, 'indentation.chain' => 'flat',
+		],
+		Rules\Functions\MultilineCallRule::class => ['multiline.items.argument' => 'perLine', 'multiline.edges.argument' => 'apart'],
+	], "<?php\nfunction f()\n{\n  \$a = \$foo\n  ->bar(\n    1,\n      2,\n    )\n        ->baz();\n}\n", "<?php\nfunction f()\n{\n\t\$a = \$foo\n\t\t->bar(\n\t\t\t1,\n\t\t\t2,\n\t\t)\n\t\t->baz();\n}\n");
+});
+
+
 test('a comment commentSpacing rewrites keeps its line for the rule that reports it next', function () {
 	$result = interplay([
 		Rules\Comments\CommentSpacingRule::class => ['spacing.comment.marker' => '// text'],

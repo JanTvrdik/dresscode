@@ -50,6 +50,7 @@ final class CorePlugin implements Plugin
 				Rules\Files\OpeningTagNotationRule::class,
 				Rules\Files\StrictTypesRequiredRule::class,
 				Rules\Functions\FunctionNameSpacingRule::class,
+				Rules\Functions\MultilineCallRule::class,
 				Rules\Functions\NamedArgumentSpacingRule::class,
 				Rules\Literals\BuiltinCasingRule::class,
 				Rules\Literals\HeredocIndentationRule::class,
@@ -80,14 +81,15 @@ final class CorePlugin implements Plugin
 				new Decision(
 					'file.lineLength',
 					new Count(1, range: false, words: ['none' => 'no line is too wide']),
-					'The widest line; a line wider than it is reported',
+					'The widest line, by which what spreads over lines is split',
 					kind: DecisionKind::Parameter,
 					default: 'none',
 				),
 				new Decision('file.lineLengthExcept', new Names([
 					'imports' => 'a `use` import other than a group use on one line, which cannot be split',
 					'strings' => 'a line that would fit were each of its string literals an empty pair of quotes, a string being never split',
-				], regularExpressions: true), 'What a line too wide leaves as it is: a `use` import with `imports`, one a regular expression matches, or with `strings` one wide only for its string literals, is not reported', kind: DecisionKind::Parameter, default: ['imports']),
+					'argument' => 'the arguments of a call, of `new` and of an attribute, the variables of `unset()` and `isset()`',
+				], regularExpressions: true), 'What a line too wide leaves as it is: a construct named is not spread over lines for its width, and a line it stands on, one a regular expression matches, or with `strings` one wide only for its string literals, is not reported', kind: DecisionKind::Parameter, default: ['imports']),
 				new Decision('indentation.unit', new Words([
 					'tab' => 'one tab per level',
 					'4 spaces' => 'four spaces per level',

@@ -8,10 +8,15 @@
 namespace DressCode\Rules;
 
 use DressCode\Analyses\IndentationSnapshot;
-use DressCode\Gap;
-use PhpSyntax\{Node, Token};
-use PhpSyntax\Nodes\Expression;
-use function strlen;
+use DressCode\{Claim, Gap, Line, Style};
+use PhpSyntax\{Indentation, Node, Token};
+use PhpSyntax\Nodes\{
+	AnonymousClassNode, ArgumentListNode, ArgumentNode, AttributeNode,
+	Expression, ExpressionNode,
+	Scalar,
+	Statement, VariadicPlaceholderNode,
+};
+use function count, strlen;
 
 
 /**
@@ -91,5 +96,481 @@ final class NodeHelpers
 		return ($open->getTrailingSpace() === null && !$open->hasComment())
 			|| $close->startsLine()
 			|| array_any($items, fn(Node $item) => $item->getFirstToken()?->startsLine() === true);
+	}
+
+
+	/**
+	 * The construct the node is, at a place `LineSplits` names, with the token its frame begins with, the tokens its shape
+	 * puts at the start of a line once spread, and whether it is spread over lines already; null for a node that is none
+	 * or has nothing to spread: a call, `new` or an attribute without arguments, a first-class callable. The last is
+	 * whether the construct is a message, a call whose sole argument is a string, which is never spread for its width
+	 * and leaves what it holds whole too. A call left on its line by the author is not spread even where its last
+	 * argument, a closure or an array, spans lines.
+	 * @return ?array{string, Token, list<Token>, bool, bool}
+	 */
+	public static function findSplitFrame(Node $node): ?array
+	{
+		if ($node instanceof ArgumentListNode) {
+			$call = $node->parent instanceof Expression\FunctionCallNode
+				|| $node->parent instanceof Expression\MethodCallNode
+				|| $node->parent instanceof Expression\StaticMethodCallNode
+				|| $node->parent instanceof Expression\ExitNode
+				|| $node->parent instanceof Expression\NewNode
+				|| $node->parent instanceof AnonymousClassNode
+				|| $node->parent instanceof AttributeNode;
+			$items = $node->items->getItems();
+			return !$call || $items === [] || $items[0] instanceof VariadicPlaceholderNode
+				? null
+				: [
+					'argument',
+					$node->openParen,
+					[...array_map(fn(Node $item) => $item->getFirstToken(), $items), $node->closeParen],
+					self::isMultiline($node->openParen, $items, $node->closeParen),
+					self::isSoleStringArgument($node),
+				];
+
+		} elseif ($node instanceof Statement\UnsetNode || $node instanceof Expression\IssetNode) {
+			$items = $node->variables->getItems();
+			return [
+				'argument',
+				$node->openParen,
+				[...array_map(fn(Node $item) => $item->getFirstToken(), $items), $node->closeParen],
+				self::isMultiline($node->openParen, $items, $node->closeParen),
+				false,
+			];
+		}
+
+		return null;
+	}
+
+
+	/**
+	 * The width of the line of the construct beginning with the token where it is wider than the line length of the
+	 * style and the construct is the one to spread for it; null where the line fits or an outer construct on it is
+	 * spread first: one of a kind the run spreads by the width (`Style::$lineSplits`) whose frame begins on the line
+	 * and is not spread yet; where what holds the construct keeps it whole (`isHeldWhole()`), a message, the offset
+	 * of an array access or an interpolated string; where the line is opened by text, the end of a heredoc or markup,
+	 * which leaves the lines spread from it no indentation to count from; where a comment follows the code of the
+	 * line, which would stay on its last line, away from the code it speaks of or silences; where another construct to
+	 * spread begins after it on the line (`isFollowedBySplit()`); and where what precedes it on the line, which stays on
+	 * its first line, or what follows it, which stays on its last line, is too wide by itself. The outer one is spread
+	 * first and the inner one measured on the line it is left on, up to the first token a spread outer frame puts at
+	 * the start of a line, which its rule moves away later in the pass: the next argument or the closing parenthesis.
+	 * The width is that of the code, a comment after it left out (`measureCodeLine()`).
+	 */
+	public static function measureOverflow(Node $construct, Token $open, Gap $gap): ?int
+	{
+		$style = $gap->style;
+		$limit = $style->maxLineLength;
+		// the line first, the ancestors only where it is too wide
+		$width = $limit === null ? null : self::measureCodeLine($open, $style);
+		if ($width === null || $width <= $limit) {
+			return null;
+		}
+
+		// a line the text opens, after a heredoc or markup, has no indentation the lines spread from it could count from
+		$opener = $open;
+		while (!$opener->startsLine() && ($previous = $opener->getPrevious()) !== null) {
+			$opener = $previous;
+		}
+
+		if ($opener->getPrevious() !== null && !Indentation::opensLine($opener)) {
+			return null;
+		}
+
+		// a comment after the code would stay on the last line of what is spread, away from the code it speaks of or
+		// silences
+		$last = $open;
+		while (($next = $last->getNext()) !== null && !$next->startsLine()) {
+			$last = $next;
+		}
+
+		if ($last->hasTrailingComment()) {
+			return null;
+		}
+
+		$line = $open->getCurrentLine();
+		$stops = $items = [];
+		if (self::isHeldWhole($construct)) {
+			return null;
+		}
+
+		for ($node = $construct->parent; $node !== null; $node = $node->parent) {
+			$frame = self::findSplitFrame($node);
+			if ($frame === null || $frame[4] || !$style->lineSplits->has($frame[0])) {
+				continue;
+			} elseif (!$frame[3] && $frame[1]->getCurrentLine() === $line) {
+				if ($node instanceof ArgumentListNode && self::findHuggedFrame($node, $style) !== null) {
+					continue; // it stays, its sole argument spreads instead
+				}
+
+				return null;
+
+			} elseif ($frame[3]) {
+				foreach ($frame[2] as $token) {
+					$stops[spl_object_id($token)] = true;
+					if ($frame[0] === 'argument') {
+						$items[spl_object_id($token)] = true;
+					}
+				}
+			}
+		}
+
+		$width = $stops === [] ? $width : self::measureCodeLine($open, $style, $stops);
+		$shift = self::measureItemShift($open, $style, $stops, $items);
+		if (
+			$width - $shift <= $limit
+			|| self::isHeadTooWide($open, $style, $stops, $shift)
+			|| self::isFollowedBySplit($construct, $style, $stops)
+			|| self::isTooNarrowToSpread($construct, $style)
+		) {
+			return null;
+		}
+
+		// what follows the construct stays on its last line, so spreading it narrows no line too wide for that alone
+		$after = $construct->getLastToken()?->getNext();
+		if ($after !== null && !$after->startsLine() && !isset($stops[spl_object_id($after)])) {
+			$rest = $width - self::measureCodeLine($open, $style, $stops + [spl_object_id($after) => true]);
+			if (Indentation::advance(0, $open->getLineIndentation(), $style->toPhpSyntax()) + $rest > $limit) {
+				return null;
+			}
+		}
+
+		return $width;
+	}
+
+
+	/**
+	 * Whether a construct the run spreads for its width begins after the construct on its line, before the first of
+	 * the stops: of two constructs on a line with no common one to spread, the last is spread first, as the last
+	 * argument or the body of a `match` arm is, and the other one is measured again in the next pass.
+	 * @param  array<int, true>  $stops  the tokens by `spl_object_id()`
+	 */
+	private static function isFollowedBySplit(Node $construct, Style $style, array $stops): bool
+	{
+		for (
+			$token = $construct->getLastToken()?->getNext();
+			$token !== null && !$token->startsLine() && !isset($stops[spl_object_id($token)]);
+			$token = $token->getNext()
+		) {
+			for ($node = $token->parent; $node !== null && $node->getFirstToken() === $token; $node = $node->parent) {
+				$frame = self::findSplitFrame($node);
+				if (
+					$frame !== null
+					&& !$frame[3]
+					&& !$frame[4]
+					&& $style->lineSplits->has($frame[0])
+					&& !self::isHeldWhole($node)
+					&& !self::isHeadTooWide($frame[1], $style, $stops)
+					&& !self::isTooNarrowToSpread($node, $style)
+				) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+
+	/**
+	 * Whether the items of a list are too narrow all together for spreading them to help a line too wide, narrower than
+	 * a tenth of the line length, which leaves the line too wide for what stands around the list, `->fetch(` above
+	 * `true,` being no better than the line it came from.
+	 */
+	private static function isTooNarrowToSpread(Node $construct, Style $style): bool
+	{
+		$frame = self::findSplitFrame($construct);
+		$first = $frame === null ? null : $frame[1]->getNext();
+		$close = $frame === null ? null : end($frame[2]);
+		return $frame !== null
+			&& $first !== null
+			&& $close instanceof Token
+			&& $frame[0] === 'argument'
+			&& self::measureCodeLine($frame[1], $style, [spl_object_id($close) => true])
+				- self::measureCodeLine($frame[1], $style, [spl_object_id($first) => true]) < intdiv((int) $style->maxLineLength, 10);
+	}
+
+
+	/**
+	 * Whether the line up to the token a construct opens with is wider than the line length by itself: it stays on the
+	 * first line of the construct spread, so spreading it narrows no line too wide for that alone.
+	 * @param  array<int, true>  $stops  the tokens by `spl_object_id()`
+	 * @param  int  $shift  how much narrower the line is from the item the construct stands in (`measureItemShift()`)
+	 */
+	private static function isHeadTooWide(Token $open, Style $style, array $stops, int $shift = 0): bool
+	{
+		$next = $open->getNext();
+		return $next !== null
+			&& self::measureCodeLine($open, $style, $stops + [spl_object_id($next) => true]) - $shift > $style->maxLineLength;
+	}
+
+
+	/**
+	 * How much narrower the line of the token gets where the item of a spread list it stands in begins a line: the item
+	 * after a comma whose list breaks the line before it, as `perLine` does and `fill` does where the line is too wide
+	 * (`ListLayout::refill()`), so that a construct is spread for the width of its item and not of the items before it;
+	 * the indentation counted as that of the line, which the next pass measures in place. Zero for a token on the line of
+	 * the first item and for one whose nearest stop is no such item.
+	 * @param  array<int, true>  $stops  the tokens by `spl_object_id()`
+	 * @param  array<int, true>  $items  those of the stops that begin an item of a list filled again
+	 */
+	private static function measureItemShift(Token $token, Style $style, array $stops, array $items): int
+	{
+		for ($current = $token; !$current->startsLine() && ($previous = $current->getPrevious()) !== null; $current = $previous) {
+			if (isset($stops[spl_object_id($current)])) {
+				return isset($items[spl_object_id($current)]) && $previous->text === ','
+					? max(0, self::measureCodeLine($previous, $style, [spl_object_id($current) => true]) + 1
+						- Indentation::advance(0, $token->getLineIndentation(), $style->toPhpSyntax()))
+					: 0;
+			}
+		}
+
+		return 0;
+	}
+
+
+	/**
+	 * Whether what holds the node keeps it whole whatever the width of its line: the offset of an array access, which
+	 * stays on the line of what it reads, a message not spread over lines, and a string the node is interpolated in,
+	 * whose whitespace is its value.
+	 */
+	private static function isHeldWhole(Node $node): bool
+	{
+		for ($child = $node, $parent = $node->parent; $parent !== null; $child = $parent, $parent = $parent->parent) {
+			$frame = $parent instanceof ArgumentListNode ? self::findSplitFrame($parent) : null;
+			if (
+				($parent instanceof Expression\ArrayAccessNode && $parent->index === $child)
+				|| $parent instanceof Scalar\InterpolatedStringNode
+				|| $parent instanceof Scalar\HeredocNode
+				|| ($frame !== null && $frame[4] && !$frame[3])
+			) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+
+	/**
+	 * The construct the sole or the last argument of the call is, which a line too wide spreads in place of the call
+	 * where the style hugs it (`LineSplits::$spreadItem`): a call or `new` with no other call in what it is made on,
+	 * which stands at a place the run spreads, has something to spread and is not spread yet, the arguments before it
+	 * on one line that fits up to its opening bracket; null where the call spreads itself, as it does where an operator
+	 * on the line below continues the expression it ends.
+	 */
+	public static function findHuggedFrame(ArgumentListNode $list, Style $style): ?Node
+	{
+		$items = $list->items->getItems();
+		$argument = match ($style->lineSplits->spreadItem) {
+			'sole' => count($items) === 1 ? $items[0] : null,
+			'last' => array_any(array_slice($items, 0, -1), fn(Node $item) => $item->isMultiLine()) ? null : end($items),
+			default => null,
+		};
+		$value = $argument instanceof ArgumentNode && $argument->ellipsis === null ? $argument->value : null;
+		$next = $list->closeParen->getNext();
+		$inner = match (true) {
+			$value === null => null,
+			// an operator below the call would continue the expression from the parentheses closing together
+			$next?->startsLine() && $next->parent instanceof Expression\BinaryOpNode && $next->parent->operator === $next => null,
+			$value instanceof Expression\FunctionCallNode,
+			$value instanceof Expression\MethodCallNode,
+			$value instanceof Expression\StaticMethodCallNode,
+			$value instanceof Expression\NewNode => $value->arguments,
+			default => null,
+		};
+		// a call in what the call is made on, a chain among them, would spread before the arguments
+		foreach ($inner instanceof ArgumentListNode ? $value->getChildren() : [] as $child) {
+			if ($child instanceof Node && $child !== $inner && $child->find(ArgumentListNode::class) !== []) {
+				return null;
+			}
+		}
+
+		$frame = $inner === null ? null : self::findSplitFrame($inner);
+		if ($frame === null || $frame[3] || $frame[4] || !$style->lineSplits->has($frame[0])) {
+			return null;
+		}
+
+		// the arguments before it stay on the line of the call, which must fit up to the bracket the spread one opens
+		$first = $frame[1]->getNext();
+		return count($items) === 1
+			|| $first === null
+			|| $style->maxLineLength === null
+			|| self::measureCodeLine($list->openParen, $style, [spl_object_id($first) => true]) <= $style->maxLineLength
+			? $inner
+			: null;
+	}
+
+
+	/**
+	 * The width of the code on the line of the token, up to the end of the last token on it or the one before the
+	 * first of the stops after the token, a comment after it left out, so that no comment makes a construct split;
+	 * a tab counts to the next stop of the style. Read from the text around the token, which costs less than a column
+	 * the index of the file would count.
+	 * @param  array<int, true>  $stops  the tokens by `spl_object_id()`
+	 */
+	public static function measureCodeLine(Token $token, Style $style, array $stops = []): int
+	{
+		$head = '';
+		$pieces = array_reverse($token->leadingTrivia);
+		for ($current = $token; $current !== null; $current = $current->getPrevious()) {
+			$pieces ??= [...array_reverse($current->trailingTrivia), $current, ...array_reverse($current->leadingTrivia)];
+			foreach ($pieces as $piece) {
+				$length = strcspn(strrev($piece->text), "\r\n");
+				$head = substr($piece->text, strlen($piece->text) - $length) . $head;
+				if ($length < strlen($piece->text)) {
+					break 2;
+				}
+			}
+
+			$pieces = null;
+		}
+
+		$phpSyntax = $style->toPhpSyntax();
+		$width = $end = Indentation::advance(0, $head, $phpSyntax);
+		for ($current = $token; $current !== null; $current = $current->getNext()) {
+			if ($current !== $token && isset($stops[spl_object_id($current)])) {
+				break;
+			}
+
+			foreach ($current === $token ? [] : $current->leadingTrivia as $trivia) {
+				if (strcspn($trivia->text, "\r\n") < strlen($trivia->text)) {
+					break 2;
+				}
+
+				$width = Indentation::advance($width, $trivia->text, $phpSyntax);
+			}
+
+			$length = strcspn($current->text, "\r\n");
+			$width = $end = Indentation::advance($width, substr($current->text, 0, $length), $phpSyntax);
+			if ($length < strlen($current->text)) {
+				break;
+			}
+
+			foreach ($current->trailingTrivia as $trivia) {
+				if (strcspn($trivia->text, "\r\n") < strlen($trivia->text)) {
+					break 2;
+				}
+
+				$width = Indentation::advance($width, $trivia->text, $phpSyntax);
+			}
+		}
+
+		return $end;
+	}
+
+
+	/**
+	 * Whether the sole argument of the call is a string, an interpolated one, a heredoc, or a concatenation with
+	 * a string among its operands, parentheses around them aside: a message, which a line too wide does not split.
+	 */
+	private static function isSoleStringArgument(ArgumentListNode $list): bool
+	{
+		$items = $list->items->getItems();
+		return count($items) === 1
+			&& $items[0] instanceof ArgumentNode
+			&& $items[0]->ellipsis === null
+			&& self::holdsString($items[0]->value);
+	}
+
+
+	private static function holdsString(ExpressionNode $expression): bool
+	{
+		return match (true) {
+			$expression instanceof Expression\ParenthesizedNode => self::holdsString($expression->expression),
+			$expression instanceof Scalar\StringNode,
+			$expression instanceof Scalar\InterpolatedStringNode,
+			$expression instanceof Scalar\HeredocNode => true,
+			$expression instanceof Expression\BinaryOpNode && $expression->operator->is('.') => self::holdsString($expression->left)
+				|| self::holdsString($expression->right),
+			default => false,
+		};
+	}
+
+
+	/**
+	 * The width the node takes on one line, the gaps between its tokens counted as a single space each; null for
+	 * a node a comment stands in, whose line no measure can tell.
+	 */
+	public static function measureNode(Node $node): ?int
+	{
+		$last = $node->getLastToken();
+		if ($last === null) { // a skipped item of a destructuring
+			return 0;
+		}
+
+		$width = 0;
+		for ($token = $node->getFirstToken(); $token !== null; $token = $token->getNext()) {
+			if ($token->hasComment()) {
+				return null;
+			}
+
+			$width += mb_strlen($token->text);
+			if ($token === $last) {
+				return $width;
+			}
+
+			$width += $token->getTrailingSpace() === '' ? 0 : 1;
+		}
+
+		return null;
+	}
+
+
+	/**
+	 * The claims before the items of a list spread over lines by their width, filling the lines evenly: as few lines
+	 * as filling each up to the length takes, each no longer than it needs to be for that, so that the last does not
+	 * hold a lone item; null where an item cannot be measured on one line.
+	 * @param  list<Node>  $items
+	 * @param  int  $indentation  the width of the indentation of a line of items
+	 * @return ?list<Claim>
+	 */
+	public static function packItems(array $items, int $indentation, int $lineLength, string $because): ?array
+	{
+		$widths = [];
+		foreach ($items as $item) {
+			$width = self::measureNode($item);
+			if ($width === null) {
+				return null;
+			}
+
+			$widths[] = $width + 1; // the comma after it
+		}
+
+		$breaks = self::fillLines($widths, $indentation, $lineLength);
+		$low = $indentation + max($widths ?: [0]);
+		$high = $lineLength;
+		while ($low < $high) { // the narrowest length that still takes no more lines
+			$middle = intdiv($low + $high, 2);
+			if (count(array_filter(self::fillLines($widths, $indentation, $middle))) <= count(array_filter($breaks))) {
+				$high = $middle;
+			} else {
+				$low = $middle + 1;
+			}
+		}
+
+		$break = new Claim(line: Line::Next, because: $because);
+		$follow = new Claim(line: Line::Same, because: $because);
+		return array_map(fn(bool $breaks) => $breaks ? $break : $follow, self::fillLines($widths, $indentation, $low));
+	}
+
+
+	/**
+	 * Whether each item begins a line when the items fill the lines up to the length: an item follows the one before
+	 * while the line fits, and begins the next one when it does not.
+	 * @param  list<int>  $widths
+	 * @return list<bool>
+	 */
+	private static function fillLines(array $widths, int $indentation, int $lineLength): array
+	{
+		$breaks = [];
+		$column = 0;
+		foreach ($widths as $i => $width) {
+			$breaks[] = $i === 0 || $column + 1 + $width > $lineLength;
+			$column = end($breaks) ? $indentation + $width : $column + 1 + $width;
+		}
+
+		return $breaks;
 	}
 }

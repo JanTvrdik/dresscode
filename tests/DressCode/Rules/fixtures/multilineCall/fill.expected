@@ -1,0 +1,19 @@
+<?php
+// lineLength 50
+// {"items.argument": "fill", "edges.argument": ["apart", "attached"]}
+register(
+	$aaaaaaaaaa, $bbbbbbbbbb, $cccccccccc,
+	$ddddd, $eeeeeeeeee, $ffffffffff
+);
+foo($aaaaaaaaaa, $bbbbbbbbbb,
+	$cccccccccc, baz($x, $y), $ddddd,
+	$ffffffffff);
+bar(
+	$aaaaaaaaaa, $bbbbbbbbbb, $cccccccccc,
+	baz($x, $y), $ddddd, $eeeeeeeeee,
+	$gggg,
+);
+bar(
+	$aaaaaaaaaa, $bbbbbbbbbb, $cccccccccc, $ddddd,
+	$gggg,
+);
