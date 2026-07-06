@@ -29,6 +29,8 @@ final readonly class LineSplits
 		'bitwise' => 'multiline.items.bitwise',
 		'coalesce' => 'multiline.items.coalesce',
 		'pipe' => 'multiline.items.pipe',
+		'array' => 'multiline.items.array',
+		'list' => 'multiline.items.list',
 		'implements' => 'multiline.items.implements',
 	];
 

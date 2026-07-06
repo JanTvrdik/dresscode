@@ -12,7 +12,7 @@ use DressCode\{Claim, Gap, Line, Style};
 use PhpSyntax\{Indentation, Node, Token};
 use PhpSyntax\Nodes\{
 	AnonymousClassNode, ArgumentListNode, ArgumentNode, AttributeNode,
-	ClosureUseListNode, ElseifNode, Expression, ExpressionNode,
+	ClosureUseListNode, DestructuringNode, ElseifNode, Expression, ExpressionNode,
 	Scalar,
 	SeparatedNodeList, Statement, VariadicPlaceholderNode,
 };
@@ -218,10 +218,10 @@ final class NodeHelpers
 	 * puts at the start of a line once spread, and whether it is spread over lines already; null for a node that is none
 	 * or has nothing to spread: a call, `new` or an attribute without arguments, a first-class callable, a signature
 	 * without parameters, a condition joined by no boolean operator unless it is a comparison, which splits at its
-	 * operator, an inner link of a family of operators, a `for` with empty sections, a list of a single interface. The
-	 * last is whether the construct is a message, a call whose sole argument is a string, which is never spread for its
-	 * width and leaves what it holds whole too. A call left on its line by the author is not spread even where its last
-	 * argument, a closure or an array, spans lines.
+	 * operator, an inner link of a family of operators, a `for` with empty sections, an array of fewer than two items,
+	 * a list of a single interface. The last is whether the construct is a message, a call whose sole argument is a
+	 * string, which is never spread for its width and leaves what it holds whole too. A call left on its line by the
+	 * author is not spread even where its last argument, a closure or an array, spans lines.
 	 * @return ?array{string, Token, list<Token>, bool, bool}
 	 */
 	public static function findSplitFrame(Node $node): ?array
@@ -311,6 +311,18 @@ final class NodeHelpers
 					self::isMultiline($node->openParen, $items, $node->closeParen)
 					|| $node->firstSemicolon->startsLine()
 					|| $node->secondSemicolon->startsLine(),
+					false,
+				];
+
+		} elseif ($node instanceof Expression\ArrayNode || $node instanceof DestructuringNode) {
+			$items = $node->items->getItems();
+			return count($items) < 2
+				? null
+				: [
+					$node instanceof DestructuringNode && $node->listKeyword !== null ? 'list' : 'array',
+					$node->openDelimiter,
+					[...array_filter(array_map(fn(Node $item) => $item->getFirstToken(), $items)), $node->closeDelimiter],
+					self::isMultiline($node->openDelimiter, $items, $node->closeDelimiter),
 					false,
 				];
 
@@ -447,7 +459,7 @@ final class NodeHelpers
 			} elseif ($frame[3]) {
 				foreach ($frame[2] as $token) {
 					$stops[spl_object_id($token)] = true;
-					if (in_array($frame[0], ['argument', 'parameter', 'closureUse'], true)) {
+					if (in_array($frame[0], ['argument', 'parameter', 'closureUse', 'array', 'list'], true)) {
 						$items[spl_object_id($token)] = true;
 					}
 				}
@@ -543,7 +555,7 @@ final class NodeHelpers
 		return $frame !== null
 			&& $first !== null
 			&& $close instanceof Token
-			&& in_array($frame[0], ['argument', 'parameter', 'closureUse'], true)
+			&& in_array($frame[0], ['argument', 'parameter', 'closureUse', 'array', 'list'], true)
 			&& self::measureCodeLine($frame[1], $style, [spl_object_id($close) => true])
 				- self::measureCodeLine($frame[1], $style, [spl_object_id($first) => true]) < intdiv((int) $style->maxLineLength, 10);
 	}
@@ -612,10 +624,10 @@ final class NodeHelpers
 
 	/**
 	 * The construct the sole or the last argument of the call is, which a line too wide spreads in place of the call
-	 * where the style hugs it (`LineSplits::$spreadItem`): a call or `new` with no other call in what it is made on,
-	 * which stands at a place the run spreads, has something to spread and is not spread yet, the arguments before it
-	 * on one line that fits up to its opening bracket; null where the call spreads itself, as it does where an operator
-	 * on the line below continues the expression it ends.
+	 * where the style hugs it (`LineSplits::$spreadItem`): a call or `new` with no other call in what it is made on, or
+	 * an array, passed by its name or not, which stands at a place the run spreads, has something to spread and is not
+	 * spread yet, the arguments before it on one line that fits up to its opening bracket; null where the call spreads
+	 * itself, as it does where an operator on the line below continues the expression it ends.
 	 */
 	public static function findHuggedFrame(ArgumentListNode $list, Style $style): ?Node
 	{
@@ -635,6 +647,7 @@ final class NodeHelpers
 			$value instanceof Expression\MethodCallNode,
 			$value instanceof Expression\StaticMethodCallNode,
 			$value instanceof Expression\NewNode => $value->arguments,
+			$value instanceof Expression\ArrayNode => $value,
 			default => null,
 		};
 		// a call in what the call is made on, a chain among them, would spread before the arguments

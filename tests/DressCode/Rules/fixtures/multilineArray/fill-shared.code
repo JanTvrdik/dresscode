@@ -1,0 +1,25 @@
+<?php
+// {"items.array": "fill"}
+$x = [
+	$a, foo(
+		1,
+	), $b,
+];
+$y = [
+	$a, $b, function () {
+		return 1;
+	},
+];
+$z = [
+	$a, [
+		1,
+	],
+	$b,
+];
+$kept = [
+	$a, $b,
+	foo(
+		1,
+	),
+	$c,
+];

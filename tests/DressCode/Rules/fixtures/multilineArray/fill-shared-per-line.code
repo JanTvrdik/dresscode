@@ -1,0 +1,11 @@
+<?php
+// {"items.array": ["perLine", "fill"]}
+$x = [
+	$a, foo(
+		1,
+	), $b,
+];
+$kept = [
+	$a, $b,
+	$c,
+];

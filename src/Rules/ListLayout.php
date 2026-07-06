@@ -142,6 +142,21 @@ final readonly class ListLayout
 
 
 	/**
+	 * Why the edges of a list its author spread are written in the shape: the side of the opening token the author wrote,
+	 * where the edges accept more shapes than one and the shape keeps that side and changes the closing one; null
+	 * otherwise.
+	 */
+	public function explainEdges(Token $open, ?Token $close, ?string $shape): ?string
+	{
+		$written = self::findEdges($open, $close);
+		$attached = fn(?string $shape) => $shape === self::Attached || $shape === self::ClosingApart;
+		return $shape === null || count($this->edges) < 2 || $shape === $written || $attached($shape) !== $attached($written)
+			? null
+			: ($attached($shape) ? 'the first item follows the opening bracket' : 'the first item begins a line');
+	}
+
+
+	/**
 	 * The shapes a list spread for its width is written in, the items and the edges, the first of each; edges kept are
 	 * written `apart`, the author having written none.
 	 * @return array{?string, ?string}

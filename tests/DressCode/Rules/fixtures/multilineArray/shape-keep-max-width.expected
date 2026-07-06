@@ -1,0 +1,10 @@
+<?php
+// {"items.array": "fill", "edges.array": ["apart", "attached"], "maxWidth.array": 40}
+$short = ['a' => 1, 'b' => 2];
+$wide = [
+	'first' => 'one',
+	'second' => 'two',
+	'third' => 'three'
+];
+$kept = ['first' => 'one',
+	'second' => 'two', 'third' => 'three'];

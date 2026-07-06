@@ -1,0 +1,12 @@
+<?php
+// {"items.array": "fill", "spreadItem": "last"}
+$x = [
+	$a, foo(
+		1,
+	), $b,
+];
+$y = [
+	$a, $b, function () {
+		return 1;
+	},
+];

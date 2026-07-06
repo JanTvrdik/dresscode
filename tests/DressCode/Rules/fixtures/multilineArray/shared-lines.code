@@ -1,0 +1,12 @@
+<?php
+// {"items.array": "fill", "edges.array": ["apart", "attached"]}
+$a = [1, 2,
+	3, 4];
+$b = [
+	1, 2,
+	3, 4,
+];
+$d =
+[
+	1, 2,
+];

@@ -26,6 +26,7 @@ final class CorePlugin implements Plugin
 		return $manifest ??= new PluginManifest(
 			rules: [
 				Rules\Arrays\ArraySyntaxRule::class,
+				Rules\Arrays\MultilineArrayRule::class,
 				Rules\Classes\ClassHeadSpacingRule::class,
 				Rules\Classes\MultilineImplementsRule::class,
 				Rules\Comments\CommentSpacingRule::class,
@@ -105,6 +106,8 @@ final class CorePlugin implements Plugin
 					'bitwise' => 'the operands of `|`, `&`, `^`, `<<` and `>>`',
 					'coalesce' => 'the operands of `??`',
 					'pipe' => 'the operands of `|>`',
+					'array' => 'the items of an array, which `multiline.maxWidth.array` spreads all the same',
+					'list' => 'the items of `list()`',
 					'implements' => 'the interfaces a class implements or an interface extends',
 				], regularExpressions: true), 'What a line too wide leaves as it is: a construct named is not spread over lines for its width, and a line it stands on, one a regular expression matches, or with `strings` one wide only for its string literals, is not reported', kind: DecisionKind::Parameter, default: ['imports']),
 				new Decision('indentation.unit', new Words([
