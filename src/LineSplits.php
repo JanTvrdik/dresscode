@@ -21,6 +21,7 @@ final readonly class LineSplits
 		'argument' => 'multiline.items.argument',
 		'parameter' => 'multiline.items.parameter',
 		'closureUse' => 'multiline.items.closureUse',
+		'attribute' => 'multiline.items.attribute',
 		'condition' => 'multiline.items.condition',
 		'for' => 'multiline.items.for',
 		'logical' => 'multiline.items.logical',

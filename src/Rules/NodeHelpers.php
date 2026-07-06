@@ -11,7 +11,7 @@ use DressCode\Analyses\IndentationSnapshot;
 use DressCode\{Claim, Gap, Line, Style};
 use PhpSyntax\{Indentation, Node, Token};
 use PhpSyntax\Nodes\{
-	AnonymousClassNode, ArgumentListNode, ArgumentNode, AttributeNode,
+	AnonymousClassNode, ArgumentListNode, ArgumentNode, AttributeGroupNode, AttributeNode,
 	ClosureUseListNode, DestructuringNode, ElseifNode, Expression, ExpressionNode,
 	Scalar,
 	SeparatedNodeList, Statement, VariadicPlaceholderNode,
@@ -219,9 +219,10 @@ final class NodeHelpers
 	 * or has nothing to spread: a call, `new` or an attribute without arguments, a first-class callable, a signature
 	 * without parameters, a condition joined by no boolean operator unless it is a comparison, which splits at its
 	 * operator, an inner link of a family of operators, a `for` with empty sections, an array of fewer than two items,
-	 * a list of a single interface. The last is whether the construct is a message, a call whose sole argument is a
-	 * string, which is never spread for its width and leaves what it holds whole too. A call left on its line by the
-	 * author is not spread even where its last argument, a closure or an array, spans lines.
+	 * a list of a single interface, a group of a single attribute. The last is whether the construct is a message, a
+	 * call whose sole argument is a string, which is never spread for its width and leaves what it holds whole too. A
+	 * call left on its line by the author is not spread even where its last argument, a closure or an array, spans
+	 * lines.
 	 * @return ?array{string, Token, list<Token>, bool, bool}
 	 */
 	public static function findSplitFrame(Node $node): ?array
@@ -276,6 +277,18 @@ final class NodeHelpers
 				self::isMultiline($node->openParen, $items, $node->closeParen),
 				false,
 			];
+
+		} elseif ($node instanceof AttributeGroupNode) {
+			$items = $node->items->getItems();
+			return count($items) < 2
+				? null
+				: [
+					'attribute',
+					$node->openBracket,
+					[...array_map(fn(Node $item) => $item->getFirstToken(), $items), $node->closeBracket],
+					self::isMultiline($node->openBracket, $items, $node->closeBracket),
+					false,
+				];
 
 		} elseif (
 			$node instanceof Statement\IfNode
@@ -459,7 +472,7 @@ final class NodeHelpers
 			} elseif ($frame[3]) {
 				foreach ($frame[2] as $token) {
 					$stops[spl_object_id($token)] = true;
-					if (in_array($frame[0], ['argument', 'parameter', 'closureUse', 'array', 'list'], true)) {
+					if (in_array($frame[0], ['argument', 'parameter', 'closureUse', 'attribute', 'array', 'list'], true)) {
 						$items[spl_object_id($token)] = true;
 					}
 				}
@@ -555,7 +568,7 @@ final class NodeHelpers
 		return $frame !== null
 			&& $first !== null
 			&& $close instanceof Token
-			&& in_array($frame[0], ['argument', 'parameter', 'closureUse', 'array', 'list'], true)
+			&& in_array($frame[0], ['argument', 'parameter', 'closureUse', 'attribute', 'array', 'list'], true)
 			&& self::measureCodeLine($frame[1], $style, [spl_object_id($close) => true])
 				- self::measureCodeLine($frame[1], $style, [spl_object_id($first) => true]) < intdiv((int) $style->maxLineLength, 10);
 	}
