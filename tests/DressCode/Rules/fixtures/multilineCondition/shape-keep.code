@@ -1,0 +1,8 @@
+<?php
+// {"items.condition": "keep", "edges.condition": "keep"}
+if ($a
+	&& $b) {
+}
+if (
+	$a && $b) {
+}

@@ -21,11 +21,13 @@ final readonly class LineSplits
 		'argument' => 'multiline.items.argument',
 		'parameter' => 'multiline.items.parameter',
 		'closureUse' => 'multiline.items.closureUse',
+		'condition' => 'multiline.items.condition',
 		'implements' => 'multiline.items.implements',
 	];
 
 	private const Except = 'file.lineLengthExcept';
 	private const SpreadItem = 'multiline.spreadItem';
+	private const ComparisonPosition = 'multiline.operatorPosition.comparison';
 
 
 	/** @internal made by `fromValues()` */
@@ -37,6 +39,8 @@ final readonly class LineSplits
 		 * sole one, or the last one
 		 */
 		public string $spreadItem = 'never',
+		/** a comparison stands at the start of the line at its break, so that a condition that is one splits before it */
+		public bool $comparisonLineStart = false,
 	) {
 	}
 
@@ -54,6 +58,7 @@ final readonly class LineSplits
 		return new self(
 			$places,
 			$values->has(self::SpreadItem) ? $values->get(self::SpreadItem)->getWord() : 'never',
+			$values->has(self::ComparisonPosition) && $values->find(self::ComparisonPosition)?->getWord() === 'lineStart',
 		);
 	}
 

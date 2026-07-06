@@ -1,0 +1,7 @@
+multiline:
+	items:
+		condition: [perLine, fill]
+	edges:
+		condition: apart
+	operatorPosition:
+		condition: keep

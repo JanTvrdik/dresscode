@@ -1,0 +1,8 @@
+<?php
+// {"edges.condition": "closingApart"}
+if (
+	// the first condition
+	$a
+	&& $b
+) {
+}

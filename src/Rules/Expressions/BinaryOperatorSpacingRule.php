@@ -27,9 +27,10 @@ use PhpSyntax\Nodes\Statement\ForeachNode;
  * several lines and `multiline.expressionStart` of the assignment, the array item or the arrow function says so, and
  * `instanceof` stays on the line of both its operands. What follows a comparison stays on the line of the operator,
  * unless the line would grow wider than the line length, and a comparison ending a line moves to the start of the next
- * one where `multiline.operatorPosition.comparison` says so and the joined line would be too wide. Whitespace wider
- * than a space aligns a column of assignments or of array items, and `spacing.alignment.binaryOperator` says which of
- * it stays. Concatenation takes a single space around it or none, as `spacing.concatenation` says, never aligned.
+ * one where `multiline.operatorPosition.comparison` says so and the joined line would be too wide; the lines around
+ * a boolean operator chaining a condition are the matter of `MultilineConditionRule`. Whitespace wider than a space
+ * aligns a column of assignments or of array items, and `spacing.alignment.binaryOperator` says which of it stays.
+ * Concatenation takes a single space around it or none, as `spacing.concatenation` says, never aligned.
  */
 #[RuleInfo(Stage::Formatting, decisions: [self::Position], analyses: [IndentationSnapshot::class])]
 final class BinaryOperatorSpacingRule extends GapRule

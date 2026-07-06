@@ -1,0 +1,12 @@
+<?php
+// {"items.condition": "keep", "edges.condition": "keep", "operatorPosition.condition": "lineStart"}
+if ($a
+	&& $b) {
+}
+if ($a
+	&& $b) {
+}
+if ($a && $b) {
+} elseif ($a
+	|| $b) {
+}

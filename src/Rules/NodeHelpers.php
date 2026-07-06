@@ -12,7 +12,7 @@ use DressCode\{Claim, Gap, Line, Style};
 use PhpSyntax\{Indentation, Node, Token};
 use PhpSyntax\Nodes\{
 	AnonymousClassNode, ArgumentListNode, ArgumentNode, AttributeNode,
-	ClosureUseListNode, Expression, ExpressionNode,
+	ClosureUseListNode, ElseifNode, Expression, ExpressionNode,
 	Scalar,
 	SeparatedNodeList, Statement, VariadicPlaceholderNode,
 };
@@ -26,6 +26,95 @@ use function count, in_array, strlen;
  */
 final class NodeHelpers
 {
+	/**
+	 * The `if`, `elseif`, `while` or `do-while` whose condition the operation is a part of, reached from the condition down
+	 * through logical operators alone, not through parentheses or a negation; null for any other operation.
+	 */
+	public static function findConditionStatement(
+		Expression\BinaryOpNode $operation,
+	): Statement\IfNode|ElseifNode|Statement\WhileNode|Statement\DoWhileNode|null
+	{
+		for ($node = $operation; $node instanceof Expression\BinaryOpNode && $node->isLogical(); $node = $parent) {
+			$parent = $node->parent;
+			if (
+				$parent instanceof Statement\IfNode
+				|| $parent instanceof ElseifNode
+				|| $parent instanceof Statement\WhileNode
+				|| $parent instanceof Statement\DoWhileNode
+			) {
+				return $parent->condition === $node ? $parent : null;
+			}
+		}
+
+		return null;
+	}
+
+
+	/**
+	 * The boolean operators chaining a condition, in the order they are written; parentheses and negations end the
+	 * chain.
+	 * @return list<Token>
+	 */
+	public static function collectConditionOperators(ExpressionNode $expression): array
+	{
+		return $expression instanceof Expression\BinaryOpNode && $expression->isLogical()
+			? [
+				...self::collectConditionOperators($expression->left),
+				$expression->operator,
+				...self::collectConditionOperators($expression->right),
+			]
+			: [];
+	}
+
+
+	/**
+	 * The boolean operators a condition is built of, seen through the parentheses and the negations around them; one
+	 * inside an argument, a `match` arm or a closure is not the condition's and does not count.
+	 */
+	public static function countConditionOperators(ExpressionNode $expression): int
+	{
+		return match (true) {
+			$expression instanceof Expression\BinaryOpNode && $expression->isLogical()
+				=> 1 + self::countConditionOperators($expression->left) + self::countConditionOperators($expression->right),
+			$expression instanceof Expression\ParenthesizedNode, $expression instanceof Expression\UnaryOpNode
+				=> self::countConditionOperators($expression->expression),
+			default => 0,
+		};
+	}
+
+
+	/**
+	 * The comparison a condition joined by no boolean operator is, which a line too wide splits it at, before it where
+	 * a comparison opens its line (`LineSplits::$comparisonLineStart`) and each side fits on a line of its own one
+	 * level deeper than the statement, `$a` above `!== $b`; null for any other condition and where a side would not
+	 * fit, which leaves the line to what the sides hold.
+	 */
+	public static function findConditionComparison(
+		Statement\IfNode|ElseifNode|Statement\WhileNode|Statement\DoWhileNode $statement,
+		Style $style,
+	): ?Expression\BinaryOpNode
+	{
+		$condition = $statement->condition;
+		$limit = $style->maxLineLength;
+		if (
+			$limit === null
+			|| !$style->lineSplits->comparisonLineStart
+			|| !$condition instanceof Expression\BinaryOpNode
+			|| self::findOperatorPlace($condition) !== 'comparison'
+		) {
+			return null;
+		}
+
+		$open = $statement->openParen;
+		$at = fn(Token $token) => self::measureCodeLine($open, $style, [spl_object_id($token) => true]);
+		$indent = Indentation::advance(0, $open->getLineIndentation() . $style->indent, $style->toPhpSyntax());
+		return $indent + $at($condition->operator) - $at($condition->getFirstToken()) <= $limit
+			&& $indent + $at($statement->closeParen) - $at($condition->operator) <= $limit
+			? $condition
+			: null;
+	}
+
+
 	/**
 	 * The place of the operator in the words of the catalogue: `logical`, `concatenation`, `arithmetic`, `bitwise`,
 	 * `coalesce`, `pipe` or `comparison`; null for an operator none of them names.
@@ -104,9 +193,10 @@ final class NodeHelpers
 	 * The construct the node is, at a place `LineSplits` names, with the token its frame begins with, the tokens its shape
 	 * puts at the start of a line once spread, and whether it is spread over lines already; null for a node that is none
 	 * or has nothing to spread: a call, `new` or an attribute without arguments, a first-class callable, a signature
-	 * without parameters, a list of a single interface. The last is whether the construct is a message, a call whose
-	 * sole argument is a string, which is never spread for its width and leaves what it holds whole too. A call left on
-	 * its line by the author is not spread even where its last argument, a closure or an array, spans lines.
+	 * without parameters, a condition joined by no boolean operator unless it is a comparison, which splits at its
+	 * operator, a list of a single interface. The last is whether the construct is a message, a call whose sole
+	 * argument is a string, which is never spread for its width and leaves what it holds whole too. A call left on its
+	 * line by the author is not spread even where its last argument, a closure or an array, spans lines.
 	 * @return ?array{string, Token, list<Token>, bool, bool}
 	 */
 	public static function findSplitFrame(Node $node): ?array
@@ -163,6 +253,29 @@ final class NodeHelpers
 			];
 
 		} elseif (
+			$node instanceof Statement\IfNode
+			|| $node instanceof ElseifNode
+			|| $node instanceof Statement\WhileNode
+			|| $node instanceof Statement\DoWhileNode
+		) {
+			$condition = $node->condition;
+			$operators = match (true) {
+				self::countConditionOperators($condition) > 0 => self::collectConditionOperators($condition),
+				$condition instanceof Expression\BinaryOpNode
+					&& self::findOperatorPlace($condition) === 'comparison' => [$condition->operator],
+				default => null,
+			};
+			return $operators === null
+				? null
+				: [
+					'condition',
+					$node->openParen,
+					[$condition->getFirstToken(), ...$operators, $node->closeParen],
+					$node->openParen->getCurrentLine() !== $node->closeParen->getCurrentLine(),
+					false,
+				];
+
+		} elseif (
 			$node instanceof SeparatedNodeList
 			&& ((($node->parent instanceof Statement\ClassNode
 				|| $node->parent instanceof Statement\EnumNode
@@ -197,8 +310,8 @@ final class NodeHelpers
 	 * spread begins after it on the line (`isFollowedBySplit()`); and where what precedes it on the line, which stays on
 	 * its first line, or what follows it, which stays on its last line, is too wide by itself. The outer one is spread
 	 * first and the inner one measured on the line it is left on, up to the first token a spread outer frame puts at
-	 * the start of a line, which its rule moves away later in the pass: the next argument or the closing parenthesis.
-	 * The width is that of the code, a comment after it left out (`measureCodeLine()`).
+	 * the start of a line, which its rule moves away later in the pass: the next argument or operator, or the closing
+	 * parenthesis. The width is that of the code, a comment after it left out (`measureCodeLine()`).
 	 */
 	public static function measureOverflow(Node $construct, Token $open, Gap $gap): ?int
 	{
@@ -244,6 +357,15 @@ final class NodeHelpers
 			} elseif (!$frame[3] && $frame[1]->getCurrentLine() === $line) {
 				if ($node instanceof ArgumentListNode && self::findHuggedFrame($node, $style) !== null) {
 					continue; // it stays, its sole argument spreads instead
+				} elseif (
+					($node instanceof Statement\IfNode
+						|| $node instanceof ElseifNode
+						|| $node instanceof Statement\WhileNode
+						|| $node instanceof Statement\DoWhileNode)
+					&& self::countConditionOperators($node->condition) === 0
+					&& self::findConditionComparison($node, $style) === null
+				) {
+					continue; // a comparison whose sides would not fit stays, what they hold spreads
 				}
 
 				return null;
