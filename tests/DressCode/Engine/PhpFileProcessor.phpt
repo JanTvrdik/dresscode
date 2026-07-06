@@ -179,6 +179,28 @@ test('a fix another round has to finish settles in that round', function () {
 });
 
 
+test('a decision by the width of a line waits a round for the line to be indented', function () {
+	$classes = [DressCode\Rules\Whitespace\IndentationRule::class, DressCode\Rules\Functions\MultilineSignatureRule::class];
+	$values = RuleBuilder::resolveValues($classes, [
+		'indentation.unit' => 'tab', 'indentation.binaryOperator' => 0, 'indentation.ternary' => 1,
+		'indentation.switchCase' => 1, 'indentation.chain' => 'flat',
+		'multiline.items.parameter' => 'perLine', 'multiline.edges.parameter' => 'apart',
+	]);
+	$style = new Style(maxLineLength: 50);
+	$registry = new Analyses\Registry;
+	Analyses\IndentationPlan::register($registry, $values, $style);
+	$processor = new PhpFileProcessor(
+		RuleBuilder::createRules($classes, $values),
+		$registry,
+		Config::DefaultPhpVersion,
+		$style,
+		detectLineEnding: false,
+	);
+	$code = "<?php\nclass A\n{\n\t\t\t\tpublic function f(int \$a, int \$b): void {}\n}\n";
+	Assert::same("<?php\nclass A\n{\n\tpublic function f(int \$a, int \$b): void {}\n}\n", $processor->process('a.php', $code)->output);
+});
+
+
 test(
 	'a run that is not strict takes what the last pass left in the tree for the next round, and only parses the printed text',
 	function () {

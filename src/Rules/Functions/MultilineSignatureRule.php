@@ -1,0 +1,116 @@
+<?php declare(strict_types=1);
+
+/**
+ * This file is part of the DressCode, a coding style and upgrade tool for PHP (https://dresscode.run)
+ * Copyright (c) 2026 David Grudl (https://davidgrudl.com)
+ */
+
+namespace DressCode\Rules\Functions;
+
+use DressCode\Analyses\IndentationSnapshot;
+use DressCode\{Claim, Decision, DecisionKind, Gap, GapRule, RuleInfo, Stage, Values};
+use DressCode\Domains\Names;
+use DressCode\Rules\{ListLayout, NodeHelpers};
+use PhpSyntax\Node;
+use PhpSyntax\Nodes\Member\MethodNode;
+use PhpSyntax\Nodes\Statement\FunctionNode;
+
+
+/**
+ * The parameters of a function or a method that already span lines (a line break after the opening parenthesis,
+ * a parameter or the closing parenthesis beginning a line) stand in the shapes of `multiline.items.parameter` and
+ * `multiline.edges.parameter`, each comma on the line of its parameter, a list its author spread written again only on
+ * the axis whose shape is not accepted and in `fill` filled again where a line is wider than the line length; a signature
+ * on one line is spread in the first shapes, in `fill` its parameters filling the lines evenly, when its line is wider
+ * than the line length of the style, when `multiline.spreadAlways` names a promoted property it declares, or when
+ * a parameter has hooks spanning several lines. Where they stand is the matter of `IndentationRule`. The width is that
+ * of the code of the line, a comment after it left out, and a signature `file.lineLengthExcept` names is not spread for
+ * it. The signature of a closure is left as it is written.
+ */
+#[RuleInfo(Stage::Formatting, reads: ['file.lineLengthExcept'], analyses: [IndentationSnapshot::class])]
+final class MultilineSignatureRule extends GapRule
+{
+	private const SpreadAlways = 'multiline.spreadAlways';
+
+	private bool $promotedProperty = false;
+	private ListLayout $layout;
+
+
+	public static function getDecisions(): array
+	{
+		return [
+			...ListLayout::createDecisions(
+				'parameter',
+				'parameter',
+				'parameters',
+				'The parameters of a function or a method spread over lines by their author or for their width, or with a parameter whose hooks span lines, each comma on the line of its parameter',
+				'`(`',
+				'`)`',
+			),
+			new Decision(
+				self::SpreadAlways,
+				new Names(['promotedProperty' => 'the parameters of a signature declaring a promoted property']),
+				'What is spread over lines whatever its width',
+				kind: DecisionKind::Parameter,
+				default: [],
+			),
+		];
+	}
+
+
+	public function configure(Values $values): void
+	{
+		$this->promotedProperty = in_array('promotedProperty', $values->get(self::SpreadAlways)->getNames(), true);
+		$this->layout = ListLayout::fromValues($values, 'parameter');
+	}
+
+
+	public function getClaims(): array
+	{
+		$claims = ListLayout::createClaims('parameters', 'closeParen', $this->decide(...));
+		return [FunctionNode::class => $claims, MethodNode::class => $claims];
+	}
+
+
+	/**
+	 * The claims of a signature whose parameters take lines of their own, as `ListLayout::claim()` gives them; null when
+	 * they stay on the line. They take lines once the signature spans lines, and they are made to when one is
+	 * a promoted property or the line of the signature is too long.
+	 * @return ?array{items: list<?Claim>, close: ?Claim, separator: Claim}
+	 */
+	private function decide(Gap $gap, ?Node $node): ?array
+	{
+		if ((!$node instanceof FunctionNode && !$node instanceof MethodNode) || $node->parameters->isEmpty()) {
+			return null;
+		}
+
+		return $this->layout->decide(
+			$gap,
+			$node,
+			$node->openParen,
+			$node->parameters->getItems(),
+			$node->closeParen,
+			'the signature spans several lines',
+			fn() => $this->findReasonToSplit($node, $gap),
+		);
+	}
+
+
+	/**
+	 * Why the parameters on one line take lines of their own, null when they stay on it; the width counts a tab to the
+	 * next stop of the style, and waits for the line to be indented.
+	 */
+	private function findReasonToSplit(FunctionNode|MethodNode $node, Gap $gap): ?string
+	{
+		$open = $node->openParen;
+		foreach ($node->parameters->getItems() as $param) {
+			if ($param->promoted && $this->promotedProperty) {
+				return 'the signature declares a promoted property';
+			} elseif ($param->hooks !== null && $param->isMultiLine()) {
+				return 'a parameter has hooks spanning several lines';
+			}
+		}
+
+		return NodeHelpers::findWidthReason($node, $gap);
+	}
+}

@@ -16,7 +16,8 @@ use PhpSyntax\Nodes\{
 	Scalar,
 	Statement, VariadicPlaceholderNode,
 };
-use function count, strlen;
+use PhpSyntax\Nodes\Member\MethodNode;
+use function count, in_array, strlen;
 
 
 /**
@@ -102,10 +103,10 @@ final class NodeHelpers
 	/**
 	 * The construct the node is, at a place `LineSplits` names, with the token its frame begins with, the tokens its shape
 	 * puts at the start of a line once spread, and whether it is spread over lines already; null for a node that is none
-	 * or has nothing to spread: a call, `new` or an attribute without arguments, a first-class callable. The last is
-	 * whether the construct is a message, a call whose sole argument is a string, which is never spread for its width
-	 * and leaves what it holds whole too. A call left on its line by the author is not spread even where its last
-	 * argument, a closure or an array, spans lines.
+	 * or has nothing to spread: a call, `new` or an attribute without arguments, a first-class callable, a signature
+	 * without parameters. The last is whether the construct is a message, a call whose sole argument is a string, which
+	 * is never spread for its width and leaves what it holds whole too. A call left on its line by the author is not
+	 * spread even where its last argument, a closure or an array, spans lines.
 	 * @return ?array{string, Token, list<Token>, bool, bool}
 	 */
 	public static function findSplitFrame(Node $node): ?array
@@ -138,6 +139,18 @@ final class NodeHelpers
 				self::isMultiline($node->openParen, $items, $node->closeParen),
 				false,
 			];
+
+		} elseif ($node instanceof Statement\FunctionNode || $node instanceof MethodNode) {
+			$params = $node->parameters->getItems();
+			return $params === []
+				? null
+				: [
+					'parameter',
+					$node->openParen,
+					[...array_map(fn(Node $param) => $param->getFirstToken(), $params), $node->closeParen],
+					self::isMultiline($node->openParen, $params, $node->closeParen),
+					false,
+				];
 		}
 
 		return null;
@@ -209,7 +222,7 @@ final class NodeHelpers
 			} elseif ($frame[3]) {
 				foreach ($frame[2] as $token) {
 					$stops[spl_object_id($token)] = true;
-					if ($frame[0] === 'argument') {
+					if (in_array($frame[0], ['argument', 'parameter'], true)) {
 						$items[spl_object_id($token)] = true;
 					}
 				}
@@ -237,6 +250,25 @@ final class NodeHelpers
 		}
 
 		return $width;
+	}
+
+
+	/**
+	 * Why a construct on one line is spread for its width: it is of a kind the run spreads by the width, no message and
+	 * not spread yet, and `measureOverflow()` finds its line too wide once the line is indented; null otherwise.
+	 */
+	public static function findWidthReason(Node $construct, Gap $gap): ?string
+	{
+		$frame = self::findSplitFrame($construct);
+		if ($frame === null || $frame[3] || $frame[4] || !$gap->style->lineSplits->has($frame[0])) {
+			return null;
+		}
+
+		// the width first: asking whether the line is in place costs a plan of the whole file
+		$width = self::measureOverflow($construct, $frame[1], $gap);
+		return $width !== null && self::isLineInPlace($gap, $frame[1])
+			? "the line is $width characters long, more than {$gap->style->maxLineLength}"
+			: null;
 	}
 
 
@@ -286,7 +318,7 @@ final class NodeHelpers
 		return $frame !== null
 			&& $first !== null
 			&& $close instanceof Token
-			&& $frame[0] === 'argument'
+			&& in_array($frame[0], ['argument', 'parameter'], true)
 			&& self::measureCodeLine($frame[1], $style, [spl_object_id($close) => true])
 				- self::measureCodeLine($frame[1], $style, [spl_object_id($first) => true]) < intdiv((int) $style->maxLineLength, 10);
 	}

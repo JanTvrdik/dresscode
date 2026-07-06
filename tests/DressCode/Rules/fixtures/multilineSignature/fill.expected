@@ -1,0 +1,14 @@
+<?php
+// lineLength 60
+// {"items.parameter": "fill"}
+function register(
+	$aaaaaaaaaa, $bbbbbbbbbb,
+	$cccccccccc, $ddddd, $eeeeeeeeee
+)
+{
+}
+function run(
+	int $aaaaaaaaaa, int $bbbbbbbbbb,
+	int $cccccccccc, int $ddddd, int $eeeeeeeeee,
+) {
+}

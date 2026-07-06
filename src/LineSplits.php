@@ -19,6 +19,7 @@ final readonly class LineSplits
 	/** place => the decision of its shape */
 	public const Places = [
 		'argument' => 'multiline.items.argument',
+		'parameter' => 'multiline.items.parameter',
 	];
 
 	private const Except = 'file.lineLengthExcept';
