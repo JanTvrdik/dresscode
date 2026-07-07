@@ -218,11 +218,11 @@ final class NodeHelpers
 	 * puts at the start of a line once spread, and whether it is spread over lines already; null for a node that is none
 	 * or has nothing to spread: a call, `new` or an attribute without arguments, a first-class callable, a signature
 	 * without parameters, a condition joined by no boolean operator unless it is a comparison, which splits at its
-	 * operator, an inner link of a family of operators, a `for` with empty sections, an array of fewer than two items,
-	 * a list of a single interface, a group of a single attribute. The last is whether the construct is a message, a
-	 * call whose sole argument is a string, which is never spread for its width and leaves what it holds whole too. A
-	 * call left on its line by the author is not spread even where its last argument, a closure or an array, spans
-	 * lines.
+	 * operator, a chain of fewer than two method calls, an inner
+	 * link of a chain or of a family of operators, a `for` with empty sections, an array of fewer than two items, a list
+	 * of a single interface, a group of a single attribute. The last is whether the construct is a message, a call
+	 * whose sole argument is a string, which is never spread for its width and leaves what it holds whole too. A call
+	 * left on its line by the author is not spread even where its last argument, a closure or an array, spans lines.
 	 * @return ?array{string, Token, list<Token>, bool, bool}
 	 */
 	public static function findSplitFrame(Node $node): ?array
@@ -310,6 +310,32 @@ final class NodeHelpers
 					$node->openParen,
 					[$condition->getFirstToken(), ...$operators, $node->closeParen],
 					$node->openParen->getCurrentLine() !== $node->closeParen->getCurrentLine(),
+					false,
+				];
+
+		} elseif (
+			($node instanceof Expression\MethodCallNode || $node instanceof Expression\PropertyFetchNode)
+			&& !(($node->parent instanceof Expression\MethodCallNode || $node->parent instanceof Expression\PropertyFetchNode)
+				&& $node->parent->object === $node)
+		) {
+			$calls = 0;
+			$operators = [];
+			for (
+				$link = $node;
+				$link instanceof Expression\MethodCallNode || $link instanceof Expression\PropertyFetchNode;
+				$link = $link->object
+			) {
+				$calls += $link instanceof Expression\MethodCallNode ? 1 : 0;
+				$operators[] = $link->operator;
+			}
+
+			return $calls < 2
+				? null
+				: [
+					'chain',
+					$node->getFirstToken(),
+					$operators,
+					array_any($operators, fn(Token $operator) => $operator->startsLine()),
 					false,
 				];
 
@@ -409,8 +435,8 @@ final class NodeHelpers
 	 * spread begins after it on the line (`isFollowedBySplit()`); and where what precedes it on the line, which stays on
 	 * its first line, or what follows it, which stays on its last line, is too wide by itself. The outer one is spread
 	 * first and the inner one measured on the line it is left on, up to the first token a spread outer frame puts at
-	 * the start of a line, which its rule moves away later in the pass: the next argument, section or operator, or the
-	 * closing parenthesis. The width is that of the code, a comment after it left out (`measureCodeLine()`).
+	 * the start of a line, which its rule moves away later in the pass: the next argument, section, operator or link,
+	 * or the closing parenthesis. The width is that of the code, a comment after it left out (`measureCodeLine()`).
 	 */
 	public static function measureOverflow(Node $construct, Token $open, Gap $gap): ?int
 	{
@@ -456,6 +482,11 @@ final class NodeHelpers
 			} elseif (!$frame[3] && $frame[1]->getCurrentLine() === $line) {
 				if ($node instanceof ArgumentListNode && self::findHuggedFrame($node, $style) !== null) {
 					continue; // it stays, its sole argument spreads instead
+				} elseif (
+					($node instanceof Expression\MethodCallNode || $node instanceof Expression\PropertyFetchNode)
+					&& self::findHuggedCall($node, $style) !== null
+				) {
+					continue; // the chain stays, the arguments of its call spread instead
 				} elseif (
 					($node instanceof Statement\IfNode
 						|| $node instanceof ElseifNode
@@ -682,6 +713,53 @@ final class NodeHelpers
 			|| $style->maxLineLength === null
 			|| self::measureCodeLine($list->openParen, $style, [spl_object_id($first) => true]) <= $style->maxLineLength
 			? $inner
+			: null;
+	}
+
+
+	/**
+	 * The method call of a chain whose arguments a line too wide spreads in place of the chain: its first call, which
+	 * a chain spread `attached` keeps on its first line, where splitting the chain would leave that line too wide all
+	 * the same, its arguments being spread then anyway, and the links after it, on one line, fit on the line of its
+	 * closing parenthesis, `)->fetchField();`; null where the chain spreads itself.
+	 */
+	public static function findHuggedCall(
+		Expression\MethodCallNode|Expression\PropertyFetchNode $chain,
+		Style $style,
+	): ?Expression\MethodCallNode
+	{
+		$limit = $style->maxLineLength;
+		if ($limit === null || !$style->lineSplits->chainAttached) {
+			return null;
+		}
+
+		$call = null;
+		for (
+			$link = $chain->object;
+			$link instanceof Expression\MethodCallNode || $link instanceof Expression\PropertyFetchNode;
+			$link = $link->object
+		) {
+			$call = $link instanceof Expression\MethodCallNode ? $link : $call;
+		}
+
+		$frame = $call === null ? null : self::findSplitFrame($call->arguments);
+		if ($frame === null || $frame[3] || $frame[4] || !$style->lineSplits->has($frame[0])) {
+			return null;
+		}
+
+		$open = $call->arguments->openParen;
+		$after = $call->arguments->closeParen->getNext();
+		$first = $open->getNext();
+		if ($after === null || $first === null || $chain->getLastToken()->getCurrentLine() !== $after->getCurrentLine()) {
+			return null; // links spanning lines after the call keep a line each
+		}
+
+		$closed = self::measureCodeLine($open, $style, [spl_object_id($after) => true]);
+		$rest = self::measureCodeLine($open, $style) - $closed + 1;
+		return self::measureCodeLine($open, $style, [spl_object_id($first) => true]) <= $limit
+			&& $closed > $limit
+			&& Indentation::advance(0, $open->getLineIndentation(), $style->toPhpSyntax()) + $rest <= $limit
+			? $call
 			: null;
 	}
 

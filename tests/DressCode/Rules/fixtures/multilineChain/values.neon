@@ -1,0 +1,5 @@
+multiline:
+	items:
+		chain: perLine
+	edges:
+		chain: apart

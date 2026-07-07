@@ -15,8 +15,9 @@ use PhpSyntax\Nodes\Member\{TraitAliasNode, TraitPrecedenceNode};
 
 /**
  * No whitespace around the operator of an access to a member, nor inside the braces of a dynamic name. Around `->`
- * and `?->` on a line, `$a->{$b}`, the name staying on the line of the operator. Around `::`, after its `$` and
- * inside its braces, `A::{$b}()`, `A::$$b`, `A::${$b}`, all of it on one line.
+ * and `?->` on a line, `$a->{$b}`, the name staying on the line of the operator; a line break before the operator is
+ * `MultilineChainRule`'s. Around `::`, after its `$` and inside its braces, `A::{$b}()`, `A::$$b`, `A::${$b}`, all of
+ * it on one line.
  */
 #[RuleInfo(Stage::Formatting)]
 final class MemberAccessSpacingRule extends GapRule

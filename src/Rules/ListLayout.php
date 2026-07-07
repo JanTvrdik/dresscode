@@ -53,6 +53,7 @@ final readonly class ListLayout
 	 * The requirements of a place, `multiline.items.<place>` and, where something opens the list, `multiline.edges.<place>`,
 	 * the shapes said in the words of the place: an item, the items, what opens them and what closes them.
 	 * @param  list<string>  $notes  of the items
+	 * @param  ?string  $attached  what `attached` keeps on the line of what opens the items, the first one where null
 	 * @return list<Decision>
 	 */
 	public static function createDecisions(
@@ -64,6 +65,7 @@ final readonly class ListLayout
 		?string $close = null,
 		array $notes = [],
 		bool $fill = true,
+		?string $attached = null,
 	): array
 	{
 		$decisions = [new Decision(
@@ -80,7 +82,7 @@ final readonly class ListLayout
 				"multiline.edges.$place",
 				new Words([
 					self::Apart => "the first $item on the line after $open" . ($close === null ? '' : ", $close on a line of its own"),
-					self::Attached => "the first $item on the line of $open"
+					self::Attached => ($attached ?? "the first $item") . " on the line of $open"
 						. ($close === null ? '' : ", $close right after the last one"),
 				] + ($close === null
 					? []
