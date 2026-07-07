@@ -40,6 +40,7 @@ final class CorePlugin implements Plugin
 				Rules\ControlFlow\NoEmptyStatementsRule::class,
 				Rules\ControlFlow\SwitchCaseSpacingRule::class,
 				Rules\Expressions\BinaryOperatorSpacingRule::class,
+				Rules\Expressions\LogicalOperatorNotationRule::class,
 				Rules\Expressions\MemberAccessSpacingRule::class,
 				Rules\Expressions\MultilineBinaryOperatorRule::class,
 				Rules\Expressions\MultilineChainRule::class,

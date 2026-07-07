@@ -1,0 +1,16 @@
+<?php
+if ($a && $b) {
+}
+if ($a || $b && $c) {
+}
+$x = $a && $b;
+$y = $a = f() or die();
+$z = $a xor $b;
+while ($a && $b) {
+}
+f($a and $b || $c);
+f($a || $b and $c);
+f(print $a and $b);
+f($a && $b || $c);
+f($a && ($b || $c));
+f($a && $b or $c = 1 and $d);

@@ -1,0 +1,15 @@
+2: The `and` operator must be written `&&`.
+4: The `or` operator must be written `||`.
+4: The `and` operator must be written `&&`.
+7: The `or` operator must be written `||`, but only its low precedence holds an operand together.
+9: The `AND` operator must be written `&&`.
+11: The `and` operator must be written `&&`, but only its low precedence holds an operand together.
+12: The `and` operator must be written `&&`, but only its low precedence holds an operand together.
+13: The `and` operator must be written `&&`, but only its low precedence holds an operand together.
+14: The `and` operator must be written `&&`.
+14: The `or` operator must be written `||`.
+15: The `and` operator must be written `&&`.
+15: The `or` operator must be written `||`.
+16: The `and` operator must be written `&&`.
+16: The `or` operator must be written `||`, but only its low precedence holds an operand together.
+16: The `and` operator must be written `&&`, but only its low precedence holds an operand together.
