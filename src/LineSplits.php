@@ -35,12 +35,14 @@ final readonly class LineSplits
 		'array' => 'multiline.items.array',
 		'list' => 'multiline.items.list',
 		'implements' => 'multiline.items.implements',
+		'matchCondition' => 'multiline.items.matchCondition',
 	];
 
 	private const Except = 'file.lineLengthExcept';
 	private const SpreadItem = 'multiline.spreadItem';
 	private const ChainEdges = 'multiline.edges.chain';
 	private const ComparisonPosition = 'multiline.operatorPosition.comparison';
+	private const Spacing = 'spacing.binaryOperator';
 
 
 	/** @internal made by `fromValues()` */
@@ -59,6 +61,8 @@ final readonly class LineSplits
 		public bool $chainAttached = false,
 		/** a comparison stands at the start of the line at its break, so that a condition that is one splits before it */
 		public bool $comparisonLineStart = false,
+		/** the spaces around `=>` are decided, so that a `match` arm on a line too wide splits before its `=>` first */
+		public bool $armArrow = false,
 	) {
 	}
 
@@ -80,6 +84,7 @@ final readonly class LineSplits
 			&& !$values->isKept(self::ChainEdges)
 			&& ($values->get(self::ChainEdges)->getWords()[0] ?? null) === 'attached',
 			$values->has(self::ComparisonPosition) && $values->find(self::ComparisonPosition)?->getWord() === 'lineStart',
+			$values->has(self::Spacing) && !$values->isKept(self::Spacing) && $values->isSelected(self::Spacing),
 		);
 	}
 

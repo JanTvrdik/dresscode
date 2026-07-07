@@ -42,6 +42,7 @@ final class CorePlugin implements Plugin
 				Rules\Expressions\MemberAccessSpacingRule::class,
 				Rules\Expressions\MultilineBinaryOperatorRule::class,
 				Rules\Expressions\MultilineChainRule::class,
+				Rules\Expressions\MultilineMatchArmRule::class,
 				Rules\Expressions\MultilineTernaryRule::class,
 				Rules\Expressions\NotEqualsNotationRule::class,
 				Rules\Expressions\OperandSpacingRule::class,
@@ -115,6 +116,7 @@ final class CorePlugin implements Plugin
 					'array' => 'the items of an array, which `multiline.maxWidth.array` spreads all the same',
 					'list' => 'the items of `list()`',
 					'implements' => 'the interfaces a class implements or an interface extends',
+					'matchCondition' => 'the conditions of a `match` arm',
 				], regularExpressions: true), 'What a line too wide leaves as it is: a construct named is not spread over lines for its width, and a line it stands on, one a regular expression matches, or with `strings` one wide only for its string literals, is not reported', kind: DecisionKind::Parameter, default: ['imports']),
 				new Decision('indentation.unit', new Words([
 					'tab' => 'one tab per level',

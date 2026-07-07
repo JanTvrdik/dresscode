@@ -149,7 +149,7 @@ final class BinaryOperatorSpacingRule extends GapRule
 				$this->claimBeforeAssignment(...),
 				fn(Gap $gap) => $this->claimAfterAssignment($gap, 'arrayItem'),
 			]],
-			MatchArmNode::class => $arrow,
+			MatchArmNode::class => ['doubleArrow' => [$this->claimBeforeArmArrow(...), $this->claim]],
 			YieldNode::class => $arrow,
 			ForeachNode::class => $arrow,
 			// the double arrow of a short closure or of a hook may begin a line of its own
@@ -249,6 +249,32 @@ final class BinaryOperatorSpacingRule extends GapRule
 		}
 
 		return self::isJoinedLineTooWide($gap, $previous, $token) !== false ? $this->claim : $this->joined;
+	}
+
+
+	/**
+	 * The `=>` of a `match` arm on a line too wide begins the line below where the conditions fit up to it and it fits
+	 * there with the result (`NodeHelpers::isArmSplitBeforeArrow()`), before the result is spread; otherwise it stays
+	 * as the `=>` of an assignment does.
+	 */
+	private function claimBeforeArmArrow(Gap $gap): ?Claim
+	{
+		$arm = $gap->token->parent;
+		$width = $this->claim !== null && $arm instanceof MatchArmNode
+			? $gap->once(
+				$arm,
+				fn() => NodeHelpers::isArmSplitBeforeArrow($arm, $gap->style) && NodeHelpers::isLineInPlace($gap, $gap->token)
+					? NodeHelpers::measureCodeLine($gap->token, $gap->style)
+					: null,
+			)
+			: null;
+		return $width === null
+			? $this->claimBeforeAssignment($gap)
+			: new Claim(
+				line: Line::Next,
+				because: "the line is $width characters long, more than {$gap->style->maxLineLength}",
+				decision: self::Spacing,
+			);
 	}
 
 

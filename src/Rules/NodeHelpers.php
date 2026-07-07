@@ -13,7 +13,7 @@ use PhpSyntax\{Indentation, Node, Token};
 use PhpSyntax\Nodes\{
 	AnonymousClassNode, ArgumentListNode, ArgumentNode, AttributeGroupNode, AttributeNode,
 	ClosureUseListNode, DestructuringNode, ElseifNode, Expression, ExpressionNode,
-	Scalar,
+	MatchArmNode, Scalar,
 	SeparatedNodeList, Statement, VariadicPlaceholderNode,
 };
 use PhpSyntax\Nodes\Member\MethodNode;
@@ -112,6 +112,38 @@ final class NodeHelpers
 			&& $indent + $at($statement->closeParen) - $at($condition->operator) <= $limit
 			? $condition
 			: null;
+	}
+
+
+	/**
+	 * Whether a `match` arm wholly on one line too wide splits before its `=>`, which it does where the spaces around it are
+	 * decided (`LineSplits::$armArrow`), its conditions fit on the line up to it and `=>` with the result fits on the
+	 * line below, one level deeper, before anything the arm holds is spread for the width. Conditions narrower than two
+	 * levels of indentation keep it on their line, the split saving no more than the level it adds (`default`).
+	 */
+	public static function isArmSplitBeforeArrow(MatchArmNode $arm, Style $style): bool
+	{
+		$limit = $style->maxLineLength;
+		$arrow = $arm->doubleArrow;
+		$first = $arm->getFirstToken();
+		$line = $arrow->getCurrentLine();
+		if (
+			$limit === null
+			|| !$style->lineSplits->armArrow
+			|| $arrow->startsLine()
+			|| $first->getCurrentLine() !== $line
+			|| $arm->getLastToken()->getCurrentLine() !== $line
+			|| $first->hasCommentUpTo($arrow)
+		) {
+			return false;
+		}
+
+		$width = self::measureCodeLine($arrow, $style);
+		$head = self::measureCodeLine($first, $style, [spl_object_id($arrow) => true]);
+		$phpSyntax = $style->toPhpSyntax();
+		$step = Indentation::advance(0, $style->indent, $phpSyntax);
+		$indent = Indentation::advance(0, $arrow->getLineIndentation() . $style->indent, $phpSyntax);
+		return $width > $limit && $head <= $limit && $indent + $width - $head <= $limit && $head - $indent > $step;
 	}
 
 
@@ -220,9 +252,10 @@ final class NodeHelpers
 	 * without parameters, a condition joined by no boolean operator unless it is a comparison, which splits at its
 	 * operator, a chain of fewer than two method calls, an inner
 	 * link of a chain or of a family of operators, a `for` with empty sections, an array of fewer than two items, a list
-	 * of a single interface, a group of a single attribute. The last is whether the construct is a message, a call
-	 * whose sole argument is a string, which is never spread for its width and leaves what it holds whole too. A call
-	 * left on its line by the author is not spread even where its last argument, a closure or an array, spans lines.
+	 * of a single interface, a `match` arm of a single condition, a group of a single attribute. The last is whether the
+	 * construct is a message, a call whose sole argument is a string, which is never spread for its width and leaves what
+	 * it holds whole too. A call left on its line by the author is not spread even where its last argument, a closure or
+	 * an array, spans lines.
 	 * @return ?array{string, Token, list<Token>, bool, bool}
 	 */
 	public static function findSplitFrame(Node $node): ?array
@@ -398,6 +431,18 @@ final class NodeHelpers
 					false,
 				];
 
+		} elseif ($node instanceof SeparatedNodeList && $node->parent instanceof MatchArmNode && $node->parent->values === $node) {
+			$values = array_map(fn(Node $value) => $value->getFirstToken(), $node->getItems());
+			return count($values) < 2
+				? null
+				: [
+					'matchCondition',
+					$values[0],
+					$values,
+					array_any(array_slice($values, 1), fn(Token $value) => $value->startsLine()),
+					false,
+				];
+
 		} elseif ($node instanceof Expression\TernaryNode) {
 			return [
 				'ternary',
@@ -485,6 +530,10 @@ final class NodeHelpers
 		}
 
 		for ($node = $construct->parent; $node !== null; $node = $node->parent) {
+			if ($node instanceof MatchArmNode && self::isArmSplitBeforeArrow($node, $style)) {
+				return null; // the arm splits before its `=>` first
+			}
+
 			$frame = self::findSplitFrame($node);
 			if ($frame === null || $frame[4] || !$style->lineSplits->has($frame[0])) {
 				continue;
