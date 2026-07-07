@@ -43,6 +43,7 @@ final class CorePlugin implements Plugin
 				Rules\Expressions\MultilineBinaryOperatorRule::class,
 				Rules\Expressions\MultilineChainRule::class,
 				Rules\Expressions\MultilineMatchArmRule::class,
+				Rules\Expressions\MultilineMatchRule::class,
 				Rules\Expressions\MultilineTernaryRule::class,
 				Rules\Expressions\NotEqualsNotationRule::class,
 				Rules\Expressions\OperandSpacingRule::class,
