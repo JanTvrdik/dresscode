@@ -24,6 +24,7 @@ final readonly class LineSplits
 		'attribute' => 'multiline.items.attribute',
 		'condition' => 'multiline.items.condition',
 		'chain' => 'multiline.items.chain',
+		'ternary' => 'multiline.items.ternary',
 		'for' => 'multiline.items.for',
 		'logical' => 'multiline.items.logical',
 		'concatenation' => 'multiline.items.concatenation',

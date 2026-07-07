@@ -1,0 +1,37 @@
+<?php
+// an operand spanning lines before the last operator spans the ternary, `?` and `:` then hiding at the ends of lines
+return $lines
+	? new Position(
+	$line + $lines,
+	$offset,
+)
+	: new Position(
+	$line,
+	$offset,
+);
+
+// the last operand may span lines after the operators, which stay in sight
+$a = $b ? $c : foo(
+	$c,
+);
+$a = $b ?: foo(
+	$c,
+);
+
+// a condition closed by a bracket opening its line keeps `?:` in sight after it
+$a = foo(
+	$b,
+) ?: throw new Exception;
+$a = [
+	$b,
+] ?: $c;
+$a = iconv_mime_encode($b, $c, [
+	$d,
+]) ?: '';
+preg_match_all('~
+	(?P<key> \w+)
+~xi', $b, $c) ?: throw new Exception;
+return ($b
+	? $c
+	: $d)
+	?: [];
