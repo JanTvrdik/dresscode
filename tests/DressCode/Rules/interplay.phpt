@@ -131,6 +131,68 @@ test('indentation and multilineCall settle on one shape', function () {
 });
 
 
+test('a comma asked for only because another rule spread the array follows that rule', function () {
+	$result = interplay([
+		Rules\Arrays\MultilineArrayRule::class => [
+			'multiline.items.array' => 'perLine',
+			'multiline.edges.array' => 'apart',
+			'multiline.maxWidth.array' => 30,
+		],
+		Rules\Arrays\TrailingCommaRule::class => [
+			'multiline.trailingComma.array' => 'required', 'multiline.trailingComma.argument' => 'optional',
+			'multiline.trailingComma.parameter' => 'keep', 'multiline.trailingComma.matchArm' => 'keep',
+			'multiline.trailingComma.closureUse' => 'keep', 'multiline.trailingComma.import' => 'optional',
+			'multiline.trailingComma.list' => 'optional',
+		],
+	], "<?php\n\$a = ['alpha' => 1, 'beta' => 2, 'gamma' => 3];\n", "<?php\n\$a = [\n\t'alpha' => 1,\n\t'beta' => 2,\n\t'gamma' => 3,\n];\n");
+	Assert::count(2, $result->violations);
+	$byRule = array_column($result->violations, null, 'decision');
+	Assert::null($byRule['multiline.items.array']->derivedFrom);
+	Assert::same($byRule['multiline.items.array']->fingerprint, $byRule['multiline.trailingComma.array']->derivedFrom);
+
+	// the same holds for the arguments of a call, the report standing on the closing bracket whatever the list is
+	$result = interplay([
+		Rules\Functions\MultilineCallRule::class => ['multiline.items.argument' => 'perLine', 'multiline.edges.argument' => 'apart'],
+		Rules\Arrays\TrailingCommaRule::class => ['multiline.trailingComma.argument' => 'required'],
+	], "<?php\nfoo(\n\t1, 2);\n", "<?php\nfoo(\n\t1,\n\t2,\n);\n");
+	Assert::count(2, $result->violations);
+	$byRule = array_column($result->violations, null, 'decision');
+	Assert::null($byRule['multiline.items.argument']->derivedFrom);
+	Assert::same($byRule['multiline.items.argument']->fingerprint, $byRule['multiline.trailingComma.argument']->derivedFrom);
+
+	// an array the file itself spread owes the comma to nobody
+	$result = interplay([
+		Rules\Arrays\MultilineArrayRule::class => [
+			'multiline.items.array' => 'perLine',
+			'multiline.edges.array' => 'apart',
+			'multiline.maxWidth.array' => 'none',
+		],
+		Rules\Arrays\TrailingCommaRule::class => [
+			'multiline.trailingComma.array' => 'required', 'multiline.trailingComma.argument' => 'optional',
+			'multiline.trailingComma.parameter' => 'keep', 'multiline.trailingComma.matchArm' => 'keep',
+			'multiline.trailingComma.closureUse' => 'keep', 'multiline.trailingComma.import' => 'optional',
+			'multiline.trailingComma.list' => 'optional',
+		],
+	], "<?php\n\$a = [\n\t'alpha' => 1,\n\t'beta' => 2\n];\n", "<?php\n\$a = [\n\t'alpha' => 1,\n\t'beta' => 2,\n];\n");
+	Assert::same([null], array_map(fn(Violation $violation) => $violation->derivedFrom, $result->violations));
+
+	// and the comma claims nothing about the line of the bracket, which the lines counted from it are placed by
+	$result = interplay([
+		Rules\Arrays\TrailingCommaRule::class => [
+			'multiline.trailingComma.array' => 'required', 'multiline.trailingComma.argument' => 'optional',
+			'multiline.trailingComma.parameter' => 'keep', 'multiline.trailingComma.matchArm' => 'keep',
+			'multiline.trailingComma.closureUse' => 'keep', 'multiline.trailingComma.import' => 'optional',
+			'multiline.trailingComma.list' => 'optional',
+		],
+		Rules\Whitespace\IndentationRule::class => [
+			'indentation.unit' => 'tab', 'indentation.binaryOperator' => 0, 'indentation.ternary' => 1,
+			'indentation.switchCase' => 1, 'indentation.chain' => 'flat',
+		],
+	], "<?php\n\$a = [\n\t1,\n\t2\n] + [\n\t\t3,\n];\n", "<?php\n\$a = [\n\t1,\n\t2,\n] + [\n\t3,\n];\n");
+	Assert::same([null, null], array_map(fn(Violation $violation) => $violation->derivedFrom, $result->violations));
+});
+
+
 test('a comment commentSpacing rewrites keeps its line for the rule that reports it next', function () {
 	$result = interplay([
 		Rules\Comments\CommentSpacingRule::class => ['spacing.comment.marker' => '// text'],
