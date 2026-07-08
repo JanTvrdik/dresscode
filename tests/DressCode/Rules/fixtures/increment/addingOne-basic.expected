@@ -1,0 +1,11 @@
+<?php
+// {"assignment.increment": "keep", "assignment.addingOne": "forbidden"}
+// risky
+$a++;
+$b--;
+$arr['x']++;
+$obj->count++;
+$c += 2;
+$d = $e += 1;
+f($g += 1);
+$h .= 1;

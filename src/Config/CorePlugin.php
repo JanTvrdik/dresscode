@@ -41,6 +41,7 @@ final class CorePlugin implements Plugin
 				Rules\ControlFlow\SwitchCaseSpacingRule::class,
 				Rules\Expressions\BinaryOperatorSpacingRule::class,
 				Rules\Expressions\ExplicitPrecedenceRequiredRule::class,
+				Rules\Expressions\IncrementRule::class,
 				Rules\Expressions\LogicalOperatorNotationRule::class,
 				Rules\Expressions\MemberAccessSpacingRule::class,
 				Rules\Expressions\MultilineBinaryOperatorRule::class,
