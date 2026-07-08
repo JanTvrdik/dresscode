@@ -25,6 +25,7 @@ final class NotEqualsNotationRule extends NodeRule
 			'expressions.comparison.notEquals',
 			new Shapes(['exclamation' => ['!=', '`!=`, never `<>`']]),
 			'The operator of inequality',
+			notes: ['Not about whether the comparison is loose, which `expressions.comparison.loose` decides'],
 		)];
 	}
 
