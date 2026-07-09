@@ -54,6 +54,7 @@ final class CorePlugin implements Plugin
 				Rules\Expressions\NoLooseComparisonsRule::class,
 				Rules\Expressions\NotEqualsNotationRule::class,
 				Rules\Expressions\OperandSpacingRule::class,
+				Rules\Expressions\ShortTernaryRule::class,
 				Rules\Expressions\TernaryOperatorSpacingRule::class,
 				Rules\Expressions\UselessParenthesesAfterConstructRule::class,
 				Rules\Expressions\UselessTernaryOperatorRule::class,
