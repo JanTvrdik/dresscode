@@ -55,6 +55,7 @@ final class CorePlugin implements Plugin
 				Rules\Expressions\OperandSpacingRule::class,
 				Rules\Expressions\TernaryOperatorSpacingRule::class,
 				Rules\Expressions\UselessParenthesesAfterConstructRule::class,
+				Rules\Expressions\YodaRule::class,
 				Rules\Files\DeclareSpacingRule::class,
 				Rules\Files\FinalLineEndingsRule::class,
 				Rules\Files\LineEndingRule::class,
