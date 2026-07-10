@@ -45,6 +45,7 @@ final class CorePlugin implements Plugin
 				Rules\Expressions\CombinedAssignmentForRepeatedTargetRule::class,
 				Rules\Expressions\ExplicitPrecedenceRequiredRule::class,
 				Rules\Expressions\IncrementRule::class,
+				Rules\Expressions\InstantiationWrappingRule::class,
 				Rules\Expressions\LogicalOperatorNotationRule::class,
 				Rules\Expressions\MemberAccessSpacingRule::class,
 				Rules\Expressions\MultilineBinaryOperatorRule::class,

@@ -235,6 +235,14 @@ test('a path outside the root is checked where it is', function () use ($root) {
 });
 
 
+test('a decision needing a newer PHP than the target is left out and said aloud when the project makes it', function () use ($root) {
+	[$code, $out, $err] = runApp($root, ['check', 'src/b.php', '--set', 'classes.instantiationWrapping=forbidden']);
+	Assert::same(0, $code);
+	Assert::match('Warning: Decision `classes.instantiationWrapping` needs PHP >=8.4 and the target is %a%; skipped.%A%', $err);
+	Assert::match("%A%OK  1 file, up to the dress code\n", $out);
+});
+
+
 test('stdin: check reports, fix writes the result to stdout', function () use ($root) {
 	[$code, $out] = runApp($root, ['check', '--stdin', 'src/x.php'], "<?php\n\$a;\n");
 	Assert::same(1, $code);
@@ -266,6 +274,8 @@ test('fix --stdin is a formatter: the whole text on stdout, nothing else, and ex
 	Assert::same([0, '', ''], $format(''));
 	// a risky fix the run does not make, an error of a check, leaves the exit code at 0
 	Assert::same([0, "<?php\n\$b;\n\$r;\n", ''], $format("<?php\n\$a;\n\$r;\n"));
+	// a warning of the configuration is not printed
+	Assert::same([0, "<?php\n\$b;\n", ''], $format("<?php\n\$a;\n", ['--set', 'classes.instantiationWrapping=forbidden']));
 	// an excluded path the caller asks to skip gives the text back as it came
 	Assert::same([0, "<?php\n\$a;\n", ''], $format("<?php\n\$a;\n", ['--skip-excluded'], 'src/generated/x.php'));
 	Assert::same([0, "<?php\n\$a;\n", ''], $format("<?php\n\$a;\n", ['--skip-excluded'], 'lib/x.php'));
