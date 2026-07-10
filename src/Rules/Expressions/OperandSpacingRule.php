@@ -17,7 +17,8 @@ use function count;
  * The whitespace between an operator and its operand, which stay on one line: none for a unary operator, `-$b`,
  * `$i++`, for `&`, `&$a`, `function &f()`, and for `...` in arguments, parameters and arrays alike, nor inside
  * a variable variable, `$$a` and `${'a'}`. After `!` it is what `spacing.logicalNot` says, where a tolerance passes each
- * of its shapes as written, and after a cast a single space or none, as `spacing.cast` says.
+ * of its shapes as written, and after a cast a single space or none, as `spacing.cast` says; the spelling of the cast
+ * itself is the matter of `CastCanonicalTypeRule`.
  */
 #[RuleInfo(Stage::Formatting)]
 final class OperandSpacingRule extends GapRule
