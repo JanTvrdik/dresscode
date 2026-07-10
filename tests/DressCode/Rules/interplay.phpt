@@ -209,6 +209,20 @@ test('a comma asked for only because another rule spread the array follows that 
 });
 
 
+test('a line a structural rewrite moves follows the rewrite, so that its new indentation is no finding of its own', function () {
+	$result = interplay([
+		Rules\ControlFlow\TernaryForIfRule::class => true,
+		Rules\Whitespace\IndentationRule::class => [
+			'indentation.unit' => 'tab', 'indentation.binaryOperator' => 0, 'indentation.ternary' => 1,
+			'indentation.switchCase' => 1, 'indentation.chain' => 'flat',
+		],
+	], "<?php\nfunction f(\$a)\n{\n\tif (\$a) {\n\t\treturn g(\n\t\t\t\t1,\n\t\t);\n\t} else {\n\t\treturn 2;\n\t}\n}\n", "<?php\nfunction f(\$a)\n{\n\treturn \$a\n\t\t? g(\n\t\t\t1,\n\t\t)\n\t\t: 2;\n}\n");
+	$byRule = array_column($result->violations, null, 'decision');
+	Assert::null($byRule['controlFlow.ifElseReturning']->derivedFrom);
+	Assert::same($byRule['controlFlow.ifElseReturning']->fingerprint, $byRule['indentation.unit']->derivedFrom);
+});
+
+
 test('a comment commentSpacing rewrites keeps its line for the rule that reports it next', function () {
 	$result = interplay([
 		Rules\Comments\CommentSpacingRule::class => ['spacing.comment.marker' => '// text'],

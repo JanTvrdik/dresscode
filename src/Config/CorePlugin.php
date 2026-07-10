@@ -39,6 +39,7 @@ final class CorePlugin implements Plugin
 				Rules\ControlFlow\NoBracelessBodiesRule::class,
 				Rules\ControlFlow\NoEmptyStatementsRule::class,
 				Rules\ControlFlow\SwitchCaseSpacingRule::class,
+				Rules\ControlFlow\TernaryForIfRule::class,
 				Rules\Expressions\BinaryOperatorSpacingRule::class,
 				Rules\Expressions\CombinedAssignmentForRepeatedTargetRule::class,
 				Rules\Expressions\ExplicitPrecedenceRequiredRule::class,

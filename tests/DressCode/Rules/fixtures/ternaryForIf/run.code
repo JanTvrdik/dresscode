@@ -1,0 +1,24 @@
+<?php
+// run
+function pick(?int $value): string
+{
+	if ($value > 1) {
+		return 'big';
+	} else {
+		return 'small';
+	}
+}
+
+function assign(array $items): int
+{
+	if (count($items) > 1) {
+		$total = array_sum($items);
+	} else {
+		$total = 0;
+	}
+
+	return $total;
+}
+
+echo pick(2), pick(null), pick(1), "\n";
+echo assign([1, 2, 3]), assign([5]), "\n";

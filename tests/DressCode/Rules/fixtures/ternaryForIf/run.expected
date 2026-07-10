@@ -1,0 +1,16 @@
+<?php
+// run
+function pick(?int $value): string
+{
+	return $value > 1 ? 'big' : 'small';
+}
+
+function assign(array $items): int
+{
+	$total = count($items) > 1 ? array_sum($items) : 0;
+
+	return $total;
+}
+
+echo pick(2), pick(null), pick(1), "\n";
+echo assign([1, 2, 3]), assign([5]), "\n";
