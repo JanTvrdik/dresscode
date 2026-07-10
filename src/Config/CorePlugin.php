@@ -53,6 +53,7 @@ final class CorePlugin implements Plugin
 				Rules\Expressions\NoDoubleNegationsRule::class,
 				Rules\Expressions\NoLooseComparisonsRule::class,
 				Rules\Expressions\NotEqualsNotationRule::class,
+				Rules\Expressions\NullCoalescingForNullTernaryRule::class,
 				Rules\Expressions\OperandSpacingRule::class,
 				Rules\Expressions\ShortTernaryRule::class,
 				Rules\Expressions\TernaryOperatorSpacingRule::class,
