@@ -13,7 +13,7 @@ use PhpSyntax\{Builder, Indentation, Node, Token};
 use PhpSyntax\Nodes\{
 	AnonymousClassNode, ArgumentListNode, ArgumentNode, AttributeGroupNode, AttributeNode,
 	ClosureUseListNode, DestructuringNode, ElseifNode, Expression, ExpressionNode,
-	MatchArmNode, Scalar,
+	MatchArmNode, PlainNodeList, Scalar,
 	SeparatedNodeList, Statement, VariadicPlaceholderNode,
 };
 use PhpSyntax\Nodes\Member\MethodNode;
@@ -947,6 +947,32 @@ final class NodeHelpers
 			: Token::fromText($text)
 				->setLeadingTrivia($operator->leadingTrivia)
 				->setTrailingTrivia($operator->trailingTrivia);
+	}
+
+
+	/**
+	 * Removes a statement, the blank lines it stood between becoming the wider of the two gaps, so that the gap
+	 * setting apart the group it ended or began stays; at the edge of its list the gap toward the edge stays.
+	 */
+	public static function removeMergingGaps(Node $node, string $lineEnding): void
+	{
+		$removed = $node;
+		$list = $removed->parent;
+		$first = $removed->getFirstToken();
+		$next = $removed->getLastToken()?->getNext();
+		if (
+			$list instanceof PlainNodeList
+			&& $first?->startsLine()
+			&& $next?->startsLine()
+			&& $list->indexOf($removed) > 0
+			&& $list->indexOf($removed) < count($list) - 1
+		) {
+			$wider = max($first->countBlankLinesBefore(), $next->countBlankLinesBefore());
+			$first->setBlankLinesBefore($wider, $lineEnding);
+			$next->setBlankLinesBefore($wider, $lineEnding);
+		}
+
+		$node->remove(mergeBlankLines: true);
 	}
 
 
