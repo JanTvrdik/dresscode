@@ -12,9 +12,9 @@ use DressCode\{Claim, Gap, Line, Style};
 use PhpSyntax\{Builder, Indentation, Node, Token};
 use PhpSyntax\Nodes\{
 	AnonymousClassNode, ArgumentListNode, ArgumentNode, AttributeGroupNode, AttributeNode,
-	ClosureUseListNode, DestructuringNode, ElseifNode, Expression, ExpressionNode,
+	ClassLikeNode, ClosureUseListNode, DestructuringNode, ElseifNode, Expression, ExpressionNode, FileNode,
 	MatchArmNode, PlainNodeList, Scalar,
-	SeparatedNodeList, Statement, VariadicPlaceholderNode,
+	SeparatedNodeList, Statement, StatementNode, VariadicPlaceholderNode,
 };
 use PhpSyntax\Nodes\Member\MethodNode;
 use function count, in_array, strlen;
@@ -201,6 +201,21 @@ final class NodeHelpers
 		return $position === 'lineEnd'
 			? $operator->startsLine() && !($operator->getPrevious()?->hasCommentUpTo($operator) ?? true)
 			: $operator->isFollowedByLineEnding();
+	}
+
+
+	/**
+	 * Whether the block, an item of the list, declares a function or a class at the top of a file or a namespace, which
+	 * out of the block PHP would bind before the code runs.
+	 * @param  PlainNodeList<covariant Node>  $list
+	 */
+	public static function hasHoistableDeclaration(PlainNodeList $list, Statement\BlockNode $block): bool
+	{
+		return ($list->parent instanceof FileNode || $list->parent instanceof Statement\NamespaceNode)
+			&& array_any(
+				$block->statements->getItems(),
+				fn(StatementNode $stmt) => $stmt instanceof Statement\FunctionNode || $stmt instanceof ClassLikeNode,
+			);
 	}
 
 
