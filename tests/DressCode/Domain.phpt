@@ -135,6 +135,35 @@ test('a count is a number, a range in any notation, an open one, or a word', fun
 });
 
 
+test('a text is the text of the project, written as it is given', function () {
+	Assert::same('break omitted', new Text()->accept('break omitted', 'controlFlow.switch.fallThroughComment')->getText());
+	Assert::exception(
+		fn() => new Text()->accept(' ', 'controlFlow.switch.fallThroughComment', keep: true),
+		ConfigurationException::class,
+		'Key `controlFlow.switch.fallThroughComment` does not take ` `; write a text or `keep`.',
+	);
+	Assert::same(['kind' => 'text', 'tolerance' => false], new Text()->toArray());
+
+	// a tolerance takes a list of them, each passing and the first written
+	$value = new Text(tolerance: true)->accept(['no break', 'falls through'], 'controlFlow.switch.fallThroughComment');
+	Assert::same(
+		[['no break', 'falls through'], 'no break', ['no break', 'falls through'], '[no break, falls through]'],
+		[$value->getTexts(), $value->getText(), $value->toWrittenData(), $value->toWrittenText()],
+	);
+	Assert::same('no break', new Text(tolerance: true)->accept('no break', 'x.y')->toWrittenData());
+	Assert::exception(
+		fn() => new Text()->accept(['no break'], 'controlFlow.switch.fallThroughComment'),
+		ConfigurationException::class,
+		'Key `controlFlow.switch.fallThroughComment` does not take %a%; write a text.',
+	);
+	Assert::exception(
+		fn() => new Text(tolerance: true)->accept(['no break', 'no break'], 'x.y'),
+		ConfigurationException::class,
+		'%a%a text given twice%a%',
+	);
+});
+
+
 test('names are free, patterns are regular expressions, allowed ones are words', function () {
 	Assert::same(['password'], new Names()->accept(['password'], 'x.y')->getNames());
 	Assert::same([], new Names()->accept([], 'x.y')->getNames());
