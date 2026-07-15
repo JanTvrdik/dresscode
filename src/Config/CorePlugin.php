@@ -49,6 +49,7 @@ final class CorePlugin implements Plugin
 				Rules\ControlFlow\TernaryForIfRule::class,
 				Rules\ControlFlow\ThrowableForExceptionRule::class,
 				Rules\ControlFlow\UselessBracesRule::class,
+				Rules\ControlFlow\UselessCatchVariableRule::class,
 				Rules\ControlFlow\UselessElseRule::class,
 				Rules\ControlFlow\UselessReturnRule::class,
 				Rules\Expressions\BinaryOperatorSpacingRule::class,

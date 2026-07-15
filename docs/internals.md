@@ -14,7 +14,7 @@ Public:
 - `Config`, `Profile`, `Override`, `Plugin`, `PluginManifest`: the configuration
 - `Decision`, `Domain`, `Domains\*`, `Value`, `Values`, `Config\Layer`, `Config\LayerKind`, `Config\Catalogue`: the decisions a rule declares, the values they take, the values decided for a file with the layer that said each, and the catalogue of them all
 - `Rule`, `NodeRule`, `GapRule`, `RuleInfo`, `RuleContext`, `Claim`, `Space`, `Line`, `Gap`, `Style`, `Violation`: the API of a rule
-- `QualifiedNames`: the helper a rule of a package writes and reads names with, as one of the core does
+- `CodeWriter`, `GlobalCalls`, `QualifiedNames`: the helpers a rule of a package writes and reads names with, as one of the core does
 - `Stage`, `Severity`, `Risk`, `DecisionKind`: the enums
 - `exceptions.php`, `Testing\exceptions.php`: the exceptions
 - `FileResult`: the result of a file
