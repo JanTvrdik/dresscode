@@ -95,6 +95,7 @@ final class CorePlugin implements Plugin
 				Rules\Literals\HeredocIndentationRule::class,
 				Rules\Types\TypeDeclarationSpacingRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,
+				Rules\Variables\NoSeparateIssetsRule::class,
 				Rules\Whitespace\AttributePositionRule::class,
 				Rules\Whitespace\AttributeSpacingRule::class,
 				Rules\Whitespace\BlockBlankLinesRule::class,
