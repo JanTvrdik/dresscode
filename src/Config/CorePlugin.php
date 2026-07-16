@@ -96,6 +96,7 @@ final class CorePlugin implements Plugin
 				Rules\Types\TypeDeclarationSpacingRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,
 				Rules\Variables\NoSeparateIssetsRule::class,
+				Rules\Variables\NoSeparateUnsetsRule::class,
 				Rules\Whitespace\AttributePositionRule::class,
 				Rules\Whitespace\AttributeSpacingRule::class,
 				Rules\Whitespace\BlockBlankLinesRule::class,
