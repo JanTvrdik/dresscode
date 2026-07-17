@@ -93,6 +93,7 @@ final class CorePlugin implements Plugin
 				Rules\Functions\NamedArgumentSpacingRule::class,
 				Rules\Literals\BuiltinCasingRule::class,
 				Rules\Literals\HeredocIndentationRule::class,
+				Rules\Literals\NoTrailingWhitespaceInStringRule::class,
 				Rules\Literals\StringQuotesRule::class,
 				Rules\Types\TypeDeclarationSpacingRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,
