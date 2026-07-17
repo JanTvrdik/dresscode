@@ -1,0 +1,4 @@
+<?php
+// {"casing.hexDigit": "lowercase"}
+$a = 0xFF;
+$b = 0Xab;

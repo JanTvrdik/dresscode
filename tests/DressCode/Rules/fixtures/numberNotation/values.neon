@@ -1,0 +1,6 @@
+casing:
+	hexDigit: uppercase
+literals:
+	digitSeparator:
+		integer: required
+		fraction: required
