@@ -94,6 +94,7 @@ final class CorePlugin implements Plugin
 				Rules\Literals\BuiltinCasingRule::class,
 				Rules\Literals\HeredocIndentationRule::class,
 				Rules\Literals\NoDollarBraceInterpolationsRule::class,
+				Rules\Literals\NoImplicitBackslashesRule::class,
 				Rules\Literals\NoTrailingWhitespaceInStringRule::class,
 				Rules\Literals\StringQuotesRule::class,
 				Rules\Types\TypeDeclarationSpacingRule::class,
