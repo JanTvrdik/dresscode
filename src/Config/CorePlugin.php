@@ -66,6 +66,7 @@ final class CorePlugin implements Plugin
 				Rules\Expressions\MultilineMatchArmRule::class,
 				Rules\Expressions\MultilineMatchRule::class,
 				Rules\Expressions\MultilineTernaryRule::class,
+				Rules\Expressions\NoBacktickOperatorsRule::class,
 				Rules\Expressions\NoDoubleNegationsRule::class,
 				Rules\Expressions\NoLooseComparisonsRule::class,
 				Rules\Expressions\NotEqualsNotationRule::class,
