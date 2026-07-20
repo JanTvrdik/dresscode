@@ -30,6 +30,7 @@ final class CorePlugin implements Plugin
 				Rules\Arrays\TrailingCommaRule::class,
 				Rules\Classes\ClassHeadSpacingRule::class,
 				Rules\Classes\MultilineImplementsRule::class,
+				Rules\Classes\VisibilityRequiredRule::class,
 				Rules\Comments\CommentSpacingRule::class,
 				Rules\Comments\NoEmptyCommentsRule::class,
 				Rules\Comments\NoHashCommentsRule::class,

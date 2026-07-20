@@ -1,0 +1,6 @@
+classes:
+	visibility:
+		constant: required
+		property: required
+		method: required
+		interfaceMethod: required
