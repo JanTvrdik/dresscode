@@ -31,6 +31,7 @@ final class CorePlugin implements Plugin
 				Rules\Classes\ClassHeadSpacingRule::class,
 				Rules\Classes\ModifierOrderRule::class,
 				Rules\Classes\MultilineImplementsRule::class,
+				Rules\Classes\PublicWithSetVisibilityRule::class,
 				Rules\Classes\VisibilityRequiredRule::class,
 				Rules\Comments\CommentSpacingRule::class,
 				Rules\Comments\NoEmptyCommentsRule::class,
