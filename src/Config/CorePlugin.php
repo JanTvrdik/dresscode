@@ -100,6 +100,7 @@ final class CorePlugin implements Plugin
 				Rules\Literals\NumberNotationRule::class,
 				Rules\Literals\OctalNotationRule::class,
 				Rules\Literals\StringQuotesRule::class,
+				Rules\Literals\UselessStringConcatenationRule::class,
 				Rules\Types\TypeDeclarationSpacingRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,
 				Rules\Variables\NoRepeatedAssignmentsRule::class,
