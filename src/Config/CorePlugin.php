@@ -33,6 +33,7 @@ final class CorePlugin implements Plugin
 				Rules\Classes\MultilineImplementsRule::class,
 				Rules\Classes\PrivateForProtectedRule::class,
 				Rules\Classes\PublicWithSetVisibilityRule::class,
+				Rules\Classes\UselessModifierRule::class,
 				Rules\Classes\VisibilityRequiredRule::class,
 				Rules\Comments\CommentSpacingRule::class,
 				Rules\Comments\NoEmptyCommentsRule::class,
