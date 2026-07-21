@@ -1,0 +1,12 @@
+<?php
+// {"staticInFinalClass": "required"}
+// risky
+namespace X;
+
+final class WithClosure
+{
+	public function f()
+	{
+		return [fn() => static::class, function () { return new static; }, static::X];
+	}
+}
