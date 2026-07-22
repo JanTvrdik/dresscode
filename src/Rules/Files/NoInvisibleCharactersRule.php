@@ -140,7 +140,7 @@ final class NoInvisibleCharactersRule extends NodeRule
 		static $pattern = '~(\\\\*)('
 			. implode('|', array_map(fn(string $character) => preg_quote($character, '~'), array_keys(self::Characters)))
 			. ')~';
-		$format = self::findEscapeFormat(Printer::print($context->file));
+		$format = $context->passStorage[self::class] ??= self::findEscapeFormat(Printer::print($context->file));
 		return preg_replace_callback(
 			$pattern,
 			fn(array $match) => $match[1] . (strlen($match[1]) % 2 === 1 ? '\\' : '') . sprintf($format, mb_ord($match[2], 'UTF-8')),

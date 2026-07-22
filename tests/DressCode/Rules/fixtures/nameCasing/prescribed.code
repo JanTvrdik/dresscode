@@ -1,0 +1,25 @@
+<?php
+// {"naming": {"method": "camelCase"}}
+
+// the names PHP calls a stream wrapper by
+class Wrapper
+{
+	public $context;
+
+
+	public function stream_open(string $path, string $mode, int $options, ?string &$opened): bool
+	{
+		return true;
+	}
+
+
+	public function stream_read(int $count): string
+	{
+		return '';
+	}
+
+
+	public function own_helper(): void
+	{
+	}
+}

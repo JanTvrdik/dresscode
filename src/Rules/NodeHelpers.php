@@ -7,11 +7,13 @@
 
 namespace DressCode\Rules;
 
-use DressCode\Analyses\IndentationSnapshot;
+use DressCode\Analyses\{IndentationSnapshot, PhpDoc};
 use DressCode\{Claim, Gap, GlobalCalls, Line, RuleContext, Style};
+use PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagNode;
+use PhpSyntax\Analyses\NameResolver;
 use PhpSyntax\{Builder, Indentation, Node, Token, Trivia};
 use PhpSyntax\Nodes\{
-	AnonymousClassNode, ArgumentListNode, ArgumentNode, AttributeGroupNode, AttributeNode,
+	AnonymousClassNode, ArgumentListNode, ArgumentNode, AttributeAwareNode, AttributeGroupNode, AttributeNode,
 	ClassLikeNode, ClosureUseListNode, DestructuringNode, ElseifNode, Expression, ExpressionNode, FileNode,
 	MatchArmNode, PlainNodeList, Scalar,
 	SeparatedNodeList, Statement, StatementNode, VariadicPlaceholderNode,
@@ -216,6 +218,26 @@ final class NodeHelpers
 				$block->statements->getItems(),
 				fn(StatementNode $stmt) => $stmt instanceof Statement\FunctionNode || $stmt instanceof ClassLikeNode,
 			);
+	}
+
+
+	/**
+	 * Whether the declaration says of itself that it is deprecated, by the `@deprecated` annotation or by the
+	 * `#[\Deprecated]` attribute of PHP 8.4.
+	 */
+	public static function isDeprecated(Node $declaration, RuleContext $context): bool
+	{
+		$docComment = $declaration->getDocComment();
+		if ($docComment !== null) {
+			foreach ($context->getAnalysis(PhpDoc::class)->parse($docComment)->children as $child) {
+				if ($child instanceof PhpDocTagNode && strcasecmp($child->name, '@deprecated') === 0) {
+					return true;
+				}
+			}
+		}
+
+		return $declaration instanceof AttributeAwareNode
+			&& $context->getAnalysis(NameResolver::class)->hasAttribute($declaration, \Deprecated::class);
 	}
 
 
