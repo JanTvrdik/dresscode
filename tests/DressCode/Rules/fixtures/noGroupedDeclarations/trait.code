@@ -1,0 +1,16 @@
+<?php
+class A
+{
+	use T1, T2, T3; // c
+	use T4, T5 {
+		T4::f insteadof T5;
+	}
+	use T6, T7, T8 {
+		// the first wins
+		T6::g insteadof T7, T8;
+		T7::g as g7;
+	} // d
+	use T9 {
+		T9::h as h9;
+	}
+}

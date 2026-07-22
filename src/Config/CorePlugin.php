@@ -32,6 +32,7 @@ final class CorePlugin implements Plugin
 				Rules\Classes\MemberOrderRule::class,
 				Rules\Classes\ModifierOrderRule::class,
 				Rules\Classes\MultilineImplementsRule::class,
+				Rules\Classes\NoGroupedDeclarationsRule::class,
 				Rules\Classes\PrivateForProtectedRule::class,
 				Rules\Classes\PublicWithSetVisibilityRule::class,
 				Rules\Classes\SelfForCurrentClassRule::class,
