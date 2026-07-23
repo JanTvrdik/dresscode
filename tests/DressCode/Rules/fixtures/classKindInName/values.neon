@@ -1,0 +1,5 @@
+naming:
+	abstractClassAffix: forbidden
+	interfaceAffix: forbidden
+	traitAffix: forbidden
+	errorAffix: forbidden
