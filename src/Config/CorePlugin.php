@@ -69,6 +69,7 @@ final class CorePlugin implements Plugin
 				Rules\Expressions\BinaryOperatorSpacingRule::class,
 				Rules\Expressions\CastCanonicalTypeRule::class,
 				Rules\Expressions\CombinedAssignmentForRepeatedTargetRule::class,
+				Rules\Expressions\EmptyArgumentParenthesesRule::class,
 				Rules\Expressions\ExplicitPrecedenceRequiredRule::class,
 				Rules\Expressions\IncrementRule::class,
 				Rules\Expressions\InstantiationWrappingRule::class,
