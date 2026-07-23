@@ -1,0 +1,4 @@
+functions:
+	arrowFunction:
+		oneExpression: required
+	arrowFunctionNested: yes

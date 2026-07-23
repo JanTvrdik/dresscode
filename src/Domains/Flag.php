@@ -12,7 +12,8 @@ use function is_bool;
 
 
 /**
- * `yes` or `no`, only where the decision is a boolean by its nature, never as turning a rule on.
+ * `yes` or `no`, only where the decision is a boolean by its nature (`functions.arrowFunctionNested`), never as
+ * turning a rule on.
  */
 final readonly class Flag extends Domain
 {
