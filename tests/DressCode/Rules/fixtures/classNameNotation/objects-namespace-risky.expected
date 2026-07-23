@@ -1,0 +1,9 @@
+<?php
+// {"hygiene.classNameNotation.currentClass": "keep", "hygiene.classNameNotation.object": "required"}
+// risky
+namespace App;
+
+function f($obj)
+{
+	return $obj::class;
+}

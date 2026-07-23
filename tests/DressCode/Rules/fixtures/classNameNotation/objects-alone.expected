@@ -1,0 +1,9 @@
+<?php
+// {"hygiene.classNameNotation.currentClass": "keep", "hygiene.classNameNotation.object": "required"}
+class A extends B
+{
+	function f($obj)
+	{
+		return [$obj::class, get_class(), get_class($this), get_parent_class(), __CLASS__, $this::class];
+	}
+}

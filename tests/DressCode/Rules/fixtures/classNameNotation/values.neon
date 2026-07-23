@@ -1,0 +1,4 @@
+hygiene:
+	classNameNotation:
+		currentClass: required
+		object: keep

@@ -30,6 +30,7 @@ final class CorePlugin implements Plugin
 				Rules\Arrays\TrailingCommaRule::class,
 				Rules\Classes\ClassHeadSpacingRule::class,
 				Rules\Classes\ClassKindInNameRule::class,
+				Rules\Classes\ClassNameNotationRule::class,
 				Rules\Classes\MemberOrderRule::class,
 				Rules\Classes\ModifierOrderRule::class,
 				Rules\Classes\MultilineImplementsRule::class,
