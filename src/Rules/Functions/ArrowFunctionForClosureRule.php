@@ -62,6 +62,7 @@ final class ArrowFunctionForClosureRule extends NodeRule
 				self::Plain,
 				Domain::state('required'),
 				'An arrow function written for a closure whose body is a single `return`, where that is equivalent: no variable captured by reference, none reached by a name it does not spell out, no comment lost',
+				notes: ['Not about the `static` of the arrow function, which `functions.staticClosure` decides'],
 			),
 			new Decision(
 				self::EmptyBody,

@@ -107,6 +107,7 @@ final class CorePlugin implements Plugin
 				Rules\Functions\MultilineClosureUseRule::class,
 				Rules\Functions\MultilineSignatureRule::class,
 				Rules\Functions\NamedArgumentSpacingRule::class,
+				Rules\Functions\StaticForClosureWithoutThisRule::class,
 				Rules\Literals\BuiltinCasingRule::class,
 				Rules\Literals\HeredocIndentationRule::class,
 				Rules\Literals\NoDollarBraceInterpolationsRule::class,
