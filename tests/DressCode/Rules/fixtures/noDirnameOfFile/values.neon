@@ -1,0 +1,3 @@
+hygiene:
+	dirnameOfFile: forbidden
+	nestedDirname: forbidden
