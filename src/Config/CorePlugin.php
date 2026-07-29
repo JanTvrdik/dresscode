@@ -127,6 +127,7 @@ final class CorePlugin implements Plugin
 				Rules\Literals\OctalNotationRule::class,
 				Rules\Literals\StringQuotesRule::class,
 				Rules\Literals\UselessStringConcatenationRule::class,
+				Rules\Namespaces\OptimizedCallNotationRule::class,
 				Rules\Types\TypeDeclarationSpacingRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,
 				Rules\Variables\NoRepeatedAssignmentsRule::class,
@@ -212,6 +213,17 @@ final class CorePlugin implements Plugin
 					'multiline.operatorPosition.comparison',
 					Domain::operatorPosition(),
 					'Where a comparison stands at a line break: one ending its line moves only where the line joined after it would be too wide, one opening its line joins the line before it, what follows staying on its line unless it would be too wide',
+				),
+
+				// how far a function PHP optimizes is written out, which decides the arguments of its call too
+				Rules\Namespaces\QualificationPolicy::createOptimizedDecision(
+					'qualification.function.optimized',
+					'A global function whose call PHP compiles to one opcode once it knows the function is global, `count()`, `strlen()`, `is_int()` and the others; a call of it written imported or with the backslash has its arguments passed positionally and an unpacked one reported',
+					'`strlen()`',
+					'`use function strlen;`',
+					'`\strlen()`',
+					'optimizes it',
+					'A function is optimized in a namespace where one of its calls there is, an unpacked or named argument aside, `in_array()` only with a constant array, and every reference to it in that namespace is then written so.',
 				),
 
 				// the lines below a doc comment, of a member as of a declaration among statements
