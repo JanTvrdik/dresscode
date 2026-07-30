@@ -1,0 +1,5 @@
+<?php
+// {"qualification.leadingBackslash": "keep"}
+use Foo\Bar;
+use Baz;
+$x = \Foo\Bar::class;
