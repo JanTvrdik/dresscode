@@ -129,6 +129,7 @@ final class CorePlugin implements Plugin
 				Rules\Literals\UselessStringConcatenationRule::class,
 				Rules\Namespaces\OptimizedCallNotationRule::class,
 				Rules\Namespaces\UselessAliasRule::class,
+				Rules\Namespaces\UselessCurrentNamespaceImportRule::class,
 				Rules\Namespaces\UselessLeadingBackslashRule::class,
 				Rules\Types\TypeDeclarationSpacingRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,

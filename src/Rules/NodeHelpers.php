@@ -16,7 +16,7 @@ use PhpSyntax\Nodes\{
 	AnonymousClassNode, ArgumentListNode, ArgumentNode, AttributeAwareNode, AttributeGroupNode, AttributeNode,
 	ClassLikeNode, ClosureUseListNode, DestructuringNode, ElseifNode, Expression, ExpressionNode, FileNode,
 	MatchArmNode, PlainNodeList, Scalar,
-	SeparatedNodeList, Statement, StatementNode, VariadicPlaceholderNode,
+	SeparatedNodeList, Statement, StatementNode, UseItemNode, VariadicPlaceholderNode,
 };
 use PhpSyntax\Nodes\Member\MethodNode;
 use function count, in_array, strlen;
@@ -1006,12 +1006,14 @@ final class NodeHelpers
 
 
 	/**
-	 * Removes a statement, the blank lines it stood between becoming the wider of the two gaps, so that the gap
-	 * setting apart the group it ended or began stays; at the edge of its list the gap toward the edge stays.
+	 * Removes a statement, or an import with the statement it is the only item of, the blank lines it stood between
+	 * becoming the wider of the two gaps, so that the gap setting apart the group it ended or began stays; at the edge
+	 * of its list the gap toward the edge stays.
 	 */
 	public static function removeMergingGaps(Node $node, string $lineEnding): void
 	{
-		$removed = $node;
+		$statement = $node instanceof UseItemNode ? $node->getStatement() : null;
+		$removed = $statement !== null && count($statement->items) === 1 ? $statement : $node;
 		$list = $removed->parent;
 		$first = $removed->getFirstToken();
 		$next = $removed->getLastToken()?->getNext();
