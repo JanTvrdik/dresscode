@@ -127,6 +127,7 @@ final class CorePlugin implements Plugin
 				Rules\Literals\OctalNotationRule::class,
 				Rules\Literals\StringQuotesRule::class,
 				Rules\Literals\UselessStringConcatenationRule::class,
+				Rules\Namespaces\DeclaredNameCasingRule::class,
 				Rules\Namespaces\ImportNotationRule::class,
 				Rules\Namespaces\ImportOrderRule::class,
 				Rules\Namespaces\NoUnusedImportsRule::class,
