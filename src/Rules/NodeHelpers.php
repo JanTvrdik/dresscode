@@ -8,7 +8,7 @@
 namespace DressCode\Rules;
 
 use DressCode\Analyses\{IndentationSnapshot, PhpDoc};
-use DressCode\{Claim, Gap, GlobalCalls, Line, RuleContext, Style};
+use DressCode\{Claim, CodeWriter, Gap, GlobalCalls, Line, RuleContext, Style};
 use PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagNode;
 use PhpSyntax\Analyses\NameResolver;
 use PhpSyntax\{Builder, Indentation, Node, Token, Trivia};
@@ -1002,6 +1002,41 @@ final class NodeHelpers
 				$inner instanceof Expression\FunctionCallNode
 				&& GlobalCalls::findFunction($inner, ['compact' => true, 'extract' => true, 'get_defined_vars' => true], $context) !== null
 			));
+	}
+
+
+	/**
+	 * Writes the items of a group use as imports of their own, `use A\{B, C as D};` becoming `use A\B;` and
+	 * `use A\C as D;`, each on a line of its own with the indentation of the group.
+	 * @param PlainNodeList<StatementNode> $list
+	 */
+	public static function expandGroup(Statement\UseNode $node, PlainNodeList $list, string $lineEnding): void
+	{
+		$builder = new Builder;
+		$statements = [];
+		foreach ($node->items->getItems() as $item) {
+			$type = CodeWriter::spellImportKind($item->symbolKind);
+			$alias = $item->alias === null ? '' : ' as ' . $item->alias->text;
+			$statements[] = $builder->statement("use $type{$item->fullName}$alias;");
+		}
+
+		$indentation = $node->getFirstToken()->getIndentation();
+		$last = array_pop($statements);
+		if ($last === null) {
+			return;
+		}
+
+		$index = $list->indexOf($node);
+		$node->replaceWith($last);
+		foreach ($statements as $i => $statement) {
+			$leading = $i === 0 ? $last->getFirstToken()->leadingTrivia : [new Trivia(Trivia::Whitespace, $indentation)];
+			$statement->setEdgeTrivia($leading, [Trivia::fromText($lineEnding)]);
+			$list->insert($index + $i, $statement);
+		}
+
+		if (count($statements)) {
+			$last->setEdgeTrivia(leading: [new Trivia(Trivia::Whitespace, $indentation)]);
+		}
 	}
 
 
