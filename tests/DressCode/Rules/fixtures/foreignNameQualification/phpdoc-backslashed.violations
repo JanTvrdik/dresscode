@@ -1,0 +1,2 @@
+7: The import of `Order` is unused.
+10: The imported name `Order` in the doc comment must be written fully qualified as `\Acme\Shop\Order`.

@@ -1,0 +1,33 @@
+<?php
+// {"class.phpdoc":"imported"}
+
+namespace App;
+
+use Acme\Mail\Transport;
+use Acme\Shop\Collection;
+use Acme\Shop\Order;
+use App\Exceptions\Failure;
+use Exception;
+
+class Service
+{
+	/**
+	 * Runs the order.
+	 *
+	 * @param  Order  $order
+	 * @param  Transport|null  $transport
+	 * @param  \Other\Order  $foreign
+	 * @param  (\Closure(int): (Order))|null  $factory
+	 * @return Collection<int, Order>
+	 *
+	 * @throws Exception
+	 * @throws \RuntimeException
+	 * @throws Failure
+	 * @see Helper::run()
+	 */
+	public function run($order, $transport, $foreign)
+	{
+		/** @var Transport $other */
+		$other = $transport;
+	}
+}

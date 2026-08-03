@@ -1,0 +1,9 @@
+14: The fully qualified name `\Acme\Shop\Order` in the doc comment must be written `Order`.
+15: The fully qualified name `\Acme\Mail\Transport` in the doc comment must be imported.
+17: The fully qualified name `\Acme\Shop\Order` in the doc comment must be written `Order`.
+18: The fully qualified name `\Acme\Shop\Collection` in the doc comment must be imported.
+18: The fully qualified name `\Acme\Shop\Order` in the doc comment must be written `Order`.
+20: The fully qualified name `\Exception` in the doc comment must be written `Exception`.
+22: The fully qualified name `\App\Exceptions\Failure` in the doc comment must be imported.
+23: The fully qualified name `\App\Helper` in the doc comment must be written `Helper`.
+27: The fully qualified name `\Acme\Mail\Transport` in the doc comment must be written `Transport`.

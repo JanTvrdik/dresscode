@@ -10,11 +10,12 @@ namespace DressCode\Rules\Namespaces;
 use DressCode\Analyses\PhpDoc;
 use DressCode\RuleContext;
 use DressCode\Rules\NodeHelpers;
+use PHPStan\PhpDocParser\Ast\{Attribute, Node as PhpDocAstNode};
 use PHPStan\PhpDocParser\Ast\ConstExpr\ConstFetchNode;
-use PHPStan\PhpDocParser\Ast\Node as PhpDocAstNode;
-use PHPStan\PhpDocParser\Ast\PhpDoc\Doctrine\DoctrineAnnotation;
-use PHPStan\PhpDocParser\Ast\PhpDoc\{GenericTagValueNode, PhpDocTagNode, PhpDocTextNode};
-use PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode;
+use PHPStan\PhpDocParser\Ast\PhpDoc\Doctrine\{DoctrineAnnotation, DoctrineArgument, DoctrineArrayItem};
+use PHPStan\PhpDocParser\Ast\PhpDoc\{GenericTagValueNode, PhpDocNode, PhpDocTagNode, PhpDocTextNode};
+use PHPStan\PhpDocParser\Ast\Type\{ArrayShapeItemNode, IdentifierTypeNode, ObjectShapeItemNode, UnionTypeNode};
+use PHPStan\PhpDocParser\Lexer\Lexer;
 use PhpSyntax\Analyses\NameResolver;
 use PhpSyntax\{NameForm, SymbolKind, Trivia};
 use PhpSyntax\Nodes\{FileNode, NameNode, UseItemNode};
@@ -216,6 +217,77 @@ final class NameReferences
 
 		preg_match_all("~\\{@\\w+\\s+($name)~", $text, $matches);
 		return [...$result, ...$matches[1]];
+	}
+
+
+	/**
+	 * The indexes of the tokens of a doc comment that name a class: in a type, in a class constant, as the target of
+	 * a tag the parser knows no type for, `@see Foo::bar()`, and of every inline tag, `{@link Foo}`; each with the
+	 * indexes of the other names of the union type it stands in.
+	 * @param  list<array{string, int, int}>  $tokens
+	 * @return array<int, list<int>>
+	 */
+	public static function findDocNames(PhpDocNode $tree, array $tokens): array
+	{
+		$type = fn(int $index) => $tokens[$index][Lexer::TYPE_OFFSET] ?? null;
+		// the target of a tag stands after it on the same line
+		$target = fn(int $tag) => $type($tag + 1) === Lexer::TOKEN_HORIZONTAL_WS ? $tag + 2 : -1;
+		// a type in parentheses starts at the opening one
+		$start = function (PhpDocAstNode $node) use ($type): int {
+			$index = $node->getAttribute(Attribute::START_INDEX);
+			while (in_array($type($index), [Lexer::TOKEN_OPEN_PARENTHESES, Lexer::TOKEN_HORIZONTAL_WS], true)) {
+				$index++;
+			}
+
+			return $index;
+		};
+		$indexes = $unions = [];
+		$walk = function (PhpDocAstNode $node) use (&$walk, &$indexes, &$unions, $target, $start): void {
+			if ($node instanceof IdentifierTypeNode || ($node instanceof ConstFetchNode && $node->className !== '')) {
+				$indexes[] = $start($node);
+			} elseif ($node instanceof PhpDocTagNode && $node->value instanceof GenericTagValueNode) {
+				$indexes[] = $target($node->getAttribute(Attribute::START_INDEX));
+			} elseif ($node instanceof UnionTypeNode) {
+				$names = array_map(
+					$start,
+					array_filter($node->types, fn($type) => $type instanceof IdentifierTypeNode),
+				);
+				foreach ($names as $name) {
+					$unions[$name] = array_values(array_diff($names, [$name]));
+				}
+			}
+
+			foreach (get_object_vars($node) as $value) {
+				foreach (is_array($value) ? $value : [$value] as $child) {
+					// the key of a shape and of a Doctrine argument or array item is a name, not a type
+					if (
+						$child instanceof PhpDocAstNode
+						&& !(($node instanceof ArrayShapeItemNode || $node instanceof ObjectShapeItemNode) && $child === $node->keyName)
+						&& !(($node instanceof DoctrineArgument || $node instanceof DoctrineArrayItem)
+							&& $child === $node->key
+							&& $child instanceof IdentifierTypeNode)
+					) {
+						$walk($child);
+					}
+				}
+			}
+		};
+		$walk($tree);
+
+		foreach ($tokens as $index => $token) {
+			if ($token[Lexer::TYPE_OFFSET] === Lexer::TOKEN_OPEN_CURLY_BRACKET && $type($index + 1) === Lexer::TOKEN_PHPDOC_TAG) {
+				$indexes[] = $target($index + 1);
+			}
+		}
+
+		$isName = fn(int $index) => $type($index) === Lexer::TOKEN_IDENTIFIER
+			&& preg_match('~^' . self::ClassPattern . '$~D', $tokens[$index][Lexer::VALUE_OFFSET]);
+		$result = [];
+		foreach (array_filter(array_unique($indexes), $isName) as $index) {
+			$result[$index] = array_values(array_filter($unions[$index] ?? [], $isName));
+		}
+
+		return $result;
 	}
 
 

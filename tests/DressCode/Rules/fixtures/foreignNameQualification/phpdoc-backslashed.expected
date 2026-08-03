@@ -1,0 +1,14 @@
+<?php
+// {"class.phpdoc":"backslashed"}
+// a bare name no import reaches stays, a doc comment cannot tell it from a type of its own
+
+namespace App;
+
+/**
+ * @param  \Acme\Shop\Order  $order
+ * @param  list<int>  $ids
+ * @param  Helper  $helper
+ */
+function process($order, $ids, $helper)
+{
+}
