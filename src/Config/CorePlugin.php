@@ -128,6 +128,7 @@ final class CorePlugin implements Plugin
 				Rules\Literals\StringQuotesRule::class,
 				Rules\Literals\UselessStringConcatenationRule::class,
 				Rules\Namespaces\DeclaredNameCasingRule::class,
+				Rules\Namespaces\GlobalNameQualificationRule::class,
 				Rules\Namespaces\ImportNotationRule::class,
 				Rules\Namespaces\ImportOrderRule::class,
 				Rules\Namespaces\NoUnusedImportsRule::class,
@@ -231,7 +232,7 @@ final class CorePlugin implements Plugin
 					'`use function strlen;`',
 					'`\strlen()`',
 					'optimizes it',
-					'A function is optimized in a namespace where one of its calls there is, an unpacked or named argument aside, `in_array()` only with a constant array, and every reference to it in that namespace is then written so.',
+					'A function is optimized in a namespace where one of its calls there is, an unpacked or named argument aside, `in_array()` only with a constant array, and every reference to it in that namespace is then written so; one none of whose calls is optimized is decided by `function.global`.',
 				),
 
 				// the lines below a doc comment, of a member as of a declaration among statements

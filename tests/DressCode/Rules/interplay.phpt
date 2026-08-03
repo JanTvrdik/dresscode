@@ -6,9 +6,10 @@
  * only makes work for the other belongs here too: the violation of the second must follow the first.
  */
 
-use DressCode\{Analyses, Config, FileResult, Rules, Style, Violation};
+use DressCode\{Analyses, Config, FileResult, ImportStyle, Rules, Style, Violation};
 use DressCode\Config\{PluginRegistry, RuleBuilder};
 use DressCode\Engine\{PhpFileProcessor, ReportPolicy};
+use PhpSyntax\Analyses\NamespacedSymbols;
 use Tester\Assert;
 
 require __DIR__ . '/../../bootstrap.php';
@@ -32,7 +33,7 @@ function interplay(
 
 	$resolved = RuleBuilder::resolveValues(array_keys($rules), $values);
 	$instances = RuleBuilder::createRules(array_keys($rules), $resolved);
-	$style = new Style;
+	$style = new Style("\t", "\n", imports: ImportStyle::fromValues($resolved));
 	Analyses\IndentationPlan::register($analyses, $resolved, $style);
 
 	$processor = new PhpFileProcessor(
@@ -298,4 +299,47 @@ test('importNotation combines what importOrder then sorts', function () {
 			'imports.order.caseSensitive' => false,
 		],
 	], "<?php\nnamespace A;\nuse function b;\nuse function a;\nuse D, C;\n", "<?php\nnamespace A;\nuse C;\nuse D;\nuse function a, b;\n");
+});
+
+
+test('an import the qualification adds takes the shape importNotation gives it, so that nothing else is reported', function () {
+	$rules = fn(string $shape) => [
+		Rules\Namespaces\GlobalNameQualificationRule::class => ['qualification.function.optimized' => ['imported', 'backslashed']],
+		Rules\Namespaces\ImportNotationRule::class => [
+			'imports.grouping.class' => 'separated',
+			'imports.grouping.function' => $shape,
+			'imports.grouping.constant' => 'separated',
+		],
+	];
+	$certain = new Analyses\Registry(new NamespacedSymbols(complete: true));
+	$reported = fn(FileResult $result) => array_values(array_unique(array_map(
+		fn(Violation $violation) => $violation->decision,
+		$result->violations,
+	)));
+
+	// one import of the kind fits either shape, so the shape comes from the rule
+	$code = "<?php\nnamespace A;\n\nuse function count;\n\ncount(\$a);\nstrlen(\$b);\n";
+	$result = interplay(
+		$rules('combined'),
+		$code,
+		"<?php\nnamespace A;\n\nuse function count, strlen;\n\ncount(\$a);\nstrlen(\$b);\n",
+		$certain,
+	);
+	Assert::same(['qualification.function.optimized'], $reported($result));
+	$result = interplay(
+		$rules('separated'),
+		$code,
+		"<?php\nnamespace A;\n\nuse function count;\nuse function strlen;\n\ncount(\$a);\nstrlen(\$b);\n",
+		$certain,
+	);
+	Assert::same(['qualification.function.optimized'], $reported($result));
+
+	// and two imports the rule adds itself go into one statement
+	$result = interplay(
+		$rules('combined'),
+		"<?php\nnamespace A;\n\nstrlen(\$a);\ncount(\$b);\n",
+		"<?php\nnamespace A;\n\nuse function count, strlen;\n\nstrlen(\$a);\ncount(\$b);\n",
+		$certain,
+	);
+	Assert::same(['qualification.function.optimized'], $reported($result));
 });

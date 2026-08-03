@@ -1,0 +1,9 @@
+<?php
+// {"function.global":"bare","function.optimized":"bare","constant.global":"bare","constant.optimized":"bare"}
+// namespacedFunctions App\count
+// nameResolution certain
+namespace App;
+
+\count($a);
+strlen($b);
+echo PHP_EOL . M_PI . E_ALL;

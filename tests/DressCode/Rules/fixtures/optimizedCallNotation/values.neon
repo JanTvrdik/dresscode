@@ -1,3 +1,4 @@
 qualification:
 	function:
+		global: keep
 		optimized: imported

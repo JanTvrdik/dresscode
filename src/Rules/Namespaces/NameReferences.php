@@ -8,15 +8,18 @@
 namespace DressCode\Rules\Namespaces;
 
 use DressCode\Analyses\PhpDoc;
+use DressCode\RuleContext;
+use DressCode\Rules\NodeHelpers;
 use PHPStan\PhpDocParser\Ast\ConstExpr\ConstFetchNode;
 use PHPStan\PhpDocParser\Ast\Node as PhpDocAstNode;
 use PHPStan\PhpDocParser\Ast\PhpDoc\Doctrine\DoctrineAnnotation;
 use PHPStan\PhpDocParser\Ast\PhpDoc\{GenericTagValueNode, PhpDocTagNode, PhpDocTextNode};
 use PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode;
+use PhpSyntax\Analyses\NameResolver;
 use PhpSyntax\{NameForm, SymbolKind, Trivia};
-use PhpSyntax\Nodes\{FileNode, NameNode};
-use PhpSyntax\Nodes\Statement\NamespaceNode;
-use function count, is_array, is_string;
+use PhpSyntax\Nodes\{FileNode, NameNode, UseItemNode};
+use PhpSyntax\Nodes\Statement\{NamespaceNode, UseNode};
+use function count, in_array, is_array, is_string, strlen;
 
 
 /**
@@ -29,6 +32,111 @@ final class NameReferences
 	/** a qualified name without its leading backslash */
 	public const NamePattern = '[A-Za-z_\x80-\xff][\w\x80-\xff]*(?:\\\\[A-Za-z_\x80-\xff][\w\x80-\xff]*)*';
 	private const ClassPattern = '\\\\?' . self::NamePattern;
+
+
+	/**
+	 * The references of global names in the namespace and how each is written: imported, fully qualified, or bare, a
+	 * function or a constant reached by the fallback at run time; by kind and name.
+	 * @return array<string, array<string, list<array{NameNode, string, string}>>>  name of the kind => key of the
+	 *   global name => name, form and global name
+	 */
+	public static function collectGlobalUses(NamespaceNode $scope, NameResolver $resolver): array
+	{
+		$uses = [];
+		foreach ($scope->find(NameNode::class) as $name) {
+			if (!$name->isReference()) {
+				continue;
+			}
+
+			$kind = $name->symbolKind;
+			$global = $resolver->resolve($name);
+			if (
+				str_contains($global, '\\')
+				|| ($kind === SymbolKind::Constant && in_array(strtolower($global), ['true', 'false', 'null'], true))
+			) {
+				continue;
+			}
+
+			// an unqualified class reaches the global namespace only through an import, a function or a constant also bare
+			$form = match (true) {
+				$name->form === NameForm::FullyQualified => QualificationPolicy::Backslashed,
+				$name->form !== NameForm::Unqualified => null,
+				$kind === SymbolKind::ClassLike,
+				isset($resolver->getImports($kind, $name)[self::toKey($kind, $name->text)]) => QualificationPolicy::Imported,
+				default => QualificationPolicy::Bare,
+			};
+			if ($form !== null) {
+				$uses[$kind->name][self::toKey($kind, $global)][] = [$name, $form, $global];
+			}
+		}
+
+		return $uses;
+	}
+
+
+	/**
+	 * The imports of global names in the namespace block, by kind and name.
+	 * @return array<string, array<string, list<array{UseNode, UseItemNode}>>>
+	 */
+	public static function collectGlobalImports(NamespaceNode $scope): array
+	{
+		$imports = [];
+		foreach ($scope->statements->getItems() as $statement) {
+			if (!$statement instanceof UseNode) {
+				continue;
+			}
+
+			foreach ($statement->items->getItems() as $item) {
+				if (!str_contains($item->fullName, '\\')) {
+					$imports[$item->symbolKind->name][self::toKey($item->symbolKind, $item->fullName)][] = [$statement, $item];
+				}
+			}
+		}
+
+		return $imports;
+	}
+
+
+	/**
+	 * What each unqualified class name of the namespace resolves to, and what the first part of each qualified name
+	 * and of each class name its doc comments write does, all of which an import of a global class of that name would
+	 * redirect.
+	 * @return array<string, array<string, true>>  lowercased short name => lowercased resolved names
+	 */
+	public static function collectClassTargets(NamespaceNode $scope, NameResolver $resolver, PhpDoc $phpDoc): array
+	{
+		$targets = self::collectDocClassTargets($scope, $resolver, $phpDoc);
+		foreach ($scope->find(NameNode::class) as $name) {
+			if (!$name->isReference()) {
+				continue;
+			} elseif ($name->symbolKind === SymbolKind::ClassLike && $name->form === NameForm::Unqualified) {
+				$targets[strtolower($name->text)][strtolower($resolver->resolveClass($name))] = true;
+			} elseif ($name->form === NameForm::Qualified) {
+				$targets[strtolower($name->parts[0])][strtolower(self::resolvePrefix($resolver, $name))] = true;
+			}
+		}
+
+		return $targets;
+	}
+
+
+	/**
+	 * What the first part of each class name the doc comments of the scope write resolves to, which an import of
+	 * that name would redirect as it would a name of the code.
+	 * @return array<string, array<string, true>>  lowercased short name => lowercased resolved names
+	 */
+	public static function collectDocClassTargets(FileNode|NamespaceNode $scope, NameResolver $resolver, PhpDoc $phpDoc): array
+	{
+		$targets = [];
+		foreach (self::collectDocClassNames($scope, $phpDoc) as $docName) {
+			$name = NameNode::tryFromText(explode('\\', $docName)[0]);
+			if ($name !== null && !$name->isKeyword()) {
+				$targets[strtolower($name->text)][strtolower($resolver->resolveClass($name, $scope))] = true;
+			}
+		}
+
+		return $targets;
+	}
 
 
 	/**
@@ -111,6 +219,25 @@ final class NameReferences
 	}
 
 
+	/** What the first part of a qualified name stands for, which the class imports decide whatever the name is of. */
+	public static function resolvePrefix(NameResolver $resolver, NameNode $name): string
+	{
+		$resolved = $resolver->resolve($name);
+		return substr($resolved, 0, strlen($resolved) - strlen($name->text) + strlen($name->parts[0]));
+	}
+
+
+	/** How a report names a symbol of the global namespace. */
+	public static function describe(SymbolKind $kind, string $global): string
+	{
+		return match ($kind) {
+			SymbolKind::Function => "Global function `$global()`",
+			SymbolKind::Constant => "Global constant `$global`",
+			SymbolKind::ClassLike => "Global class `$global`",
+		};
+	}
+
+
 	/**
 	 * The aliases the code of the scope uses: the first part of every name it writes unqualified or qualified.
 	 * @return array<string, array<string, true>>  the name of the kind => the key of the alias => used
@@ -149,6 +276,35 @@ final class NameReferences
 		}
 
 		return $used;
+	}
+
+
+	/**
+	 * Removes the imports of the aliases a qualification has written out, where neither the code nor a doc comment
+	 * uses them any more, each reported under the decision of the qualification.
+	 * @param  array<string, array<string, true>>  $aliases  the name of the kind => the key of the alias
+	 */
+	public static function removeUnusedImports(FileNode|NamespaceNode $scope, array $aliases, string $decision, RuleContext $context): void
+	{
+		$used = self::collectAliasUsages($scope);
+		$used[SymbolKind::ClassLike->name] += self::collectDocAliasUsages($scope, $context->getAnalysis(PhpDoc::class));
+		foreach ($scope->statements->getItems() as $stmt) {
+			foreach ($stmt instanceof UseNode ? $stmt->items->getItems() : [] as $item) {
+				$alias = $item->alias === null ? $item->name->shortName : $item->alias->text;
+				$key = self::toKey($item->symbolKind, $alias);
+				if (
+					isset($aliases[$item->symbolKind->name][$key])
+					&& !isset($used[$item->symbolKind->name][$key])
+					&& $context->report(
+						$item,
+						'The import of `' . ($item->symbolKind === SymbolKind::Function ? "$alias()" : $alias) . '` is unused.',
+						decision: $decision,
+					)
+				) {
+					NodeHelpers::removeMergingGaps($item, $context->style->lineEnding);
+				}
+			}
+		}
 	}
 
 
