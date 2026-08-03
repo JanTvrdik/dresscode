@@ -132,6 +132,7 @@ final class CorePlugin implements Plugin
 				Rules\Namespaces\GlobalNameQualificationRule::class,
 				Rules\Namespaces\ImportNotationRule::class,
 				Rules\Namespaces\ImportOrderRule::class,
+				Rules\Namespaces\NoUnlistedNamespacedDeclarationsRule::class,
 				Rules\Namespaces\NoUnusedImportsRule::class,
 				Rules\Namespaces\OptimizedCallNotationRule::class,
 				Rules\Namespaces\UselessAliasRule::class,
