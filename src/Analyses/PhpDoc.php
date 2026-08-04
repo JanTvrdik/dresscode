@@ -9,12 +9,12 @@ namespace DressCode\Analyses;
 
 use PHPStan\PhpDocParser\Ast\NodeTraverser;
 use PHPStan\PhpDocParser\Ast\NodeVisitor\CloningVisitor;
-use PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocNode;
+use PHPStan\PhpDocParser\Ast\PhpDoc\{PhpDocChildNode, PhpDocNode, PhpDocTagNode, PhpDocTextNode};
 use PHPStan\PhpDocParser\Lexer\Lexer;
 use PHPStan\PhpDocParser\Parser\{ConstExprParser, PhpDocParser, TokenIterator, TypeParser};
 use PHPStan\PhpDocParser\ParserConfig;
 use PHPStan\PhpDocParser\Printer\Printer;
-use PhpSyntax\Trivia;
+use PhpSyntax\{Node, Token, Trivia};
 
 
 /**
@@ -86,5 +86,65 @@ final class PhpDoc
 
 		[$originalNode, $tokens] = $this->parsed[$original];
 		return $original->withText($this->printer->printFormatPreserving($node, $originalNode, $tokens));
+	}
+
+
+	/**
+	 * Writes the edited tree in place of the doc comment it was parsed from: of the declaration it documents, or one
+	 * standing in the trivia of the token; a tree left with nothing but blank text removes the doc comment instead.
+	 */
+	public function writeBack(PhpDocNode $node, Trivia $original, Node|Token $at): void
+	{
+		$empty = self::isEmpty($node);
+		if ($at instanceof Token && $empty) {
+			$at->removeTrivia($original);
+		} elseif ($at instanceof Token) {
+			$at->replaceTrivia($original, $this->print($node, $original));
+		} elseif ($empty) {
+			$at->removeDocComment();
+		} else {
+			$at->replaceDocComment($this->print($node, $original));
+		}
+	}
+
+
+	/**
+	 * Whether nothing but blank text is left in the tree; such a tree prints as an empty doc comment, so remove
+	 * the doc comment instead of printing it.
+	 */
+	public static function isEmpty(PhpDocNode $node): bool
+	{
+		return array_all($node->children, fn(PhpDocChildNode $child) => $child instanceof PhpDocTextNode && trim($child->text) === '');
+	}
+
+
+	/**
+	 * Leaves the tree with the children kept, and takes with each annotation removed the blank line that separated it,
+	 * where that line would then stand at an edge or beside another one.
+	 * @param  list<PhpDocChildNode>  $kept
+	 */
+	public static function keepChildren(PhpDocNode $node, array $kept): void
+	{
+		$isBlank = fn(mixed $child) => $child instanceof PhpDocTextNode && trim($child->text) === '';
+		$children = [];
+		$blankAtStart = false;
+		foreach ($node->children as $i => $child) {
+			if (in_array($child, $kept, true)) {
+				if (!$blankAtStart || !$isBlank($child)) {
+					$children[] = $child;
+				}
+				$blankAtStart = false;
+
+			} elseif ($child instanceof PhpDocTagNode) {
+				$next = array_find(array_slice($node->children, $i + 1), fn($later) => in_array($later, $kept, true));
+				if ($children !== [] && $isBlank(end($children)) && ($next === null || $isBlank($next))) {
+					array_pop($children);
+				} elseif ($children === []) {
+					$blankAtStart = true;
+				}
+			}
+		}
+
+		$node->children = $children;
 	}
 }

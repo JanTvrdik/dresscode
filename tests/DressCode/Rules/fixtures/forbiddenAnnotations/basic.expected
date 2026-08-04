@@ -1,0 +1,20 @@
+<?php
+// {"forbiddenAnnotations": ["@author", "@todo", "@package"]}
+
+/**
+ * Description.
+ *
+ * @param int $a
+ */
+function a($a) {}
+
+function b() {}
+
+function c() {}
+
+class D {}
+
+/**
+ * Description.
+ */
+function e() {}
