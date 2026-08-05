@@ -1,0 +1,12 @@
+<?php
+/**
+ * @param int $a
+ * @param int $b
+ * @param $c
+ */
+function a($a) {}
+
+/**
+ * @phpstan-param int $b
+ */
+function b($a) {}

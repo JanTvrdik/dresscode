@@ -1,0 +1,6 @@
+phpdoc:
+	annotation:
+		extraParam: forbidden
+		duplicateParam: forbidden
+		duplicateReturn: forbidden
+		empty: forbidden
