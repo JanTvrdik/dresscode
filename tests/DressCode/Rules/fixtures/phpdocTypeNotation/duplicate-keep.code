@@ -1,0 +1,7 @@
+<?php
+// {"phpdoc.types.duplicate": "keep"}
+/**
+ * @param int|int $a
+ */
+function f($a) {
+}

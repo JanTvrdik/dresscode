@@ -1,0 +1,7 @@
+<?php
+// {"phpdoc.types.unionOrder": "alphabetical", "phpdoc.types.array": "keep"}
+/**
+ * @param null|int|string $a
+ * @param Foo|null|string $b
+ */
+function f($a, $b) {}

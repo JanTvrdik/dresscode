@@ -1,0 +1,12 @@
+<?php
+namespace App;
+
+// a trait is no type, so the name is the built-in one
+trait Integer
+{
+}
+
+/**
+ * @param int $i
+ */
+function f($i) {}

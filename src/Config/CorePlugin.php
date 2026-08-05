@@ -143,6 +143,7 @@ final class CorePlugin implements Plugin
 				Rules\PhpDoc\ForbiddenPhpdocLinesRule::class,
 				Rules\PhpDoc\PhpdocAlignmentRule::class,
 				Rules\PhpDoc\PhpdocBlankLinesRule::class,
+				Rules\PhpDoc\PhpdocTypeNotationRule::class,
 				Rules\Types\TypeDeclarationSpacingRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,
 				Rules\Variables\NoRepeatedAssignmentsRule::class,
@@ -247,6 +248,15 @@ final class CorePlugin implements Plugin
 					'blankLines.afterPhpdoc',
 					Domain::blankLines(),
 					'Between a doc comment and the declaration it belongs to, or the first attribute of the declaration',
+				),
+
+				// the classes a native type takes as iterable
+				new Decision(
+					'types.traversableClasses',
+					new Names,
+					'Classes treated like `array` and `iterable`, whose annotation says what their items are',
+					kind: DecisionKind::Parameter,
+					default: ['Traversable'],
 				),
 			],
 		);
