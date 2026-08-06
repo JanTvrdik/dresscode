@@ -3,4 +3,5 @@ phpdoc:
 		extraParam: forbidden
 		duplicateParam: forbidden
 		duplicateReturn: forbidden
+		duplicateVar: forbidden
 		empty: forbidden
