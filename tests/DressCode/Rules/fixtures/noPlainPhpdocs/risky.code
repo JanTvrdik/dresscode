@@ -1,0 +1,24 @@
+<?php
+// risky
+
+/* @internal */
+class Order
+{
+	/* @var int */
+	public $count;
+
+
+	public function make(): \Closure
+	{
+		/* @var Item $item */
+		$item = $this->find();
+		return fn() => $item;
+	}
+
+
+	public function __construct(
+		/* @var list<int> */
+		public array $ids,
+	) {
+	}
+}

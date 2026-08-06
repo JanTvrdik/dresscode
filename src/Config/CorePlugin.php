@@ -142,6 +142,7 @@ final class CorePlugin implements Plugin
 				Rules\PhpDoc\ForbiddenAnnotationsRule::class,
 				Rules\PhpDoc\ForbiddenPhpdocLinesRule::class,
 				Rules\PhpDoc\NoInvalidAnnotationsRule::class,
+				Rules\PhpDoc\NoPlainPhpdocsRule::class,
 				Rules\PhpDoc\PhpdocAlignmentRule::class,
 				Rules\PhpDoc\PhpdocBlankLinesRule::class,
 				Rules\PhpDoc\PhpdocTypeNotationRule::class,

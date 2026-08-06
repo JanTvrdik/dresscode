@@ -1,0 +1,80 @@
+<?php
+
+/*
+ * The header of the file.
+ * @license MIT
+ */
+
+namespace Acme\Shop;
+
+/* @internal */
+class Order
+{
+	/* @use Totals<int> */
+	use Totals;
+
+	/* @var int */
+	public $count;
+
+	/**@var string */
+	public $name;
+
+	/** Described. */
+	/* @deprecated */
+	public $old;
+
+	// @var int
+	public $line;
+
+	/*
+	 * Sums the items.
+	 * @return int
+	 */
+	public function sum(/* @var int */ int $x, /* @var int */ public int $y = 0)
+	{
+		/* @var Item $item */
+		$item = $this->find();
+		/**@var Item[] $items */
+		foreach ($this->all() as $item) {
+		}
+		/* @todo later */
+		$a = 1;
+		/* @phpstan-ignore argument.type */
+		$this->add($a);
+		$b = 2; /* @var int $c */
+		/*
+		 * @psalm-var list<int> $list
+		 */
+		$list = [];
+		/*********** @var ruler */
+		$d = 1;
+		/** @var Item $first */
+		/* @var Item $first */
+		$first = $this->find();
+		/* @var Item $a */
+		/* @var Item $b */
+		[$a, $b] = $this->pair();
+		if ($a)
+			/* @var Item $c */
+			$c = $a;
+		echo "{$item /* @var x */}";
+		return $a;
+	}
+
+
+	public function make(): \Closure
+	{
+		/* @var Item $item */
+		$item = $this->find();
+		return fn() => $item;
+	}
+
+
+	public function __construct(
+		/* @var list<int> */
+		public array $ids,
+		/* @var int */
+		int $total,
+	) {
+	}
+}

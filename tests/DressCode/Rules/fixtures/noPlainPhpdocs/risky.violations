@@ -1,0 +1,8 @@
+4: The annotation must be written in a doc comment, not a plain comment.
+	risky BehaviorChanges: reflection then reads it as the doc comment of a declaration
+7: The annotation must be written in a doc comment, not a plain comment.
+	risky BehaviorChanges: reflection then reads it as the doc comment of a declaration
+13: The annotation must be written in a doc comment, not a plain comment.
+	risky BehaviorChanges: reflection then reads it as the doc comment of a declaration
+20: The annotation must be written in a doc comment, not a plain comment.
+	risky BehaviorChanges: reflection then reads it as the doc comment of a declaration

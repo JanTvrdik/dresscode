@@ -1,0 +1,5 @@
+phpdoc:
+	annotation:
+		plainComment: forbidden
+	property:
+		plainComment: forbidden

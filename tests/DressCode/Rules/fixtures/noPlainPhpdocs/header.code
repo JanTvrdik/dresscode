@@ -1,0 +1,10 @@
+<?php
+
+/*
+ * The header of the file.
+ * @license MIT
+ */
+
+class Order
+{
+}
