@@ -147,6 +147,7 @@ final class CorePlugin implements Plugin
 				Rules\PhpDoc\PhpdocBlankLinesRule::class,
 				Rules\PhpDoc\PhpdocTypeNotationRule::class,
 				Rules\PhpDoc\PropertyPhpdocLineSpanRule::class,
+				Rules\PhpDoc\UselessConstantVarAnnotationRule::class,
 				Rules\Types\TypeDeclarationSpacingRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,
 				Rules\Variables\NoRepeatedAssignmentsRule::class,
