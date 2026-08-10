@@ -1,0 +1,88 @@
+<?php
+class A
+{
+	/**
+	 * @internal
+	 */
+	public function __construct(
+		/** @var list<T> */
+		public array $items = [],
+	) {
+	}
+}
+
+class B
+{
+	/**
+	 * Creates the thing.
+	 * @param int $count
+	 */
+	public function __construct(
+		/** @var array<string, int> by name */
+		public readonly array $map,
+		int $count,
+		/** @var list<string> */
+		public array $names,
+	) {
+	}
+}
+
+class C
+{
+	public function __construct(
+		/** @var list<int> */
+		public array $ids) {}
+
+	/** @param list<int> $ids */
+	public function set(array $ids) {}
+}
+
+class E
+{
+	public function __construct(
+		/** @var list<int> */
+		public array $ids, /** @var list<string> */ public array $names) {}
+}
+
+class D
+{
+	public function __construct(
+		/**
+		 * @var string the version the code is written for; it has no default, only
+		 * the configuration knows it
+		 */
+		private readonly string $version,
+		/** @var bool */
+		private readonly bool $strict = false,
+		/** @var ?Config what applies without a file */
+		private readonly ?Config $config = null,
+		/** @var \Closure(string): list<string> */
+		private readonly \Closure $resolve,
+	) {
+	}
+}
+
+class F
+{
+	/**
+	 * @param int $count  how many
+	 */
+	public function __construct(
+		/**
+		 * @var list<int> the ids,
+		 * one per line
+		 */
+		public array $ids, int $count, /** @var list<int> */ public array $more = []) {}
+}
+
+class G
+{
+	public function __construct(
+		/**
+		 * @var array the options:
+		 * - foo: the first,
+		 *   which goes on
+		 * - bar: the second
+		 */
+		public array $options = []) {}
+}

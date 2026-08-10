@@ -148,6 +148,7 @@ final class CorePlugin implements Plugin
 				Rules\PhpDoc\PhpdocAlignmentRule::class,
 				Rules\PhpDoc\PhpdocBlankLinesRule::class,
 				Rules\PhpDoc\PhpdocTypeNotationRule::class,
+				Rules\PhpDoc\PromotedPropertyAnnotationPositionRule::class,
 				Rules\PhpDoc\PropertyPhpdocLineSpanRule::class,
 				Rules\PhpDoc\UselessConstantVarAnnotationRule::class,
 				Rules\PhpDoc\UselessInheritdocRule::class,

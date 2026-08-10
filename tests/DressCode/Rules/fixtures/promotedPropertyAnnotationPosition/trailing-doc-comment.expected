@@ -1,0 +1,11 @@
+<?php
+// php 8.6
+class A
+{
+	public function __construct(
+		public array $ids /** @var list<int> */,
+		/** @var list<string> */
+		public array $names,
+	) {
+	}
+}
