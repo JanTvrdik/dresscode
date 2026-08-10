@@ -646,3 +646,18 @@ test('a violation the rule has no fix for is no fix waiting, with the consent or
 		Assert::same([$remaining, $deferred], [$summary['remaining'], $summary['refused']], "$call$tail");
 	}
 });
+
+
+test('a decision named in fixRisky that runs nowhere is a warning', function () use ($root) {
+	$config = "$root/risky-config.php";
+	file_put_contents(
+		$config,
+		"<?php\nreturn new DressCode\\Config(rules: ConsoleRules, decisions: ['project' => ['riskyRename' => 'forbidden'], 'mistakes' => ['strictArgument' => 'required']],"
+		. " overrides: [new DressCode\\Override(['src'], new DressCode\\Profile(decisions: ['file' => ['strictTypes' => ['declaration' => 'required']]])), new DressCode\\Override(['legacy'], new DressCode\\Profile(decisions: ['file' => ['lineEnding' => 'LF']]))], fixRisky: [ConsoleRiskyRename::class, 'file.strictTypes.declaration', 'classes.internalClass.final'], paths: ['src']);\n",
+	);
+
+	// a rule an override turns on runs somewhere, one that nothing turns on makes the entry a line that does nothing
+	[, , $err] = runApp($root, ['check', '--config', $config]);
+	Assert::contains('Decision `classes.internalClass.final` is named in `fixRisky` but runs nowhere; the entry does nothing.', $err);
+	Assert::notContains('file.strictTypes.declaration', $err);
+});
