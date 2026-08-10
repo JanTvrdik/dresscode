@@ -1,0 +1,7 @@
+<?php
+class A
+{
+	public function a(): Collection {}
+
+	public function b(): Traversable {}
+}

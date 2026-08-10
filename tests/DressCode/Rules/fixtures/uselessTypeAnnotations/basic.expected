@@ -1,0 +1,40 @@
+<?php
+class A {
+	public function a(int $a): string {}
+
+	/**
+	 * @param int $a the number
+	 */
+	public function b(int $a): string {}
+
+	/**
+	 * Does something.
+	 */
+	public function c(int $a): void {}
+
+	/**
+	 * @param int[] $a
+	 */
+	public function d(array $a): void {}
+
+	public function e(array $a): Traversable {}
+
+	public function f(?int $a): ?Foo\Bar {}
+
+	/**
+	 * @throws Exception
+	 */
+	public function g(int $a) {}
+
+	/**
+	 * @param int $a
+	 */
+	public function h($a) {}
+
+	/**
+	 * @return static
+	 */
+	public function i(): static {}
+
+	public function j(int $a) {}
+}
