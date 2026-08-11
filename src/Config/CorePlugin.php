@@ -154,6 +154,7 @@ final class CorePlugin implements Plugin
 				Rules\PhpDoc\UselessConstantVarAnnotationRule::class,
 				Rules\PhpDoc\UselessInheritdocRule::class,
 				Rules\Types\NativeTypeRequiredRule::class,
+				Rules\Types\NullableTypeForDefaultNullRule::class,
 				// after the native types written from the annotations, which they then repeat
 				Rules\PhpDoc\UselessTypeAnnotationsRule::class,
 				Rules\Types\ConstantTypeRequiredRule::class,
