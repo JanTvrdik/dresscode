@@ -1,0 +1,2 @@
+18: The parameter `$b` must have the native type `int` from its `@param` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`

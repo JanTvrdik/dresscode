@@ -1,0 +1,45 @@
+<?php
+// {"types.declaration.parameter": "keep", "types.declaration.return": "keep"}
+// risky
+class A
+{
+	/** @var int */
+	public $a;
+
+	/** @var Foo|null */
+	public $b;
+
+	/** @var string[] */
+	public $c;
+
+	/** @var Foo */
+	public $d = null;
+
+	/** @var int $e desc */
+	public $e;
+
+	public $f;
+
+	public array $g;
+
+	/** @var callable */
+	public $h;
+
+	/** @var int */
+	public int $i;
+
+	public $j, $k;
+
+	/** @var list<int> */
+	public array $l = [];
+
+	/** @var mixed */
+	public $m;
+
+	/**
+	 * Summary.
+	 *
+	 * @var int
+	 */
+	public $n;
+}

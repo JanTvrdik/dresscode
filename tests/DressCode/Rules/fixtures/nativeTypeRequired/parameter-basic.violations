@@ -1,0 +1,18 @@
+23: The parameter `$a` must have the native type `int` from its `@param` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`
+23: The parameter `$b` must have the native type `?Foo` from its `@param` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`
+23: The parameter `$c` must have the native type `array` from its `@param` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`
+23: The parameter `$d` must have the native type `int|string` from its `@param` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`
+23: The parameter `$g` must have the native type `mixed` from its `@param` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`
+23: The parameter `$h` must have the native type `array` from its `@param` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`
+23: The parameter `$j` must have the native type `int` from its `@param` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`
+27: The parameter `$x` must have a native type or a `@param` annotation.
+27: The parameter `$y` of the type `array` must have a `@param` annotation saying what its items are.
+27: The parameter `$z` of the type `iterable` must have a `@param` annotation saying what its items are.
+27: The parameter `$t` of the type `\Traversable` must have a `@param` annotation saying what its items are.

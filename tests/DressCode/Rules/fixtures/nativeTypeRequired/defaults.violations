@@ -1,0 +1,14 @@
+14: The property `$ratio` must have the native type `float` from its `@var` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`
+17: The property `$flag` must have the native type `string|false` from its `@var` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`
+20: The property `$both` must have the native type `(A&B)|null` from its `@var` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`
+28: The parameter `$pair` must have the native type `(A&B)|null` from its `@param` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`
+28: The parameter `$title` must have the native type `?string` from its `@param` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`
+38: The parameter `$pair` must have the native type `(A&B)|null` from its `@param` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`
+38: The parameter `$mode` must have the native type `string` from its `@param` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`

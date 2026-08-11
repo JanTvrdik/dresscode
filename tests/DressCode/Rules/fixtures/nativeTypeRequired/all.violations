@@ -1,0 +1,6 @@
+6: The property `$count` must have the native type `int` from its `@var` annotation.
+	risky BehaviorChanges: the property is then uninitialized until written, where it was null
+12: The parameter `$name` must have the native type `string` from its `@param` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`
+12: The method `check()` must have the native return type `bool` from its `@return` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`

@@ -244,6 +244,18 @@ test('a catch uselessCatchVariable leaves without its variable merges by noRepea
 });
 
 
+test(
+	'a property untypedPropertyNullDefault leaves without `= null` keeps null under the type nativeTypeRequired gives it',
+	function () {
+		interplay([
+			Rules\Classes\UselessNullInitializationRule::class => ['classes.untypedPropertyNullDefault' => 'forbidden'],
+			Rules\Types\NativeTypeRequiredRule::class => ['types.declaration.property' => 'required'],
+			Rules\PhpDoc\UselessTypeAnnotationsRule::class => ['phpdoc.annotation.nativeTypeOnly' => 'forbidden'],
+		], "<?php\nclass A\n{\n\t/** @var Foo|null */\n\tpublic \$a = null;\n}\n", "<?php\nclass A\n{\n\tpublic ?Foo \$a = null;\n}\n", fixRisky: true);
+	},
+);
+
+
 test('uselessModifier, visibilityRequired and modifierOrder settle on one shape', function () {
 	interplay([
 		Rules\Classes\UselessModifierRule::class => true,

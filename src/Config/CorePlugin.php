@@ -152,6 +152,8 @@ final class CorePlugin implements Plugin
 				Rules\PhpDoc\PropertyPhpdocLineSpanRule::class,
 				Rules\PhpDoc\UselessConstantVarAnnotationRule::class,
 				Rules\PhpDoc\UselessInheritdocRule::class,
+				Rules\Types\NativeTypeRequiredRule::class,
+				// after the native types written from the annotations, which they then repeat
 				Rules\PhpDoc\UselessTypeAnnotationsRule::class,
 				Rules\Types\TypeDeclarationSpacingRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,

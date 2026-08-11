@@ -153,3 +153,24 @@ test('the run narrowed to a path reports that decision alone and changes no valu
 		$narrowed->findRule(DressCode\Rules\Whitespace\ConstructSpacingRule::class)?->inactiveReason,
 	);
 });
+
+
+test('the command line sets a decision over everything, and fixRisky and severity take a path', function () {
+	$dir = createDecisionsProject(
+		['dresscode.neon' => "fixRisky: [types.declaration.parameter]\nseverity: {blankLines: warning}\ntypes:\n\tdeclaration:\n\t\tparameter: required\n"],
+	);
+	$resolved = resolveFile("$dir/dresscode.neon", new Profile(decisions: ['blankLines' => ['aroundMethods' => 3]]));
+	Assert::same([3, 3], $resolved->decisions['blankLines.aroundMethods']->value->getCountRange());
+	Assert::same('the command line', $resolved->decisions['blankLines.aroundMethods']->value->origin?->describe());
+	Assert::true($resolved->findRule(DressCode\Rules\Types\NativeTypeRequiredRule::class)?->fixRisky);
+	// the command line writes the value anew and says no severity, so its violations are errors again
+	Assert::same(
+		[false, true],
+		[isset($resolved->warningDecisions['blankLines.aroundMethods']), isset($resolved->warningDecisions['blankLines.afterImports'])],
+	);
+	Assert::exception(
+		fn() => new Config(decisions: ['paths' => []]),
+		InvalidArgumentException::class,
+		'The decisions are sections, and `paths` is a key of the configuration.',
+	);
+});
