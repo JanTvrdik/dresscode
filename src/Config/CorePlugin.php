@@ -140,6 +140,7 @@ final class CorePlugin implements Plugin
 				Rules\Namespaces\UselessCurrentNamespaceImportRule::class,
 				Rules\Namespaces\UselessLeadingBackslashRule::class,
 				Rules\PhpDoc\AnnotationCasingRule::class,
+				Rules\PhpDoc\AssertForInlineVarRule::class,
 				Rules\PhpDoc\ForbiddenAnnotationsRule::class,
 				Rules\PhpDoc\ForbiddenPhpdocLinesRule::class,
 				Rules\PhpDoc\NoInvalidAnnotationsRule::class,
