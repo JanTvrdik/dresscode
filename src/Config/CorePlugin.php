@@ -155,6 +155,7 @@ final class CorePlugin implements Plugin
 				Rules\Types\NativeTypeRequiredRule::class,
 				// after the native types written from the annotations, which they then repeat
 				Rules\PhpDoc\UselessTypeAnnotationsRule::class,
+				Rules\Types\ConstantTypeRequiredRule::class,
 				Rules\Types\TypeDeclarationSpacingRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,
 				Rules\Variables\NoRepeatedAssignmentsRule::class,

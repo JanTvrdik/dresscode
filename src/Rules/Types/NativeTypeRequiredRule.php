@@ -31,7 +31,8 @@ use function count;
  * returns no value is declared void, and a native void the annotation says is never becomes never. Any other declaration
  * with neither is reported, and with `phpdoc.annotation.itemTypes` an array, iterable or traversable one whose
  * annotation does not say what the items are. A function inheriting its documentation (`{@inheritDoc}`,
- * `#[\Override]`) is left alone. Each place can be turned off on its own.
+ * `#[\Override]`) is left alone. Each place can be turned off on its own; a class constant is
+ * `ConstantTypeRequiredRule`'s.
  *
  * A native type written is risky: PHP enforces it, and an annotation that was wrong becomes a TypeError, or a property
  * left without `= null` is uninitialized until written. None is
