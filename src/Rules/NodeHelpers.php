@@ -8,7 +8,7 @@
 namespace DressCode\Rules;
 
 use DressCode\Analyses\{IndentationSnapshot, PhpDoc};
-use DressCode\{Claim, CodeWriter, Gap, GlobalCalls, Line, RuleContext, Style};
+use DressCode\{Claim, CodeWriter, Gap, GlobalCalls, Line, Risk, RuleContext, Style};
 use PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagNode;
 use PhpSyntax\Analyses\NameResolver;
 use PhpSyntax\{Builder, Indentation, Node, Token, Trivia};
@@ -995,6 +995,48 @@ final class NodeHelpers
 			: Token::fromText($text)
 				->setLeadingTrivia($operator->leadingTrivia)
 				->setTrailingTrivia($operator->trailingTrivia);
+	}
+
+
+	/**
+	 * The only argument of a call of the named global function, passed by position and not unpacked; null for any
+	 * other expression.
+	 * @param  lowercase-string  $function
+	 */
+	public static function findSingleArgument(?ExpressionNode $expression, string $function, RuleContext $context): ?ExpressionNode
+	{
+		$arguments = $expression instanceof Expression\FunctionCallNode
+			&& GlobalCalls::findFunction($expression, [$function => true], $context) !== null
+			? $expression->arguments->getPlainValues()
+			: null;
+		return $arguments !== null && count($arguments) === 1 ? $arguments[0] : null;
+	}
+
+
+	public static function isInteger(ExpressionNode $expression, int $value): bool
+	{
+		return $expression instanceof Scalar\IntegerNode && $expression->toValue() === $value;
+	}
+
+
+	/** Whether the two expressions are the same value written twice, which the code may therefore read once. */
+	public static function isRepeatedRead(?ExpressionNode $one, ExpressionNode $other): bool
+	{
+		return $one !== null && $one->matches($other) && $other->isRepeatableRead();
+	}
+
+
+	/**
+	 * The risk of a fix that changes what the code does where `$behaviorChange` says why, or else may call another
+	 * function where `$uncertainty` says why, as `GlobalCalls::findUncertainty()` gives it; null for a safe one.
+	 */
+	public static function findRisk(?string $behaviorChange, ?string $uncertainty): ?Risk
+	{
+		return match (true) {
+			$behaviorChange !== null => Risk::BehaviorChanges,
+			$uncertainty !== null => Risk::NameUncertain,
+			default => null,
+		};
 	}
 
 
