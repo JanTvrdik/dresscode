@@ -1,0 +1,3 @@
+mistakes:
+	debugOutput: forbidden
+	debugOutputFunctions: [print_r, var_dump, var_export]

@@ -110,6 +110,7 @@ final class CorePlugin implements Plugin
 				Rules\Functions\NamedArgumentSpacingRule::class,
 				Rules\Functions\NoAliasFunctionsRule::class,
 				Rules\Functions\NoConversionFunctionsRule::class,
+				Rules\Functions\NoDebugOutputRule::class,
 				Rules\Functions\NoDirnameOfFileRule::class,
 				Rules\Functions\NoExplicitInvokeCallsRule::class,
 				Rules\Functions\NoInnerFunctionsRule::class,
