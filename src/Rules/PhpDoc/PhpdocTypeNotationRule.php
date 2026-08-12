@@ -20,9 +20,10 @@ use PhpSyntax\Nodes\Statement\TraitNode;
 /**
  * The notation of types in doc comments: built-in types in the short form (`int`, not `integer`) and in lowercase
  * (`int`, not `Int`), as `phpdoc.types.builtin` says, a union naming every type once, arrays in one notation
- * (`array<int>` rather than `int[]`, or the other way round). Of a union, a single type with `null` may be written
- * `?T` or `T|null`, `null` may stand at one end and the other types in alphabetical order. Class names keep their
- * case, `list<int>` is a different type and stays. A name imported or declared as a class (`Resource`) stays too.
+ * (`array<int>` rather than `int[]`, or the other way round). A union is decided as `TypeNotationRule` decides a
+ * native one, by decisions of its own: a single type with `null` may be written `?T` or `T|null`, `null` may stand
+ * at one end and the other types in alphabetical order. Class names keep their case, `list<int>` is a
+ * different type and stays. A name imported or declared as a class (`Resource`) stays too.
  */
 #[RuleInfo(
 	Stage::Finishing,
