@@ -44,6 +44,7 @@ final class CorePlugin implements Plugin
 				Rules\Classes\SelfForCurrentClassRule::class,
 				Rules\Classes\UselessModifierRule::class,
 				Rules\Classes\UselessNullInitializationRule::class,
+				Rules\Classes\UselessReturnTypeWillChangeRule::class,
 				Rules\Classes\VisibilityRequiredRule::class,
 				Rules\Comments\CommentSpacingRule::class,
 				Rules\Comments\NoEmptyCommentsRule::class,
