@@ -1094,9 +1094,9 @@ final class NodeHelpers
 
 
 	/**
-	 * Removes a statement, or an import with the statement it is the only item of, the blank lines it stood between
-	 * becoming the wider of the two gaps, so that the gap setting apart the group it ended or began stays; at the edge
-	 * of its list the gap toward the edge stays.
+	 * Removes a statement or a member, or an import with the statement it is the only item of, the blank lines it
+	 * stood between becoming the wider of the two gaps, so that the gap setting apart the group it ended or began
+	 * stays; at the edge of its list the gap toward the edge stays.
 	 */
 	public static function removeMergingGaps(Node $node, string $lineEnding): void
 	{

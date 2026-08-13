@@ -39,6 +39,7 @@ final class CorePlugin implements Plugin
 				Rules\Classes\NoGroupedDeclarationsRule::class,
 				Rules\Classes\NoThisOutsideObjectRule::class,
 				Rules\Classes\PrivateForProtectedRule::class,
+				Rules\Classes\PromotedPropertyForAssignmentRule::class,
 				Rules\Classes\PublicWithSetVisibilityRule::class,
 				Rules\Classes\SelfForCurrentClassRule::class,
 				Rules\Classes\UselessModifierRule::class,
