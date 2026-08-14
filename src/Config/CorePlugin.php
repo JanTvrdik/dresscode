@@ -72,6 +72,7 @@ final class CorePlugin implements Plugin
 				Rules\ControlFlow\UselessReturnRule::class,
 				Rules\Expressions\BinaryOperatorSpacingRule::class,
 				Rules\Expressions\CastCanonicalTypeRule::class,
+				Rules\Expressions\CloneWithNotationRule::class,
 				Rules\Expressions\CombinedAssignmentForRepeatedTargetRule::class,
 				Rules\Expressions\EmptyArgumentParenthesesRule::class,
 				Rules\Expressions\ExplicitPrecedenceRequiredRule::class,
