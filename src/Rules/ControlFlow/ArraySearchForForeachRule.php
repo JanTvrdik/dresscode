@@ -7,7 +7,7 @@
 
 namespace DressCode\Rules\ControlFlow;
 
-use DressCode\Analyses\Parameter;
+use DressCode\Analyses\{Parameter, PhpSignatures};
 use DressCode\{GlobalCalls, NodeRule, Risk, RuleContext, RuleInfo, Stage, Tristate};
 use DressCode\Rules\NodeHelpers;
 use PhpSyntax\Analyses\NameResolver;
@@ -43,7 +43,7 @@ use function count, in_array;
 	Stage::Structure,
 	requires: ['php' => '>=8.4'],
 	decisions: ['upgrading.functions.arraySearchFunctions'],
-	analyses: [NameResolver::class],
+	analyses: [PhpSignatures::class, NameResolver::class],
 )]
 final class ArraySearchForForeachRule extends NodeRule
 {
