@@ -90,6 +90,7 @@ final class CorePlugin implements Plugin
 				Rules\Expressions\NotEqualsNotationRule::class,
 				Rules\Expressions\NullCoalescingForNullTernaryRule::class,
 				Rules\Expressions\OperandSpacingRule::class,
+				Rules\Expressions\PipeForNestedCallsRule::class,
 				Rules\Expressions\ShortTernaryRule::class,
 				Rules\Expressions\TernaryOperatorSpacingRule::class,
 				Rules\Expressions\UselessParenthesesAfterConstructRule::class,
