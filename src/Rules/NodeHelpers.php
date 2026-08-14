@@ -7,15 +7,15 @@
 
 namespace DressCode\Rules;
 
-use DressCode\Analyses\{IndentationSnapshot, PhpDoc};
+use DressCode\Analyses\{IndentationSnapshot, Parameter, PhpDoc};
 use DressCode\{Claim, CodeWriter, Gap, GlobalCalls, Line, Risk, RuleContext, Style};
 use PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagNode;
 use PhpSyntax\Analyses\NameResolver;
-use PhpSyntax\{Builder, Indentation, Node, Token, Trivia};
+use PhpSyntax\{Builder, Indentation, Node, SymbolKind, Token, Trivia};
 use PhpSyntax\Nodes\{
 	AnonymousClassNode, ArgumentListNode, ArgumentNode, AttributeAwareNode, AttributeGroupNode, AttributeNode,
 	ClassLikeNode, ClosureUseListNode, DestructuringNode, ElseifNode, Expression, ExpressionNode, FileNode,
-	MatchArmNode, PlainNodeList, Scalar,
+	MatchArmNode, NameNode, ParameterNode, PlainNodeList, Scalar,
 	SeparatedNodeList, Statement, StatementNode, UseItemNode, VariadicPlaceholderNode,
 };
 use PhpSyntax\Nodes\Member\MethodNode;
@@ -1037,6 +1037,30 @@ final class NodeHelpers
 			$uncertainty !== null => Risk::NameUncertain,
 			default => null,
 		};
+	}
+
+
+	/**
+	 * The parameters of the function the call calls, as the declaration in the file says; null where it does not tell.
+	 * @return ?list<Parameter>
+	 */
+	public static function findParameters(Expression\FunctionCallNode $call, RuleContext $context): ?array
+	{
+		if (!$call->name instanceof NameNode) {
+			return null;
+		}
+
+		$resolver = $context->getAnalysis(NameResolver::class);
+		$function = $resolver->resolveFunction($call->name);
+		$declaration = $resolver->findDeclaration($function, SymbolKind::Function);
+		return $declaration === null ? null : array_map(
+			fn(ParameterNode $parameter) => new Parameter(
+				(string) $parameter->variable->plainName,
+				variadic: $parameter->ellipsis !== null,
+				byReference: $parameter->ampersand !== null,
+			),
+			$declaration->parameters->getItems(),
+		);
 	}
 
 
