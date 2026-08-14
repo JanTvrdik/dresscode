@@ -105,6 +105,7 @@ final class CorePlugin implements Plugin
 				Rules\Files\NoTrailingWhitespaceRule::class,
 				Rules\Files\OpeningTagNotationRule::class,
 				Rules\Files\StrictTypesRequiredRule::class,
+				Rules\Functions\ArrayFirstLastNotationRule::class,
 				Rules\Functions\ArrowFunctionForClosureRule::class,
 				Rules\Functions\FunctionNameSpacingRule::class,
 				Rules\Functions\JsonValidateForDecodeRule::class,

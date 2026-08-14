@@ -1013,6 +1013,17 @@ final class NodeHelpers
 	}
 
 
+	/** The array the expression is the last index of, `count($a) - 1`; null for any other expression. */
+	public static function findCountedArray(ExpressionNode $expression, RuleContext $context): ?ExpressionNode
+	{
+		return $expression instanceof Expression\BinaryOpNode
+			&& $expression->operator->is('-')
+			&& self::isInteger($expression->right, 1)
+			? self::findSingleArgument($expression->left, 'count', $context)
+			: null;
+	}
+
+
 	public static function isInteger(ExpressionNode $expression, int $value): bool
 	{
 		return $expression instanceof Scalar\IntegerNode && $expression->toValue() === $value;
