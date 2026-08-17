@@ -42,6 +42,7 @@ final class CorePlugin implements Plugin
 				Rules\Classes\PromotedPropertyForAssignmentRule::class,
 				Rules\Classes\PublicWithSetVisibilityRule::class,
 				Rules\Classes\SelfForCurrentClassRule::class,
+				Rules\Classes\StaticSetStateRequiredRule::class,
 				Rules\Classes\StringableRequiredRule::class,
 				Rules\Classes\UselessModifierRule::class,
 				Rules\Classes\UselessNullInitializationRule::class,
