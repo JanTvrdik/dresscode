@@ -11,7 +11,7 @@ use DressCode\Analyses\{IndentationSnapshot, Parameter, PhpDoc, PhpSignatures};
 use DressCode\{Claim, CodeWriter, Gap, GlobalCalls, Line, Risk, RuleContext, Style};
 use PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagNode;
 use PhpSyntax\Analyses\NameResolver;
-use PhpSyntax\{Builder, Indentation, Node, SymbolKind, Token, Trivia};
+use PhpSyntax\{Builder, ConstantExpressionFeature, Indentation, Node, SymbolKind, Token, Trivia};
 use PhpSyntax\Nodes\{
 	AnonymousClassNode, ArgumentListNode, ArgumentNode, AttributeAwareNode, AttributeGroupNode, AttributeNode,
 	ClassLikeNode, ClosureUseListNode, DestructuringNode, ElseifNode, Expression, ExpressionNode, FileNode,
@@ -1048,6 +1048,20 @@ final class NodeHelpers
 			$uncertainty !== null => Risk::NameUncertain,
 			default => null,
 		};
+	}
+
+
+	/**
+	 * What a constant expression may hold at the version in a default of a parameter or an argument of an attribute,
+	 * the places taking `new`, for `ExpressionNode::isConstantExpression()`.
+	 * @return list<ConstantExpressionFeature>
+	 */
+	public static function listInitializerFeatures(string $phpVersion): array
+	{
+		return [
+			...(version_compare($phpVersion, '8.1', '>=') ? [ConstantExpressionFeature::New] : []),
+			...(version_compare($phpVersion, '8.5', '>=') ? [ConstantExpressionFeature::Cast, ConstantExpressionFeature::Closure] : []),
+		];
 	}
 
 
