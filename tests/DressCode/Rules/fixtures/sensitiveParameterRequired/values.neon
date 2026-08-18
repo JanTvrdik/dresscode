@@ -1,0 +1,4 @@
+upgrading:
+	classes:
+		SensitiveParameter: required
+		SensitiveParameterNames: [password, passwd, pwd, secret, apiKey, privateKey]
