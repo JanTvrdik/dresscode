@@ -117,6 +117,7 @@ final class CorePlugin implements Plugin
 				Rules\Files\StrictTypesRequiredRule::class,
 				Rules\Functions\ArrayFirstLastNotationRule::class,
 				Rules\Functions\ArrowFunctionForClosureRule::class,
+				Rules\Functions\CsvEscapeArgumentRequiredRule::class,
 				Rules\Functions\FirstClassCallableForStringRule::class,
 				Rules\Functions\FunctionNameSpacingRule::class,
 				Rules\Functions\JsonValidateForDecodeRule::class,
