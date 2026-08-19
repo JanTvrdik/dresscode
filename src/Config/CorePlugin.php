@@ -40,6 +40,7 @@ final class CorePlugin implements Plugin
 				Rules\Classes\MultilineImplementsRule::class,
 				Rules\Classes\NameCasingRule::class,
 				Rules\Classes\NoGroupedDeclarationsRule::class,
+				Rules\Classes\NoNullDebugInfoRule::class,
 				Rules\Classes\NoThisOutsideObjectRule::class,
 				Rules\Classes\PrivateForProtectedRule::class,
 				Rules\Classes\PromotedPropertyForAssignmentRule::class,
