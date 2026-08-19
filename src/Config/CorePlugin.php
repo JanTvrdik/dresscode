@@ -30,6 +30,7 @@ final class CorePlugin implements Plugin
 				Rules\Arrays\NoManualListTestsRule::class,
 				Rules\Arrays\SpreadForArrayMergeRule::class,
 				Rules\Arrays\TrailingCommaRule::class,
+				Rules\Classes\ClassConstantForConstantCallRule::class,
 				Rules\Classes\ClassHeadSpacingRule::class,
 				Rules\Classes\ClassKindInNameRule::class,
 				Rules\Classes\ClassNameNotationRule::class,
