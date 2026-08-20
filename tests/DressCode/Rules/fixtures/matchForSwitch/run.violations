@@ -1,0 +1,2 @@
+7: The `switch` giving one value must be written as a `match`.
+	risky TypeUnknown: `match` compares with `===` where `switch` compares with `==`

@@ -1,0 +1,16 @@
+<?php
+// types off
+// risky
+// run
+function describe(int|string $input): string
+{
+	return match ($input) {
+		1, 2 => 'low',
+		'3' => 'string three',
+		default => 'other',
+	};
+}
+
+foreach ([1, 2, '3', 4] as $input) {
+	echo describe($input), "\n";
+}
