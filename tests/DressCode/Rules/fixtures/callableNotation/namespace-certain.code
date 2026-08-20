@@ -1,0 +1,10 @@
+<?php
+// types off
+// nameResolution certain
+// a function the namespace does not declare is reached by its bare name
+namespace App;
+
+use function Acme\Text\trim;
+
+$a = \Closure::fromCallable('strlen');
+$b = \Closure::fromCallable('trim');

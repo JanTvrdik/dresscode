@@ -1,0 +1,5 @@
+8: The callable must be written `\trim(...)`.
+9: The callable must be written `Order::make(...)`.
+10: The callable must be written `Order::make(...)`.
+11: The callable must be written `Helper::make(...)`.
+12: The callable must be written `\Exception::create(...)`.

@@ -1,0 +1,12 @@
+<?php
+// types off
+// a string callable is fully qualified, the callable is spelled the way the namespace reaches the name
+namespace App;
+
+use Acme\Shop\Order;
+
+$a = \Closure::fromCallable('trim');
+$b = \Closure::fromCallable('Acme\Shop\Order::make');
+$c = \Closure::fromCallable(['\Acme\Shop\Order', 'make']);
+$d = \Closure::fromCallable('App\Helper::make');
+$e = \Closure::fromCallable('Exception::create');

@@ -122,6 +122,7 @@ final class CorePlugin implements Plugin
 				Rules\Files\StrictTypesRequiredRule::class,
 				Rules\Functions\ArrayFirstLastNotationRule::class,
 				Rules\Functions\ArrowFunctionForClosureRule::class,
+				Rules\Functions\CallableNotationRule::class,
 				Rules\Functions\ClampForMinMaxRule::class,
 				Rules\Functions\CsvEscapeArgumentRequiredRule::class,
 				Rules\Functions\FirstClassCallableForStringRule::class,
@@ -311,7 +312,11 @@ final class CorePlugin implements Plugin
 					Domain::state('required'),
 					'`array_any()`, `array_all()`, `array_find()` and `array_find_key()` for a `foreach` or an `array_filter()` that only asks what they answer',
 				),
-				new Decision('upgrading.syntax.firstClassCallables', Domain::state('required'), '`foo(...)` for `\'self::foo\'`'),
+				new Decision(
+					'upgrading.syntax.firstClassCallables',
+					Domain::state('required'),
+					'`foo(...)` for `Closure::fromCallable()`, a forwarding closure and `\'self::foo\'`; from PHP 8.6 a partial application',
+				),
 			],
 		);
 	}
