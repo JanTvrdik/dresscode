@@ -186,6 +186,7 @@ final class CorePlugin implements Plugin
 				Rules\Types\ConstantTypeRequiredRule::class,
 				Rules\Types\TypeDeclarationSpacingRule::class,
 				Rules\Types\TypeNotationRule::class,
+				Rules\Upgrading\NoDeprecatedPhpArgumentsRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,
 				Rules\Variables\NoRepeatedAssignmentsRule::class,
 				Rules\Variables\NoSeparateIssetsRule::class,
