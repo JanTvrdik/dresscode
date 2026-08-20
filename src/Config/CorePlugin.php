@@ -69,6 +69,7 @@ final class CorePlugin implements Plugin
 				Rules\ControlFlow\NoContinueInSwitchRule::class,
 				Rules\ControlFlow\NoEmptyStatementsRule::class,
 				Rules\ControlFlow\NoRepeatedCatchesRule::class,
+				Rules\ControlFlow\NoReturnsInFinallyRule::class,
 				Rules\ControlFlow\NoUnreachableCatchesRule::class,
 				Rules\ControlFlow\ReturnForBooleanIfRule::class,
 				Rules\ControlFlow\SwitchCaseNotationRule::class,
