@@ -1,0 +1,5 @@
+mistakes:
+	neverReturnType:
+		function: required
+		method: required
+		anonymousFunction: keep
