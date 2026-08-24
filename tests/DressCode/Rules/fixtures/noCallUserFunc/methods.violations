@@ -1,0 +1,7 @@
+12: The callable must be called directly, not through `call_user_func()`.
+13: The callable must be called directly, not through `call_user_func()`.
+	risky BehaviorChanges: `static` in the method then means the class the caller was called for
+14: The callable must be called directly, not through `call_user_func()`.
+15: The callable must be called directly, not through `call_user_func()`.
+16: The callable must be called directly, not through `call_user_func()`.
+17: The callable must be called directly, not through `call_user_func_array()`.

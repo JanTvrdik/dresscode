@@ -1,0 +1,27 @@
+<?php
+// {"call_user_funcMethods": true}
+// nameResolution certain
+// php 8.1
+// risky
+namespace App;
+
+class Order
+{
+	public function run(): void
+	{
+		$this->check(1);
+		self::make(2);
+		static::make();
+		Invoice::create(3);
+		\Acme\Shop\Order::make(4);
+		$this->check(...$arguments);
+
+		// what the code does not tell stays
+		call_user_func([$other, 'check'], 1);
+		call_user_func(['Acme\Shop\Order', 'make']);
+		call_user_func([$this, $method]);
+		call_user_func('self::make');
+		call_user_func([$this, /* keep */ 'check']);
+		call_user_func([$this, 'check', 'more']);
+	}
+}
