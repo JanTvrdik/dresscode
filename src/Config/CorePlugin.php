@@ -104,6 +104,7 @@ final class CorePlugin implements Plugin
 				Rules\Expressions\MultilineTernaryRule::class,
 				Rules\Expressions\NoBacktickOperatorsRule::class,
 				Rules\Expressions\NoDoubleNegationsRule::class,
+				Rules\Expressions\NoErrorSuppressionRule::class,
 				Rules\Expressions\NoLooseComparisonsRule::class,
 				Rules\Expressions\NotEqualsNotationRule::class,
 				Rules\Expressions\NullCoalescingForNullTernaryRule::class,
