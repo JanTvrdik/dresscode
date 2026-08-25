@@ -182,6 +182,7 @@ final class CorePlugin implements Plugin
 				Rules\PhpDoc\DeprecatedAttributeForAnnotationRule::class,
 				Rules\PhpDoc\ForbiddenAnnotationsRule::class,
 				Rules\PhpDoc\ForbiddenPhpdocLinesRule::class,
+				Rules\PhpDoc\NoConsecutivePhpdocsRule::class,
 				Rules\PhpDoc\NoInvalidAnnotationsRule::class,
 				Rules\PhpDoc\NoPlainPhpdocsRule::class,
 				Rules\PhpDoc\PhpdocAboveAttributesRule::class,
