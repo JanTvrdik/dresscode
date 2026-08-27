@@ -31,6 +31,18 @@ function resolveFile(string $file, ?Profile $commandLine = null, ?array $only = 
 }
 
 
+test('the sections of a file are its decisions, laid over the preset it uses', function () {
+	$dir = createDecisionsProject(['dresscode.neon' => "use: psr12\nblankLines:\n\taroundMethods: 1\n"]);
+	$resolved = resolveFile("$dir/dresscode.neon");
+	Assert::same([1, 1], $resolved->decisions['blankLines.aroundMethods']->value->getCountRange());
+	Assert::same('the configuration', $resolved->decisions['blankLines.aroundMethods']->value->origin?->describe());
+	Assert::same([1, 1], $resolved->decisions['blankLines.afterImports']->value->getCountRange());
+	Assert::same('dresscode/psr12', $resolved->decisions['blankLines.afterImports']->value->origin?->describe());
+	Assert::contains('dresscode/psr12', $resolved->use);
+	Assert::true($resolved->findRule(DressCode\Rules\Whitespace\MemberBlankLinesRule::class)?->isActive());
+});
+
+
 test('a file used by its path is taken relative to the file writing it, once however often it is named', function () {
 	$dir = createDecisionsProject([
 		'shared.neon' => "blankLines:\n\taroundMethods: 3\n\tafterImports: 1\n",
@@ -140,9 +152,7 @@ test('a key is one link of the path, the links written with dots are refused', f
 
 
 test('the run narrowed to a path reports that decision alone and changes no value', function () {
-	$dir = createDecisionsProject(
-		['dresscode.neon' => "blankLines:\n\tafterImports: 1\n\tafterNamespace: 1\nspacing:\n\tkeyword: 'return \$x'\n"],
-	);
+	$dir = createDecisionsProject(['dresscode.neon' => "use: psr12\n"]);
 	$narrowed = resolveFile("$dir/dresscode.neon", only: ['blankLines.afterImports']);
 	Assert::true($narrowed->values->isSelected('blankLines.afterImports'));
 	Assert::false($narrowed->values->isSelected('blankLines.afterNamespace'));
@@ -157,7 +167,7 @@ test('the run narrowed to a path reports that decision alone and changes no valu
 
 test('the command line sets a decision over everything, and fixRisky and severity take a path', function () {
 	$dir = createDecisionsProject(
-		['dresscode.neon' => "fixRisky: [types.declaration.parameter]\nseverity: {blankLines: warning}\ntypes:\n\tdeclaration:\n\t\tparameter: required\n"],
+		['dresscode.neon' => "use: psr12\nfixRisky: [types.declaration.parameter]\nseverity: {blankLines: warning}\ntypes:\n\tdeclaration:\n\t\tparameter: required\n"],
 	);
 	$resolved = resolveFile("$dir/dresscode.neon", new Profile(decisions: ['blankLines' => ['aroundMethods' => 3]]));
 	Assert::same([3, 3], $resolved->decisions['blankLines.aroundMethods']->value->getCountRange());

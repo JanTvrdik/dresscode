@@ -1,0 +1,84 @@
+# PER Coding Style 3.1
+#
+# PSR-12 plus what PER Coding Style added (trailing commas, short closures, empty bodies as `{}`, attributes,
+# enumerations, heredoc, property hooks); the specification defines the style and this preset adds nothing of its own.
+
+use: psr12
+
+indentation:
+	heredoc: 1                               # body and closing marker one level deeper than the start
+
+naming:
+	enumCase: PascalCase                     # reported, never renamed
+
+spacing:
+	attribute: '#[Foo($a)]'
+	arrowFunction: 'fn($x) => $x'
+	semicolon:
+		before: '$a;'
+	catchType: 'catch (A|B $e)'              # as a union type
+	namedArgument: 'foo(name: $x)'
+
+multiline:
+	items:
+		array: perLine                       # an item per line once spread
+		list: perLine
+		chain: perLine                       # a link per line once spread
+		ternary: perLine                     # `?` and `:` each on a line once spread
+	edges:
+		array: apart                         # `[` above the items, `]` below them
+		list: apart
+		chain: apart                         # `$form` above `->addText()`
+	operatorPosition:
+		concatenation: lineStart             # `. $b` opens the line
+		ternary: lineStart                   # `? $b` and `: $c` open the lines
+	# a comma after the last item where the closing bracket has a line of its own, none on one line
+	trailingComma:
+		array: required
+		argument: required
+		parameter: required
+		matchArm: required
+		closureUse: required
+		import: optional
+		list: optional
+	attributePosition: above                 # a group per line above the declaration, and above a parameter in a list spread over lines
+
+braces:
+	emptyBody:                               # `function foo(): void {}`, `new class {}`
+		class: collapsed
+		function: collapsed
+		closure: collapsed
+		propertyHook: collapsed
+		anonymousClass: collapsed
+
+blankLines:
+	afterPhpdoc: 0                           # §12.2: no blank line between the docblock,
+	afterAttributes: 0                       # the attributes and the structure
+
+classes:
+	visibility:
+		publicWithSet: keep                  # `public` may be omitted with a set visibility
+	members:
+		grouping:
+			constant: separated              # `const A = 1, B = 2;` is split
+	emptyParentheses:
+		anonymousClass: forbidden            # `new class {}`, not `new class() {}`
+		attribute: forbidden                 # `#[Foo]`, not `#[Foo()]`
+	instantiationWrapping: forbidden         # `new Foo()->bar()`, not `(new Foo())->bar()`, from PHP 8.4
+	protectedInEnum: forbidden               # `private const X`
+
+types:
+	nullable: '?int'                         # not `int|null`
+	nullPosition: last                       # `int|string|null`
+
+functions:
+	arrowFunction:
+		emptyBody: required                  # `fn() => null`, not `function () {}`
+
+literals:
+	heredocWithoutInterpolation: forbidden   # a nowdoc `<<<'EOT'` instead
+	arraySyntax:
+		array: short                         # `[1, 2]`, not `array(1, 2)`
+
+phpdoc:
+	aboveAttributes: required

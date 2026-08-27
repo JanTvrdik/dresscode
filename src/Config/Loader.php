@@ -39,7 +39,7 @@ final class Loader
 		$file ??= self::find($directory);
 		if ($file === null) {
 			$config = $default ?? throw new ConfigurationException(
-				"No `dresscode.neon` or `dresscode.php` found in `$directory` or above it, so there is no dress code to check against.",
+				"No `dresscode.neon` or `dresscode.php` found in `$directory` or above it, so there is no dress code to check against. Name a standard with `--use`.",
 			);
 			$composer = ComposerJson::findFile($directory);
 			$root = $composer === null ? $directory : dirname($composer);
