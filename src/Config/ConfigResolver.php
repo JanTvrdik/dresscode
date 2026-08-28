@@ -68,7 +68,7 @@ final class ConfigResolver
 		?array $only = null,
 	): ResolvedConfig
 	{
-		$fixRisky = $fixRiskyPaths = $severities = $use = [];
+		$fixRisky = $fixRiskyPaths = $severities = $use = $suppressionComments = $suppressionExamples = [];
 		$symbols = [SymbolKind::Function->name => [], SymbolKind::Constant->name => []];
 		$php = $resolution = null;
 		$decisionLayers = [];
@@ -96,6 +96,14 @@ final class ConfigResolver
 				}
 
 				$severities[] = $this->collectSeverity($profile->severity);
+
+				foreach ($profile->suppressionComments as $pattern => $entry) {
+					// a pattern a later layer says again is that layer's, the example with it
+					$suppressionComments[$pattern] = array_values(array_unique(array_merge(
+						...array_map($this->resolveSuppressedName(...), $entry['decisions']),
+					)));
+					$suppressionExamples[$pattern] = $entry['example'];
+				}
 
 			} catch (ConfigurationException $e) {
 				throw self::locate($e, $layer);
@@ -181,6 +189,8 @@ final class ConfigResolver
 				fn(string|Plugin $plugin) => is_string($plugin) ? $plugin : $plugin::class,
 				[...$config->plugins, ...$commandLine instanceof Config ? $commandLine->plugins : []],
 			),
+			suppressionComments: $suppressionComments,
+			suppressionExamples: array_filter($suppressionExamples),
 			decisions: $decisions,
 			values: $values,
 			fixRisky: $fixRiskyPaths,
@@ -337,6 +347,18 @@ final class ConfigResolver
 	private function collectSelection(array $narrowed): array
 	{
 		return array_values(array_unique(array_merge(...array_map(fn(ExpandedName $name) => $name->paths, $narrowed))));
+	}
+
+
+	/**
+	 * The decisions a name of `suppressionComments` silences.
+	 * @return list<string>
+	 * @throws ConfigurationException
+	 */
+	private function resolveSuppressedName(string $name): array
+	{
+		return $this->registry->expandSuppressedName($name)
+			?: throw new ConfigurationException("`suppressionComments` names `$name`, which is no decision, section or rule.");
 	}
 
 

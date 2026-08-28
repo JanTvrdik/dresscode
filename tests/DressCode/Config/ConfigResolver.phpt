@@ -473,6 +473,51 @@ test('a rule an override turns on runs somewhere, however the override decides i
 });
 
 
+test('a comment the configuration names silences rules, and an override says its own', function () {
+	$resolver = createResolver();
+	$config = new Config(
+		suppressionComments: ['~ok~' => RuleA::class],
+		overrides: [new Override(
+			['tests'],
+			new Profile(suppressionComments: ['~ok~' => [RuleB::class, RuleC::class], '~other~' => RuleA::class]),
+		)],
+	);
+
+	Assert::same(['~ok~' => ['project.a']], $resolver->resolve($config, '8.3')->suppressionComments);
+	Assert::same(
+		['~ok~' => ['project.b', 'project.c'], '~other~' => ['project.a']],
+		$resolver->resolve($config, '8.3', [0])->suppressionComments,
+	);
+	Assert::same(
+		['~ok~' => ['project']],
+		$resolver->resolve(new Config(suppressionComments: ['~ok~' => 'project']), '8.3')->suppressionComments,
+	);
+	Assert::exception(
+		fn() => $resolver->resolve(new Config(suppressionComments: ['~ok~' => 'test/nope']), '8.3'),
+		ConfigurationException::class,
+		'`suppressionComments` names `test/nope`, which is no decision, section or rule.',
+	);
+	Assert::exception(
+		fn() => new Config(suppressionComments: ['ok' => 'test/a']),
+		InvalidArgumentException::class,
+		'`ok` in `suppressionComments` is not a regular expression%a%',
+	);
+
+	// the example goes with its pattern, which an override saying it again takes, the example with it
+	$config = new Config(
+		suppressionComments: [
+			'~ok~' => ['decisions' => RuleA::class, 'example' => '// ok <why>'],
+			'~fine~' => ['decisions' => RuleB::class, 'example' => '// fine'],
+		],
+		overrides: [new Override(['tests'], new Profile(suppressionComments: ['~ok~' => RuleC::class]))],
+	);
+	$resolved = $resolver->resolve($config, '8.3');
+	Assert::same(['~ok~' => ['project.a'], '~fine~' => ['project.b']], $resolved->suppressionComments);
+	Assert::same(['~ok~' => '// ok <why>', '~fine~' => '// fine'], $resolved->suppressionExamples);
+	Assert::same(['~fine~' => '// fine'], $resolver->resolve($config, '8.3', [0])->suppressionExamples);
+});
+
+
 test('an override lays a profile of its own over the configuration, its presets included', function () {
 	$resolver = createResolver();
 	$config = new Config(

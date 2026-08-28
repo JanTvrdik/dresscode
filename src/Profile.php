@@ -9,7 +9,7 @@ namespace DressCode;
 
 use PhpSyntax\{Builder, ParseException, SymbolKind};
 use PhpSyntax\Nodes\Statement\UseNode;
-use function is_string;
+use function is_array, is_string;
 
 
 /**
@@ -37,12 +37,22 @@ readonly class Profile
 	 */
 	public ?string $nameResolution;
 
+	/**
+	 * a comment the project already writes to say a line is meant as it is: pattern => the rules or decisions it
+	 * silences where it stands, as `dresscode:ignore` does, and the example of such a comment, `<why>` standing for
+	 * the reason (`// @ <why>`)
+	 * @var array<string, array{decisions: list<string>, example: ?string}>
+	 */
+	public array $suppressionComments;
+
 
 	/**
 	 * @param list<string|Plugin> $use  the presets; a plugin is the configuration's alone, which takes it out before
 	 * @param array{functions?: list<string>, constants?: list<string>} $namespaces  functions and constants the namespaces
 	 *   declare, each written as an item of a `use` statement writes it (`'Acme\helper'`, `'Acme\{format, parse}'`): an
 	 *   unqualified call in a namespace reaches such a function before the global one, which no file that calls it shows
+	 * @param array<string, string|list<string>|array{decisions: string|list<string>, example?: string}> $suppressionComments
+	 *   pattern => what it silences, or that as `decisions` with the `example` of such a comment
 	 */
 	public function __construct(
 		array $use = [],
@@ -65,6 +75,7 @@ readonly class Profile
 		 * @var array<string, string>
 		 */
 		public array $severity = [],
+		array $suppressionComments = [],
 		/** @var array<string, mixed>  the decisions, a tree of sections the resolver reads against the catalogue */
 		public array $decisions = [],
 	) {
@@ -90,6 +101,26 @@ readonly class Profile
 			default => $entry,
 		}, $use);
 
+		$comments = [];
+		foreach ($suppressionComments as $pattern => $entry) {
+			$structured = is_array($entry) && isset($entry['decisions']);
+			$names = $structured ? $entry['decisions'] : $entry;
+			$example = $structured && is_string($entry['example'] ?? null) ? $entry['example'] : null;
+			if (@preg_match((string) $pattern, '') === false) { // @ an invalid pattern only warns
+				throw new \InvalidArgumentException("`$pattern` in `suppressionComments` is not a regular expression, such as `~intentionally ==~`.");
+			} elseif ($names === [] || $names === '') {
+				throw new \InvalidArgumentException("`suppressionComments` names no rule for `$pattern`.");
+			} elseif ($example !== null && !preg_match((string) $pattern, str_replace('<why>', 'reason', $example))) {
+				throw new \InvalidArgumentException("The example `$example` of `$pattern` in `suppressionComments` is no comment the pattern matches; write one it does, `<why>` standing for the reason.");
+			}
+
+			$comments[$pattern] = [
+				'decisions' => is_string($names) ? [$names] : array_values(array_filter($names, is_string(...))),
+				'example' => $example,
+			];
+		}
+
+		$this->suppressionComments = $comments;
 		$this->nameResolution = $nameResolution;
 		$this->namespaces = [
 			'functions' => self::expandNames(SymbolKind::Function, $namespaces['functions'] ?? []),

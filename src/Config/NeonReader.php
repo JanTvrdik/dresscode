@@ -138,6 +138,13 @@ final class NeonReader
 			'nameResolution' => Expect::anyOf('certain', 'uncertain'),
 			'fixRisky' => Expect::listOf('string', wrap: true),
 			'severity' => Expect::arrayOf(Expect::anyOf('warning', 'error'), 'string'),
+			'suppressionComments' => Expect::arrayOf(Expect::anyOf(
+				Expect::listOf('string', wrap: true),
+				Expect::structure([
+					'decisions' => Expect::listOf('string', wrap: true)->required(),
+					'example' => Expect::string(),
+				])->skipDefaults()->castTo('array'),
+			), 'string'),
 			// a plugin with arguments is an entity
 			'use' => Expect::listOf(Expect::anyOf(Expect::string(), Expect::type(Entity::class)), wrap: true),
 			'decisions' => Expect::arrayOf('mixed', 'string'),
@@ -219,8 +226,9 @@ final class NeonReader
 
 
 	/**
-	 * Reads a preset, a file of the shape of the configuration, which carries the decisions and the presets it uses, and
-	 * nothing else, so that a file laid below the project never gets what only the project may say.
+	 * Reads a preset, a file of the shape of the configuration, which carries the decisions, the presets it uses and the
+	 * comments that silence a line, and nothing else, so that a file laid below the project never gets what only the
+	 * project may say.
 	 * @param  ?string  $name  the name the preset is registered under, which an error tells it by
 	 * @throws ConfigurationException
 	 */
@@ -239,15 +247,15 @@ final class NeonReader
 			throw new ConfigurationException("$label: {$e->getMessage()}", previous: $e);
 		}
 
-		$keys = ['use' => true, 'severity' => true, 'decisions' => true];
+		$keys = ['use' => true, 'suppressionComments' => true, 'severity' => true, 'decisions' => true];
 		if ($other = array_diff_key($data, $keys)) {
 			throw new ConfigurationException("$label sets `" . array_key_first($other) . '`, which the project decides, not a preset.');
 		}
 
 		try {
 			/**
-			 * @var array{use?: list<string|Entity>, severity?: array<string, string>,
-			 *   decisions?: array<string, mixed>} $data
+			 * @var array{use?: list<string|Entity>, suppressionComments?: array<string, list<string>|array{decisions: list<string>, example?: string}>,
+			 *   severity?: array<string, string>, decisions?: array<string, mixed>} $data
 			 */
 			$data = (new Processor)->process(
 				Expect::structure(array_intersect_key(self::getProfileSchema(), $keys))->skipDefaults()->castTo('array'),
@@ -260,6 +268,7 @@ final class NeonReader
 		try {
 			return new Profile(
 				use: self::readProfile($data, $file)['use'] ?? [],
+				suppressionComments: $data['suppressionComments'] ?? [],
 				severity: $data['severity'] ?? [],
 				decisions: $data['decisions'] ?? [],
 			);

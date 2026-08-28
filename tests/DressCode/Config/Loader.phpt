@@ -287,6 +287,51 @@ test('a list of a single item is written without the list, in a configuration an
 });
 
 
+test('a comment that silences rules is a pattern with a rule or a list of them, in a configuration and in an override', function () {
+	$config = Loader::loadFile(FileMock::create(<<<'XX'
+		suppressionComments:
+			"~intentionally ==~": noLooseComparisons
+			"~^// @ ~": [noErrorSuppression, noLooseComparisons]
+		overrides:
+			- paths: [tests]
+			  suppressionComments: {"~ok~": noLooseComparisons}
+		XX, 'neon'));
+	Assert::same(
+		[
+			'~intentionally ==~' => ['decisions' => ['noLooseComparisons'], 'example' => null],
+			'~^// @ ~' => ['decisions' => ['noErrorSuppression', 'noLooseComparisons'], 'example' => null],
+		],
+		$config->suppressionComments,
+	);
+	Assert::same(
+		['~ok~' => ['decisions' => ['noLooseComparisons'], 'example' => null]],
+		$config->overrides[0]->profile->suppressionComments,
+	);
+	Assert::exception(fn() => Loader::loadFile(FileMock::create("suppressionComments: {'~x~': 1}", 'neon')), ConfigurationException::class);
+	Assert::exception(
+		fn() => Loader::loadFile(FileMock::create("suppressionComments: {'x': noLooseComparisons}", 'neon')),
+		ConfigurationException::class,
+		'%a%is not a regular expression%a%',
+	);
+
+	// the decisions with the example of such a comment, written alike in NEON and in PHP
+	$neon = Loader::loadFile(FileMock::create(
+		"suppressionComments:\n\t'~^//\\s*@\\s+\\S~': {decisions: noErrorSuppression, example: '// @ <why>'}\n",
+		'neon',
+	));
+	Assert::same(['~^//\s*@\s+\S~' => ['decisions' => ['noErrorSuppression'], 'example' => '// @ <why>']], $neon->suppressionComments);
+	Assert::equal(
+		new Config(suppressionComments: ['~^//\s*@\s+\S~' => ['decisions' => ['noErrorSuppression'], 'example' => '// @ <why>']]),
+		$neon,
+	);
+	Assert::exception(
+		fn() => new Config(suppressionComments: ['~^// @ \S~' => ['decisions' => 'noErrorSuppression', 'example' => '// @<why>']]),
+		InvalidArgumentException::class,
+		'The example `// @<why>` of `~^// @ \S~` in `suppressionComments` is no comment the pattern matches; write one it does, `<why>` standing for the reason.',
+	);
+});
+
+
 test('the page of the rules the configuration names by class is an address with the slug in it', function () {
 	$ruleUrl = fn(string $file) => Loader::loadFile(FileMock::create($file, 'neon'))->ruleUrl;
 	Assert::same('https://wiki.acme.dev/rules/{slug}', $ruleUrl("ruleUrl: 'https://wiki.acme.dev/rules/{slug}'\n"));
