@@ -275,7 +275,7 @@ test('--only keeps what it names of what the configuration comes to, and turns n
 	// a decision of the core runs its rule alone
 	Assert::same([DressCode\Rules\ControlFlow\FallThroughCommentRule::class], array_map(
 		fn(ResolvedRule $rule) => $rule->class,
-		$resolver->resolve(new Config(use: ['perCs']), '8.3', only: ['controlFlow.switch.fallThroughComment'])->getActiveRules(),
+		$resolver->resolve(new Config(use: ['nette']), '8.3', only: ['controlFlow.switch.fallThroughComment'])->getActiveRules(),
 	));
 
 	// a preset stands for every rule owning a decision it and its parents make, and not for what the configuration
@@ -297,33 +297,33 @@ test('--only keeps what it names of what the configuration comes to, and turns n
 	);
 
 	// a preset stands for the rules owning its decisions
-	Assert::contains(DressCode\Rules\ControlFlow\FallThroughCommentRule::class, array_map(
+	Assert::contains(DressCode\Rules\ControlFlow\UselessReturnRule::class, array_map(
 		fn(ResolvedRule $rule) => $rule->class,
-		createResolver()->resolve(new Config(use: ['perCs']), '8.3', only: ['perCs'])->getActiveRules(),
+		createResolver()->resolve(new Config(use: ['nette']), '8.3', only: ['nette'])->getActiveRules(),
 	));
 
 	// a section named like a preset is written with `.*`, the bare name says both and is refused
 	Assert::exception(
-		fn() => createResolver()->resolve(new Config(use: ['perCs']), '8.3', only: ['types']),
+		fn() => createResolver()->resolve(new Config(use: ['nette']), '8.3', only: ['types']),
 		ConfigurationException::class,
 		'Name `types` is both a section of decisions and the preset `dresscode/types`; write `types.*` for the section or `dresscode/types` for the preset.',
 	);
 	Assert::exception(
-		fn() => createResolver()->resolve(new Config(use: ['perCs'], fixRisky: ['types']), '8.3'),
+		fn() => createResolver()->resolve(new Config(use: ['nette'], fixRisky: ['types']), '8.3'),
 		ConfigurationException::class,
 		'Name `types` is both a section %a%',
 	);
 	$section = array_map(
 		fn(ResolvedRule $rule) => $rule->class,
-		createResolver()->resolve(new Config(use: ['perCs', 'types']), '8.3', only: ['types.*'])->getActiveRules(),
+		createResolver()->resolve(new Config(use: ['nette']), '8.3', only: ['types.*'])->getActiveRules(),
 	);
 	$preset = array_map(
 		fn(ResolvedRule $rule) => $rule->class,
-		createResolver()->resolve(new Config(use: ['perCs', 'types']), '8.3', only: ['dresscode/types'])->getActiveRules(),
+		createResolver()->resolve(new Config(use: ['nette']), '8.3', only: ['dresscode/types'])->getActiveRules(),
 	);
 	Assert::true($section !== [] && $section !== $preset);
 	Assert::exception(
-		fn() => createResolver()->resolve(new Config(use: ['perCs']), '8.3', only: ['nothing.*']),
+		fn() => createResolver()->resolve(new Config(use: ['nette']), '8.3', only: ['nothing.*']),
 		ConfigurationException::class,
 		'Unknown section `nothing`.',
 	);
@@ -658,9 +658,9 @@ test(
 	function () {
 		// a preset its child brings along is not named twice by the project, and the command line names what it wants
 		$resolver = createResolver();
-		$resolver->resolve(new Config(use: ['perCs']), '8.3', commandLine: new Profile(use: ['psr12']));
+		$resolver->resolve(new Config(use: ['nette']), '8.3', commandLine: new Profile(use: ['perCs']));
 		Assert::same(
-			['The command line uses preset `dresscode/psr12`, which preset `dresscode/perCs` already brings; the entry does nothing.'],
+			['The command line uses preset `dresscode/perCs`, which preset `dresscode/nette` already brings; the entry does nothing.'],
 			$resolver->getWarnings(),
 		);
 
