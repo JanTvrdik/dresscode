@@ -1,0 +1,64 @@
+# Cleanup
+#
+# Code that is there for nothing: what repeats what the language already says, what can never run, an alias of a
+# function, a comment or a doc comment that says nothing. It decides nothing about the layout, so it goes with any
+# standard.
+
+qualification:
+	leadingBackslash: forbidden              # `strlen()` in a file without a namespace, not `\strlen()`
+
+imports:
+	leadingBackslash: forbidden              # `use Foo\Bar;`, not `use \Foo\Bar;`
+	unused: forbidden
+	aliasEqualToName: forbidden              # `use Foo;`, not `use Foo as Foo;`
+	fromCurrentNamespace: forbidden          # `use Acme\Shop\Order;` in `namespace Acme\Shop`
+
+braces:
+	bareStatementGroup: forbidden            # no `{ ... }` that nothing opens
+
+classes:
+	modifiers:
+		implied: forbidden                   # `final` in a final class
+	overridingMethod:
+		ReturnTypeWillChange: forbidden      # on a method declaring its return type
+	untypedPropertyNullDefault: forbidden    # `public $a;`, not `public $a = null;`
+
+functions:
+	trailingBareReturn: forbidden            # no `return;` closing a function
+	unreachableParameterDefault: forbidden   # a default before a required parameter
+
+hygiene:
+	aliasFunctions: [core, imap, pg]         # `count()`, not `sizeof()`
+	call_user_func: forbidden                # `$f($x)`, not `call_user_func($f, $x)`, risky
+	__invokeCall: forbidden                  # `$f($x)`, not `$f->__invoke($x)`
+	defaultArgument: forbidden               # `json_encode($a)`, not `json_encode($a, 0)`
+	unreadCatchVariable: forbidden           # `catch (E)` where `$e` is not read
+	repeatedCatchBody: forbidden             # `catch (A|B $e)` for two catches of one body
+	separateIssets: forbidden                # `isset($a, $b)`
+	separateUnsets: forbidden                # `unset($a, $b);`
+
+controlFlow:
+	emptyStatement: forbidden                # `foo();;`
+	ifReturningTrueFalse: forbidden          # `return $a > 1;` for an `if` returning `true` or `false`
+	elseAfterReturn: forbidden               # the `else` after a `return` goes, its body following the `if`
+
+expressions:
+	parenthesesAfterConstruct: forbidden     # `return $x;`, not `return ($x);`
+	assignment:
+		targetInValue: forbidden             # `$a += $b`, not `$a = $a + $b`
+	ternary:
+		ofTrueFalse: forbidden               # `$a > 1`, not `$a > 1 ? true : false`
+
+literals:
+	concatenatedLiterals: forbidden          # `'ab'`, not `'a' . 'b'`
+	emptyStringConcatenation: forbidden      # no `. ''`
+
+comments:
+	empty: forbidden
+
+phpdoc:
+	empty: forbidden
+	inheritdocOnly: forbidden                # one holding only `{@inheritDoc}`
+	annotation:
+		nativeTypeOnly: forbidden            # `@param int $a` on `int $a`
+		constantVar: forbidden               # a bare `@var int` on a class constant

@@ -302,6 +302,32 @@ test('--only keeps what it names of what the configuration comes to, and turns n
 		createResolver()->resolve(new Config(use: ['perCs']), '8.3', only: ['perCs'])->getActiveRules(),
 	));
 
+	// a section named like a preset is written with `.*`, the bare name says both and is refused
+	Assert::exception(
+		fn() => createResolver()->resolve(new Config(use: ['perCs']), '8.3', only: ['types']),
+		ConfigurationException::class,
+		'Name `types` is both a section of decisions and the preset `dresscode/types`; write `types.*` for the section or `dresscode/types` for the preset.',
+	);
+	Assert::exception(
+		fn() => createResolver()->resolve(new Config(use: ['perCs'], fixRisky: ['types']), '8.3'),
+		ConfigurationException::class,
+		'Name `types` is both a section %a%',
+	);
+	$section = array_map(
+		fn(ResolvedRule $rule) => $rule->class,
+		createResolver()->resolve(new Config(use: ['perCs', 'types']), '8.3', only: ['types.*'])->getActiveRules(),
+	);
+	$preset = array_map(
+		fn(ResolvedRule $rule) => $rule->class,
+		createResolver()->resolve(new Config(use: ['perCs', 'types']), '8.3', only: ['dresscode/types'])->getActiveRules(),
+	);
+	Assert::true($section !== [] && $section !== $preset);
+	Assert::exception(
+		fn() => createResolver()->resolve(new Config(use: ['perCs']), '8.3', only: ['nothing.*']),
+		ConfigurationException::class,
+		'Unknown section `nothing`.',
+	);
+
 	// a rule only an override turns on runs where the override applies
 	$resolver = createResolver();
 	$overridden = new Config(use: ['test/child'], overrides: [new Override(['tests'], new Profile(decisions: projectDecisions(['d'])))]);

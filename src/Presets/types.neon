@@ -1,0 +1,31 @@
+# Types
+#
+# Types written where PHP reads them: a native type on every parameter, property and return that has one, one notation
+# of each type (`?int`, `int` rather than `integer`, `array<T>` rather than `T[]`), `never` on a function that only
+# throws, `Stringable` on a class with `__toString()`.
+
+types:
+	declaration:
+		parameter: required           # from `@param`, risky
+		property: required            # from `@var`, risky
+		return: required              # from `@return`, `void` where nothing returns, risky
+		anonymousFunction: required   # `void` where a closure returns nothing, risky
+	nullable: '?int'                  # `?int`, not `int|null`
+	nullPosition: last                # `int|string|null`
+
+phpdoc:
+	annotation:
+		nativeTypeOnly: forbidden     # the annotation the native type now says
+	types:
+		builtin: canonical            # `int`, not `integer`
+		duplicate: forbidden          # each type of a union once
+		array: 'array<T>'             # `array<int>`, not `int[]`
+
+mistakes:
+	neverReturnType:
+		function: required            # on a function that always throws
+		method: required
+
+upgrading:
+	classes:
+		Stringable: required          # on a class with `__toString()`
