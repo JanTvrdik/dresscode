@@ -7,6 +7,7 @@
 
 use DressCode\{Config, ConfigurationException, Profile};
 use DressCode\Config\{ConfigResolver, Loader, PluginRegistry};
+use DressCode\Console\Application;
 use Tester\Assert;
 
 require __DIR__ . '/../../bootstrap.php';
@@ -185,6 +186,19 @@ test('the command line sets a decision over everything, and fixRisky and severit
 	Assert::same(
 		[false, true],
 		[isset($resolved->warningDecisions['blankLines.aroundMethods']), isset($resolved->warningDecisions['blankLines.afterImports'])],
+	);
+
+	$out = fopen('php://memory', 'w+') ?: throw new RuntimeException;
+	$err = fopen('php://memory', 'w+') ?: throw new RuntimeException;
+	$code = new Application($out, $err, cwd: $dir)->run([
+		'dresscode', 'config', '--format', 'json', '--set', 'blankLines.aroundMethods=1-2',
+	]);
+	rewind($out);
+	Assert::same(0, $code);
+	$data = json_decode((string) stream_get_contents($out), associative: true);
+	Assert::same(
+		['value' => [1, 2], 'layer' => 'the command line', 'inactive' => null, 'selected' => true, 'severity' => 'error'],
+		$data['decisions']['blankLines.aroundMethods'],
 	);
 	Assert::exception(
 		fn() => new Config(decisions: ['paths' => []]),

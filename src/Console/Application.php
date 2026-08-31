@@ -128,6 +128,7 @@ final readonly class Application
 		$context = $this->context;
 		foreach ([ // in the order the help lists them
 			new Commands\CheckCommand($context),
+			new Commands\ConfigCommand($context),
 			new Commands\ExplainCommand($context),
 			new Commands\CatalogueCommand($context),
 		] as $handlers) {
