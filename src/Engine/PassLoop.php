@@ -93,7 +93,7 @@ final class PassLoop
 		$this->violations = $this->warnings = $this->contexts = $this->entering = $this->leaving = [];
 		$this->opened = new \WeakMap;
 		$this->moved = new \WeakMap;
-		$this->fingerprints = new Fingerprints($lines);
+		$this->fingerprints = new Fingerprints($lines, $path, $this->policy->baseline);
 		$suppression = Suppression::fromFile($file, $this->policy->expandName, $code, $this->policy->suppressionComments);
 		foreach ($suppression->getUnknownNames() as $name => $comment) {
 			$this->warnings[] = 'Comment '
@@ -164,8 +164,10 @@ final class PassLoop
 			$this->warnings,
 			$passes,
 			$mutated,
+			$this->fingerprints->getBaselined(),
 			array_keys($mutatedRules),
-			remaining: $mutated ? $this->collectRemaining($last) : null,
+			// what the baseline holds is decided by the lines of the fixed text, which only another run has
+			remaining: $mutated && $this->policy->baseline === null ? $this->collectRemaining($last) : null,
 			output: $mutated ? $last : null,
 		);
 	}
@@ -178,7 +180,7 @@ final class PassLoop
 	 */
 	private function collectRemaining(string $text): array
 	{
-		$fingerprints = new Fingerprints(preg_split('~\r\n|\r|\n~', $text) ?: []);
+		$fingerprints = new Fingerprints(preg_split('~\r\n|\r|\n~', $text) ?: [], $this->path);
 		/** @var \WeakMap<Token, string> $opened */
 		$opened = new \WeakMap;
 		/** @var \WeakMap<Token, string> $moved */
@@ -438,7 +440,8 @@ final class PassLoop
 	/**
 	 * Turns the reports of a callback into violations and checks that every mutation follows a report that returned
 	 * true; what the rule wrote after a denied report, up to its next one, it wrote for that report. After the last
-	 * report the rule may be fixing any of those it was allowed earlier, so that one is judged only where none was.
+	 * report the rule may be fixing any of those it was allowed earlier, so that one is judged only where none was. A
+	 * report the baseline holds is not denied, only not recorded.
 	 * @param int $before  the revision of the file before the callback
 	 * @param bool $checkRevisions  whether the revisions are the rule's doing, which along the gap traversal they need
 	 *                              not be, because they then cover every rule
@@ -484,7 +487,9 @@ final class PassLoop
 				$this->opened,
 				$this->moved,
 			);
-			$this->violations[$fingerprint] ??= $violation;
+			if (!$report->baselined) { // what the baseline holds is not recorded, though the rule may have fixed it
+				$this->violations[$fingerprint] ??= $violation;
+			}
 		}
 
 		// the lines of code a fix wrote anew are placed by it, as the lines of a gap the fixer broke are

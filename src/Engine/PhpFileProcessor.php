@@ -44,6 +44,21 @@ final readonly class PhpFileProcessor implements FileProcessor
 	}
 
 
+	/**
+	 * The decisions the rules report in this run.
+	 * @return list<string>
+	 */
+	public function getReportedDecisions(): array
+	{
+		$decisions = [];
+		foreach ($this->rules as $rule) {
+			array_push($decisions, ...$this->plan->gates[$rule::class]->getAdmitted());
+		}
+
+		return $decisions;
+	}
+
+
 	/** @throws RuleException|ConvergenceException|ConfigurationException */
 	public function process(string $path, string $code): FileResult
 	{
@@ -101,6 +116,7 @@ final readonly class PhpFileProcessor implements FileProcessor
 			$first->violations,
 			$first->warnings,
 			passes: $passes,
+			baselined: $first->baselined,
 			remaining: $remaining ?? $result->violations, // the last round is a check of the text the fix writes
 		);
 	}

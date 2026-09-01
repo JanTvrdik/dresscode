@@ -25,7 +25,10 @@ final readonly class Violation
 		 */
 		public ?int $column,
 		public Severity $severity,
-		/** stable identity: the decision, the normalized content of the line and the place among the violations of that decision on it */
+		/**
+		 * stable identity for baselines: the decision, the normalized content of the line and the place among the
+		 * violations of that decision on it
+		 */
 		public string $fingerprint,
 		/**
 		 * the run has a fix for this occurrence, whether or not it makes it (a refused risky fix is fixable); false where

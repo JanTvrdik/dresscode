@@ -25,6 +25,12 @@ final class ProcessorsStub implements FileProcessor
 		$this->paths[] = $path;
 		return new FileResult($path, $code, $code);
 	}
+
+
+	public function getReportedDecisions(): array
+	{
+		return ["$this->name.decision"];
+	}
 }
 
 
@@ -34,13 +40,13 @@ test('a file goes to the processor of its extension, in any letter case, the oth
 		fn() => new ProcessorsStub('php'),
 		['neon' => fn() => new ProcessorsStub('neon')],
 	);
-	$kind = fn(FileProcessor $processor) => $processor instanceof ProcessorsStub ? $processor->name : null;
-	Assert::same('php', $kind($processors->get('src/a.php')));
-	Assert::same('php', $kind($processors->get('src/a.phpt')));
-	Assert::same('php', $kind($processors->get('Makefile')));
-	Assert::same('neon', $kind($processors->get('config/common.neon')));
-	Assert::same('neon', $kind($processors->get('config/COMMON.NEON')));
-	Assert::same('php', $kind($processors->getBase()));
+	$kind = fn(FileProcessor $processor) => $processor->getReportedDecisions()[0];
+	Assert::same('php.decision', $kind($processors->get('src/a.php')));
+	Assert::same('php.decision', $kind($processors->get('src/a.phpt')));
+	Assert::same('php.decision', $kind($processors->get('Makefile')));
+	Assert::same('neon.decision', $kind($processors->get('config/common.neon')));
+	Assert::same('neon.decision', $kind($processors->get('config/COMMON.NEON')));
+	Assert::same('php.decision', $kind($processors->getBase()));
 });
 
 

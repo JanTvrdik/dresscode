@@ -18,4 +18,10 @@ interface FileProcessor
 {
 	/** @throws RuleException|ConvergenceException|ConfigurationException */
 	function process(string $path, string $code): FileResult;
+
+	/**
+	 * The decisions the rules report in this run.
+	 * @return list<string>
+	 */
+	function getReportedDecisions(): array;
 }
