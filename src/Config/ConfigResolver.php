@@ -195,6 +195,7 @@ final class ConfigResolver
 			values: $values,
 			fixRisky: $fixRiskyPaths,
 			warningDecisions: self::findWarningDecisions($decisions, array_column($collected, 0), $severities),
+			overrides: $resolvedOverrides,
 		);
 	}
 
