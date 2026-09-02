@@ -39,7 +39,8 @@ function getPhpCliBinary(): string
 
 
 /**
- * The binary of the process, or under the CGI the CLI binary beside it; null where there is none.
+ * The binary of the process, or under the CGI the CLI binary beside it; null where there is none, and a run starts
+ * no workers.
  */
 function findPhpCliBinary(): ?string
 {
