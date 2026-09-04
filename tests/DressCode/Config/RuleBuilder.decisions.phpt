@@ -71,6 +71,16 @@ final class PipeRule extends TestRule
 }
 
 
+#[RuleInfo(Stage::Structure, typesRequired: true)]
+final class OverrideRule extends TestRule
+{
+	public static function getDecisions(): array
+	{
+		return [new Decision('classes.overridingMethod.signature', Domain::state('required'), 'Types as the ancestor declares them')];
+	}
+}
+
+
 #[RuleInfo(Stage::Structure, decisions: ['upgrading.syntax.firstClassCallables'])]
 final class CallableRule extends TestRule
 {
@@ -100,13 +110,15 @@ final class GuardRule extends TestRule
 
 
 $catalogue = Catalogue::fromRules([
-	PipeRule::class, DebugRule::class, MatchRule::class, CallableRule::class, PartialCallableRule::class, GuardRule::class,
+	PipeRule::class, DebugRule::class, MatchRule::class, OverrideRule::class,
+	CallableRule::class, PartialCallableRule::class, GuardRule::class,
 ]);
 $everything = [[
 	new Layer(LayerKind::Configuration),
 	[
 		'mistakes' => ['debugOutput' => 'forbidden', 'debugOutputFunctions' => ['dump']],
 		'upgrading' => ['match' => 'required', 'pipe' => 'required', 'syntax' => ['firstClassCallables' => 'required']],
+		'classes' => ['overridingMethod' => ['signature' => 'required']],
 	],
 ]];
 
@@ -115,11 +127,13 @@ test('a rule that cannot run here leaves its decisions a reason', function () us
 	$resolved = new DecisionResolver($catalogue, phpTarget: '8.2')->resolve($everything);
 	Assert::same(InactiveReason::Php, $resolved['upgrading.pipe']->inactive);
 	Assert::null($resolved['upgrading.match']->inactive);
+	Assert::same(InactiveReason::Types, $resolved['classes.overridingMethod.signature']->inactive);
 	Assert::same(InactiveReason::NameResolution, $resolved['namespaces.functions']->inactive);
 
-	$runnable = new DecisionResolver($catalogue, phpTarget: '8.5', certainNames: true)->resolve($everything);
-	Assert::null($runnable['upgrading.pipe']->inactive);
-	Assert::null($runnable['namespaces.functions']->inactive);
+	$typed = new DecisionResolver($catalogue, phpTarget: '8.5', typesAnalyzed: true, certainNames: true)->resolve($everything);
+	Assert::null($typed['upgrading.pipe']->inactive);
+	Assert::null($typed['classes.overridingMethod.signature']->inactive);
+	Assert::null($typed['namespaces.functions']->inactive);
 });
 
 

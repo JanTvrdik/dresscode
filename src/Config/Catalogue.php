@@ -80,7 +80,7 @@ final class Catalogue
 	 * @internal
 	 */
 	public const ReservedKeys = [
-		'use', 'namespaces', 'nameResolution', 'targets', 'paths', 'excludePaths',
+		'use', 'typeAnalysis', 'namespaces', 'nameResolution', 'targets', 'paths', 'excludePaths',
 		'fileExtensions', 'skipWhen', 'baseline', 'cacheDir', 'rules', 'analyses', 'fixRisky', 'severity',
 		'suppressionComments', 'overrides',
 	];
