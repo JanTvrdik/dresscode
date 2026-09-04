@@ -36,6 +36,12 @@ final class WorkerPool
 	/** workers that have connected so far */
 	private int $accepted = 0;
 
+	/** workers started once the first has connected */
+	private int $pending = 0;
+
+	/** the address the workers connect to */
+	private string $address = '';
+
 	/** @var array<int, array{string, float, string}>  path in progress with the time it started and its content, by socket id */
 	private array $inProgress = [];
 
@@ -51,6 +57,9 @@ final class WorkerPool
 	/** @var list<string> */
 	private array $queue = [];
 
+	/** @var array<string, true>  the files the results depend on, as the workers sent them */
+	private array $dependencies = [];
+
 
 	public function __construct(
 		/** @var list<string> the worker command line; --worker with the address is appended */
@@ -60,8 +69,10 @@ final class WorkerPool
 		private readonly ?string $cwd = null,
 		/** seconds a worker may spend on one file before the run fails, since a rule has most likely looped */
 		private readonly int $taskTimeout = 300,
-		/** seconds a worker may take to connect */
+		/** seconds a worker may take to connect, the first one filling the cache the others share among them */
 		private readonly int $connectTimeout = 300,
+		/** the first worker fills a cache the others share before it connects, and they start after that */
+		private readonly bool $warmFirst = false,
 	) {
 	}
 
@@ -163,7 +174,10 @@ final class WorkerPool
 		$this->read = $read;
 		$done = 0;
 		try {
-			for ($i = min($this->jobs, count($this->queue)); $i > 0; $i--) {
+			$count = min($this->jobs, count($this->queue));
+			$this->address = $address;
+			$this->pending = $this->warmFirst ? $count - 1 : 0;
+			for ($i = $count - $this->pending; $i > 0; $i--) {
 				$this->workers[] = $this->spawn($address);
 			}
 
@@ -189,6 +203,16 @@ final class WorkerPool
 			$this->closeServer();
 			$this->stop();
 		}
+	}
+
+
+	/**
+	 * The files the results of the workers depend on beyond the configuration, as they sent them.
+	 * @return list<string>
+	 */
+	public function getDependencies(): array
+	{
+		return array_keys($this->dependencies);
 	}
 
 
@@ -304,15 +328,19 @@ final class WorkerPool
 
 
 	/**
-	 * Registers the connection and hands it a path. It is read without blocking: a worker may have sent only a part of
-	 * its line, and waiting for the rest would stop the parent from hearing the others and from noticing a worker that
-	 * is stuck.
+	 * Registers the connection, starts the workers that waited for it, and hands it a path. It is read without
+	 * blocking: a worker may have sent only a part of its line, and waiting for the rest would stop the parent from
+	 * hearing the others and from noticing a worker that is stuck.
 	 * @param resource $socket
 	 */
 	private function acceptConnection($socket): void
 	{
 		stream_set_blocking($socket, enable: false);
 		$this->accepted++;
+		for (; $this->pending > 0; $this->pending--) {
+			$this->workers[] = $this->spawn($this->address);
+		}
+
 		$id = (int) $socket;
 		$this->sockets[$id] = $socket;
 		$this->assign($id);
@@ -364,6 +392,10 @@ final class WorkerPool
 			}
 
 			unset($this->inProgress[$id]);
+			foreach (is_array($data['dependencies'] ?? null) ? $data['dependencies'] : [] as $file) {
+				$this->dependencies[(string) $file] = true;
+			}
+
 			$results[$path] = WorkerCodec::decode($data, $code);
 			$this->assign($id);
 		}
@@ -491,7 +523,7 @@ final class WorkerPool
 		}
 
 		$this->workers = $this->sockets = $this->inProgress = $this->buffers = [];
-		$this->accepted = 0;
+		$this->accepted = $this->pending = 0;
 		$this->read = null;
 	}
 }

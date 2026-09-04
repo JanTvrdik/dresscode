@@ -37,6 +37,10 @@ final readonly class Runner
 		private ?ResultCache $cache = null,
 		/** the run is narrowed to some of the decisions, so it says nothing about the baseline entries of the others */
 		private bool $narrowed = false,
+		/** @var ?\Closure(): void  fills the cache the workers share, which those started together would all write at once */
+		public ?\Closure $warmUp = null,
+		/** @var ?\Closure(): ?list<string>  the files the results depend on beyond the configuration, once the run knows them */
+		public ?\Closure $findDependencies = null,
 	) {
 		$this->root = Helpers::canonicalizePath($root);
 		$this->processors = $processors instanceof FileProcessor ? FileProcessors::of($processors) : $processors;
@@ -151,6 +155,11 @@ final readonly class Runner
 
 		if ($onProgress !== null) {
 			$onProgress(count($files), [], null); // the whole scope is done, whatever was skipped along the way
+		}
+
+		$dependencies = [...($this->findDependencies)?->__invoke() ?? [], ...$workers?->getDependencies() ?? []];
+		if ($dependencies !== []) {
+			$this->cache?->recordDependencies(array_values(array_unique($dependencies)));
 		}
 
 		$this->cache?->save();

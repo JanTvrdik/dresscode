@@ -103,6 +103,19 @@ final class Registry
 
 
 	/**
+	 * The analysis a question has already made for the file, or null where none did; it is never created here.
+	 * @template T of object
+	 * @param  class-string<T>  $class
+	 * @return ?T
+	 */
+	public function findCreated(FileNode $file, string $class): ?object
+	{
+		$analysis = ($this->passCache[$file] ?? [])[$class] ?? ($this->cache[$file][1] ?? [])[$class] ?? null;
+		return $analysis instanceof $class ? $analysis : null;
+	}
+
+
+	/**
 	 * Whether the engine can build the analysis itself, which it does with the FileNode or without arguments.
 	 * @param class-string $class
 	 */

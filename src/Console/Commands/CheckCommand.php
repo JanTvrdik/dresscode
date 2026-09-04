@@ -88,6 +88,7 @@ final readonly class CheckCommand
 				fixRisky: $fixRisky,
 				baseline: !$generate,
 			);
+			($runner->warmUp)?->__invoke(); // before connecting, which is what starts the other workers
 			return Worker::run($run->worker, $runner, $fix);
 		}
 
@@ -164,7 +165,7 @@ final readonly class CheckCommand
 		$jobs = $run->jobs ?? max(1, min(WorkerPool::detectCpuCount(), intdiv(count($files), 4)));
 		$command = $jobs > 1 && $files ? $this->buildWorkerCommand($args, $configuration, $run, $check) : null;
 		$workers = $command
-			? new WorkerPool($command, $jobs, $this->context->workingDirectory)
+			? new WorkerPool($command, $jobs, $this->context->workingDirectory, warmFirst: $runner->warmUp !== null)
 			: null;
 		$progress = !$generate && $format === 'console' && count($files) > 1 && $out->isTerminal()
 			? new ProgressBar($out, count($files))

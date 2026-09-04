@@ -29,6 +29,7 @@ final class Worker
 		}
 
 		$collector = new CycleCollector;
+		$sent = false;
 		while (($line = fgets($socket)) !== false) {
 			$job = json_decode($line, associative: true);
 			$path = is_array($job) && is_string($job['path'] ?? null) ? base64_decode($job['path'], strict: true) : false;
@@ -38,7 +39,14 @@ final class Worker
 			}
 
 			$result = $runner->processPath($path, $fix);
-			fwrite($socket, json_encode(WorkerCodec::encode($result), JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE) . "\n");
+			$message = WorkerCodec::encode($result);
+			// the files the results depend on, with the first result after they are known
+			if (!$sent && ($dependencies = ($runner->findDependencies)?->__invoke()) !== null) {
+				$message['dependencies'] = $dependencies;
+				$sent = true;
+			}
+
+			fwrite($socket, json_encode($message, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE) . "\n");
 			$collector->collect(); // once the parent has the result, which then does not wait for it
 		}
 

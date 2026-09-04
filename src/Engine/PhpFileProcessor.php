@@ -85,7 +85,16 @@ final readonly class PhpFileProcessor implements FileProcessor
 				return self::createSyntaxError($path, $code, $e, $rounds);
 			}
 
-			$result = $passLoop->run($file, $text, $path, $style, $this->phpVersion);
+			try {
+				$result = $passLoop->run($file, $text, $path, $style, $this->phpVersion);
+			} catch (RuleException $e) {
+				// the types refuse code PHP would not compile, whichever rule asks for them first
+				$previous = $e->getPrevious();
+				return $previous instanceof Analyses\UncompilableCodeException
+					? self::createSyntaxError($path, $code, new ParseException($previous->getMessage()), $rounds)
+					: throw $e;
+			}
+
 			$first ??= $result;
 			$passes += $result->passes;
 			$printed = $result->output ?? $text;

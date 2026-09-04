@@ -141,6 +141,12 @@ final class PassLoop
 				$this->runStage($stage, $rules, $style);
 			}
 
+			$failure = $this->analyses->findCreated($file, Analyses\Types::class)?->failure;
+			if ($failure !== null) {
+				$warning = "PHPStan fails on the file, so the rules asking for its types see none where it stopped: $failure";
+				$this->warnings = array_values(array_unique([...$this->warnings, $warning]));
+			}
+
 			if ($file->revision === $revision) {
 				$this->checkUnfixed();
 				break;

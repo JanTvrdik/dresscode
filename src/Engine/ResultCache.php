@@ -14,7 +14,8 @@ use function count, is_array, is_int, is_string;
 /**
  * Remembers which file contents came out clean under an effective configuration, so an unchanged file is not
  * processed again, together with what the baseline matched in them, so the run can still count it. One JSON
- * file per project root; entries of another configuration are dropped, entries untouched for a month expire.
+ * file per project root; entries of another configuration, or of one a file it depends on has changed under, are
+ * dropped, entries untouched for a month expire.
  * @internal
  */
 final class ResultCache
@@ -27,20 +28,29 @@ final class ResultCache
 	/** @var array<string, true> */
 	private array $touched = [];
 
+	/** @var array<string, string>  file => stamp, of the files the results depend on that the configuration does not name */
+	private array $dependencies = [];
+
 
 	public function __construct(
 		private readonly string $file,
 		private readonly string $configHash,
 		/** a run that processes every file serves none from the cache, and writes what it learns for the next one */
 		private readonly bool $serves = true,
+		/** @var ?\Closure(string): string  file => its stamp, by which a dependency is told unchanged */
+		private readonly ?\Closure $stamp = null,
 	) {
 	}
 
 
-	/** Loads the entries of the file when it belongs to the same configuration; an unreadable file is an empty cache. */
-	public static function load(string $file, string $configHash, bool $serves = true): self
+	/**
+	 * Loads the entries of the file when it belongs to the same configuration and none of the dependencies it names
+	 * changed since; an unreadable file is an empty cache.
+	 * @param  ?\Closure(string): string  $stamp  file => its stamp
+	 */
+	public static function load(string $file, string $configHash, bool $serves = true, ?\Closure $stamp = null): self
 	{
-		$cache = new self($file, $configHash, $serves);
+		$cache = new self($file, $configHash, $serves, $stamp);
 		$json = @file_get_contents($file); // @ a missing or unreadable file is an empty cache
 		try {
 			$data = $json === false ? null : Json::decode($json, forceArrays: true);
@@ -50,6 +60,14 @@ final class ResultCache
 
 		if (!is_array($data) || ($data['config'] ?? null) !== $configHash || !is_array($data['entries'] ?? null)) {
 			return $cache;
+		}
+
+		foreach (is_array($data['dependencies'] ?? null) ? $data['dependencies'] : [] as $dependency => $stamp) {
+			if (!is_string($stamp) || $stamp !== $cache->stamp?->__invoke((string) $dependency)) {
+				return $cache;
+			}
+
+			$cache->dependencies[(string) $dependency] = $stamp;
 		}
 
 		foreach ($data['entries'] as $key => $entry) {
@@ -108,6 +126,22 @@ final class ResultCache
 	}
 
 
+	/**
+	 * Names the files the results depend on besides those the configuration names, such as what the configuration of
+	 * PHPStan includes, so that a change of any of them drops the cache; they replace those of the run before.
+	 * @param  list<string>  $files
+	 */
+	public function recordDependencies(array $files): void
+	{
+		$this->dependencies = [];
+		foreach ($files as $file) {
+			$this->dependencies[$file] = $this->stamp?->__invoke($file) ?? '';
+		}
+
+		ksort($this->dependencies);
+	}
+
+
 	/** Writes the entries touched by this run and the recent ones; failures are silent, a cache is a convenience. */
 	public function save(): void
 	{
@@ -126,7 +160,11 @@ final class ResultCache
 			return;
 		}
 
-		$json = Json::encode(['config' => $this->configHash, 'entries' => (object) $entries]);
+		$json = Json::encode([
+			'config' => $this->configHash,
+			'dependencies' => (object) $this->dependencies,
+			'entries' => (object) $entries,
+		]);
 		@file_put_contents($this->file, $json, LOCK_EX); // @ failure is silent; a torn read loads as an empty cache
 	}
 

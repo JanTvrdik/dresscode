@@ -73,6 +73,29 @@ test('expired entries are dropped on save, touched ones are refreshed', function
 });
 
 
+test('a changed or a missing dependency empties the cache, an unchanged one keeps it and is written again', function () use ($file) {
+	$stamps = ['stubs/a.stub' => '1|10', 'stubs/b.stub' => '1|20'];
+	$stamp = function (string $dependency) use (&$stamps): string {
+		return $stamps[$dependency] ?? '';
+	};
+	$cache = ResultCache::load($file, 'config-d', stamp: $stamp);
+	$cache->markClean('a');
+	$cache->recordDependencies(['stubs/b.stub', 'stubs/a.stub']);
+	$cache->save();
+	Assert::same($stamps, json_decode((string) file_get_contents($file), associative: true)['dependencies']);
+
+	$cache = ResultCache::load($file, 'config-d', stamp: $stamp);
+	Assert::same(1, $cache->count());
+	$cache->save(); // a run that built no container keeps the dependencies it was given
+	Assert::same(1, ResultCache::load($file, 'config-d', stamp: $stamp)->count());
+
+	$stamps['stubs/b.stub'] = '2|20';
+	Assert::same(0, ResultCache::load($file, 'config-d', stamp: $stamp)->count());
+	unset($stamps['stubs/b.stub']);
+	Assert::same(0, ResultCache::load($file, 'config-d', stamp: $stamp)->count());
+});
+
+
 test('a broken file is an empty cache, and an entry of another shape is none', function () use ($file) {
 	file_put_contents($file, '{');
 	Assert::same(0, ResultCache::load($file, 'config-c')->count());
