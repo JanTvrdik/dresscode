@@ -11,6 +11,7 @@ use DressCode\Tristate;
 use PhpParser\Node as ParserNode;
 use PhpParser\Node\Expr;
 use PHPStan\Analyser\Scope;
+use PHPStan\Node\{InstantiationCallableNode, MethodCallableNode, StaticMethodCallableNode};
 use PHPStan\Reflection\ExtendedPropertyReflection;
 use PHPStan\Type\{Type, TypeCombinator};
 use PhpSyntax\{Node, Printer, Token};
@@ -182,6 +183,17 @@ final class Types implements PassAnalysis
 
 
 	/**
+	 * The classes the expression may be an instance of, fully qualified: the candidates and not the whole type, those
+	 * of a union and of an intersection alike; none both for a value that is no object and for one of a type unknown.
+	 * @return list<string>
+	 */
+	public function findClasses(ExpressionNode $expression): array
+	{
+		return $this->getType($expression)?->getObjectClassNames() ?? [];
+	}
+
+
+	/**
 	 * The member the node reaches: the constant of a class constant access, the method of a call, the property of
 	 * an access, the constructor of an instantiation, decided by the class that declares it and of the kind it is
 	 * declared (`parent::recalc()` reaches a method, `$order->make()` a static one, `parent::__construct()` the
@@ -221,6 +233,109 @@ final class Types implements PassAnalysis
 
 
 	/**
+	 * The member access the node makes, decided by the type of its receiver and not by the class that declares the
+	 * member: a class constant access, a method call, a property access, or an instantiation of a named class. There
+	 * is one for a member no class declares any more, and where a child overrides the member the classes are those of
+	 * the receiver. A property is declared only where the access sees it, PHP calling `__get` and `__set` for one it
+	 * does not. Null for a name that is an expression and for a receiver that is no object.
+	 */
+	public function findMemberAccess(ExpressionNode $node): ?MemberAccess
+	{
+		$receiver = $this->findReceiver($node);
+		if ($receiver === null) {
+			return null;
+		}
+
+		[$kind, $type, $name, $scope] = $receiver;
+		$classes = $type->getObjectClassNames();
+		return new MemberAccess(
+			$kind,
+			$name,
+			$classes,
+			array_any($classes, fn(string $class) => $this->declaresMember($class, $kind, $name, $scope)),
+			$scope->getClassReflection()?->getName(),
+		);
+	}
+
+
+	/**
+	 * The instantiation, or a call of `parent::__construct()`, as the access of the constructor it runs, whose class is
+	 * the one that declares it: `new Child` of a child that declares none runs the constructor of its parent, a child
+	 * that declares one its own. Null for any other node.
+	 */
+	public function findConstructorAccess(ExpressionNode $node): ?MemberAccess
+	{
+		$access = $node instanceof NewNode
+			|| ($node instanceof StaticMethodCallNode && $node->name instanceof IdentifierNode && $node->name->equals('__construct'))
+			? $this->findMemberAccess($node)
+			: null;
+		if ($access === null) {
+			return null;
+		}
+
+		$declaring = $this->findMember($node)?->declaringClass;
+		return new MemberAccess(
+			MemberKind::Constructor,
+			'__construct',
+			$declaring === null ? $access->classes : [$declaring],
+			$access->declared,
+			$access->scopeClass,
+		);
+	}
+
+
+	/**
+	 * The parameters of the method the access calls, as the class of the receiver declares them; null for an access
+	 * that is no call, for a method no class of the receiver declares, and where two of them declare it differently.
+	 * @return ?list<Parameter>
+	 */
+	public function findParameters(MemberAccess $access): ?array
+	{
+		if (!in_array($access->kind, [MemberKind::Method, MemberKind::StaticMethod, MemberKind::Constructor], true)) {
+			return null;
+		}
+
+		$found = null;
+		foreach ($access->classes as $class) {
+			if (!$this->declarations->hasMember($class, $access->kind, $access->name)) {
+				continue;
+			}
+
+			// the default does not decide how an argument binds
+			$parameters = $this->declarations->findMethodParameters($class, $access->name);
+			$describe = fn(Parameter $parameter) => [
+				$parameter->name,
+				$parameter->type,
+				$parameter->optional,
+				$parameter->variadic,
+				$parameter->byReference,
+			];
+			if (
+				$parameters === null
+				|| ($found !== null && array_map($describe, $found) !== array_map($describe, $parameters))
+			) {
+				return null;
+			}
+
+			$found = $parameters;
+		}
+
+		return $found;
+	}
+
+
+	/**
+	 * The parameters of the method as the class declares it, itself or through an ancestor, the constructor among them;
+	 * null for a method the class does not have, for a class nothing declares and for a method of several variants.
+	 * @return ?list<Parameter>
+	 */
+	public function findMethodParameters(string $class, string $method): ?array
+	{
+		return $this->declarations->findMethodParameters($class, $method);
+	}
+
+
+	/**
 	 * The declared spelling of a class, interface or enum, with `$traits` also of a trait, the project, its packages or
 	 * PHP declare, given its fully qualified name in any letter case without a leading backslash; null for a name
 	 * nothing declares.
@@ -228,6 +343,16 @@ final class Types implements PassAnalysis
 	public function findClassName(string $name, bool $traits = false): ?string
 	{
 		return $this->declarations->findClassName($name, $traits);
+	}
+
+
+	/**
+	 * Whether the class has the member of that kind, itself or through an ancestor; a magic one it does not have, and
+	 * a class nothing declares has none.
+	 */
+	public function hasMember(string $class, MemberKind $kind, string $name): bool
+	{
+		return $this->declarations->hasMember($class, $kind, $name);
 	}
 
 
@@ -244,6 +369,14 @@ final class Types implements PassAnalysis
 		}
 
 		[$parserNode, $scope] = $found;
+		if (
+			$parserNode instanceof MethodCallableNode
+			|| $parserNode instanceof StaticMethodCallableNode
+			|| $parserNode instanceof InstantiationCallableNode
+		) {
+			$parserNode = $parserNode->getOriginalNode(); // a first-class callable comes as a node of PHPStan's own
+		}
+
 		[$kind, $type, $name] = match (true) {
 			$node instanceof ClassConstantFetchNode && $node->name instanceof IdentifierNode && $parserNode instanceof Expr\ClassConstFetch
 				=> [MemberKind::Constant, self::getClassType($parserNode->class, $scope), $node->name->text],
@@ -277,5 +410,19 @@ final class Types implements PassAnalysis
 	private static function getClassType(ParserNode\Name|Expr $class, Scope $scope): Type
 	{
 		return $class instanceof ParserNode\Name ? $scope->resolveTypeByName($class) : $scope->getType($class);
+	}
+
+
+	/** Whether the class declares the member, a property only where the scope sees it. */
+	private function declaresMember(string $class, MemberKind $kind, string $name, Scope $scope): bool
+	{
+		if ($kind !== MemberKind::Property && $kind !== MemberKind::StaticProperty) {
+			return $this->declarations->hasMember($class, $kind, $name);
+		}
+
+		$reflection = $this->phpstan->findClass($class);
+		return $reflection !== null
+			&& $reflection->hasNativeProperty($name)
+			&& $scope->canReadProperty($reflection->getNativeProperty($name));
 	}
 }
