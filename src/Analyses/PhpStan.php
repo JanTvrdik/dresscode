@@ -53,6 +53,8 @@ final class PhpStan
 	/** @var ?array{string, self}  hash of the text of a pass and the PHPStan reading it */
 	private ?array $derived = null;
 
+	private ?Declarations $declarations = null;
+
 	/** @var ?list<string>  the files the configuration read, once a container is built */
 	private ?array $configurationFiles = null;
 
@@ -138,10 +140,18 @@ final class PhpStan
 			$derived->replacement = [$path, $file];
 			$derived->diskDeclarations = [];
 			$derived->derived = null;
+			$derived->declarations = null;
 			$this->derived = [$hash, $derived];
 		}
 
 		return $this->derived[1];
+	}
+
+
+	/** What the declarations this PHPStan reads say of the classes, asked by their names and kept as long as it lives. */
+	public function getDeclarations(): Declarations
+	{
+		return $this->declarations ??= new Declarations($this);
 	}
 
 
@@ -194,6 +204,18 @@ final class PhpStan
 		} finally {
 			restore_error_handler();
 		}
+	}
+
+
+	/**
+	 * The declared spelling of a class, interface or enum, with `$traits` also of a trait, the project, its packages or
+	 * PHP declare, given its fully qualified name in any letter case without a leading backslash; null for a name
+	 * nothing declares or PHP refuses to load.
+	 */
+	public function findClassName(string $name, bool $traits = false): ?string
+	{
+		$class = $this->findClass($name);
+		return $class === null || (!$traits && $class->isTrait()) ? null : $class->getName();
 	}
 
 

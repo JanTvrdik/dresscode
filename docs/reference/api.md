@@ -23,6 +23,30 @@ final class IndentationSnapshot implements DressCode\Analyses\PassAnalysis
 	public function isLineInPlace(PhpSyntax\Token $token): bool
 ```
 
+## `DressCode\Analyses\Member`
+
+```php
+final readonly class Member
+	public readonly DressCode\Analyses\MemberKind $kind
+	public readonly string $name
+	public readonly string $declaringClass
+	public function __construct(DressCode\Analyses\MemberKind $kind, string $name, string $declaringClass)
+	public function describe(): string
+```
+
+## `DressCode\Analyses\MemberKind`
+
+```php
+enum MemberKind
+	case Constant
+	case Method
+	case StaticMethod
+	case Property
+	case StaticProperty
+	case Constructor
+	public function describe(string $class, string $name): string
+```
+
 ## `DressCode\Analyses\Parameter`
 
 ```php
@@ -94,6 +118,8 @@ final readonly class Placement
 final class Types implements DressCode\Analyses\PassAnalysis
 	public private(set) ?string $failure
 	public function isOfType(PhpSyntax\Nodes\ExpressionNode $expression, string $type): DressCode\Tristate
+	public function findMember(PhpSyntax\Nodes\ExpressionNode $node): ?DressCode\Analyses\Member
+	public function findClassName(string $name, bool $traits = false): ?string
 ```
 
 ## `DressCode\Analyses\TypesUnavailableException`
