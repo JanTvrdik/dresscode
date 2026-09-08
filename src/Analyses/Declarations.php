@@ -48,7 +48,7 @@ final class Declarations
 	}
 
 
-	private static function toParameter(ExtendedParameterReflection $parameter): Parameter
+	public static function toParameter(ExtendedParameterReflection $parameter): Parameter
 	{
 		return new Parameter(
 			$parameter->getName(),
@@ -62,7 +62,7 @@ final class Declarations
 
 
 	/** The native type as PHP describes it; null for a declaration without one. */
-	private static function renderNativeType(Type $type): ?string
+	public static function renderNativeType(Type $type): ?string
 	{
 		return $type instanceof MixedType && !$type->isExplicitMixed() ? null : $type->describe(VerbosityLevel::typeOnly());
 	}
@@ -96,7 +96,7 @@ final class Declarations
 
 
 	/** The member of that kind the class declares natively, itself or through an ancestor. */
-	private static function findNativeMember(
+	public static function findNativeMember(
 		ClassReflection $class,
 		MemberKind $kind,
 		string $name,
