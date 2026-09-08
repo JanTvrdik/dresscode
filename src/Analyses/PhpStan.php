@@ -7,7 +7,9 @@
 
 namespace DressCode\Analyses;
 
+use Composer\Autoload\ClassLoader;
 use Composer\InstalledVersions;
+use DressCode\Config\ComposerJson;
 use DressCode\Engine\Helpers;
 use DressCode\Violation;
 use Nette\Utils\FileSystem;
@@ -25,6 +27,7 @@ use PHPStan\PhpDoc\TypeStringResolver;
 use PHPStan\Reflection\BetterReflection\BetterReflectionProvider;
 use PHPStan\Reflection\{ClassReflection, ReflectionProvider};
 use PHPStan\Type\Type;
+use PhpSyntax\Trivia;
 use function ini_get, is_string;
 
 
@@ -54,6 +57,8 @@ final class PhpStan
 	private ?array $derived = null;
 
 	private ?Declarations $declarations = null;
+
+	private ?ClassLoader $autoloader = null;
 
 	/** @var ?list<string>  the files the configuration read, once a container is built */
 	private ?array $configurationFiles = null;
@@ -228,6 +233,60 @@ final class PhpStan
 		$provider = $this->getContainer()->getByType(ReflectionProvider::class);
 		$class = $provider->hasClass($name) ? $provider->getClass($name) : null;
 		return $class === null || self::hasCircularAncestors($class) ? null : $class;
+	}
+
+
+	/**
+	 * The file the Composer autoload of the project finds the class in, without loading it; null where it finds none.
+	 * The reflection cannot say it for a name the process has made an alias of another class, as a package does for
+	 * an old name with `class_alias()`: PHPStan in the process loads its own copy of nikic/php-parser, and DressCode
+	 * its own nette/utils, whose aliases it then reflects as the class aliased.
+	 */
+	public function findAutoloadedFile(string $class): ?string
+	{
+		if ($this->autoloader === null) {
+			$composer = ComposerJson::read(ComposerJson::findFile($this->root));
+			$vendorDir = $composer['config']['vendor-dir'] ?? 'vendor';
+			$vendor = Helpers::toAbsolutePath(is_string($vendorDir) ? $vendorDir : 'vendor', $this->root) . '/composer';
+			$this->autoloader = new ClassLoader;
+			foreach (is_file("$vendor/autoload_psr4.php") ? require "$vendor/autoload_psr4.php" : [] as $prefix => $paths) {
+				$this->autoloader->setPsr4($prefix, $paths);
+			}
+
+			foreach (is_file("$vendor/autoload_namespaces.php") ? require "$vendor/autoload_namespaces.php" : [] as $prefix => $paths) {
+				$this->autoloader->set($prefix, $paths);
+			}
+
+			$this->autoloader->addClassMap(is_file("$vendor/autoload_classmap.php") ? require "$vendor/autoload_classmap.php" : []);
+		}
+
+		$file = $this->autoloader->findFile($class);
+		return is_string($file) ? $file : null;
+	}
+
+
+	/**
+	 * What the doc comment of the declaration of the class in the file says under `@deprecated`, an empty string for
+	 * the bare annotation; null where the file declares no such class or the declaration is not deprecated.
+	 */
+	public function findDeclaredDeprecation(string $class, string $file): ?string
+	{
+		try {
+			$code = @file_get_contents($file); // @ the file may be gone
+			$ast = $code === false ? [] : $this->parse($code);
+		} catch (UncompilableCodeException) {
+			$ast = []; // a file of a package is no concern of the file of the run
+		}
+
+		$declaration = (new NodeFinder)->findFirst(
+			$ast,
+			fn($node) => $node instanceof ClassLike && strcasecmp((string) $node->namespacedName, $class) === 0,
+		);
+		$docComment = $declaration?->getDocComment()?->getText();
+		$tags = $docComment === null
+			? []
+			: (new PhpDoc)->parse(new Trivia(Trivia::DocComment, $docComment))->getDeprecatedTagValues();
+		return $tags === [] ? null : (string) $tags[0]->description;
 	}
 
 

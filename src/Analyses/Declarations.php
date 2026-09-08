@@ -7,8 +7,11 @@
 
 namespace DressCode\Analyses;
 
-use DressCode\Tristate;
-use PHPStan\Reflection\{ClassReflection, ExtendedParameterReflection};
+use DressCode\{QualifiedNames, Tristate};
+use PHPStan\Reflection\{
+	ClassConstantReflection, ClassReflection, ExtendedMethodReflection, ExtendedParameterReflection,
+};
+use PHPStan\Reflection\Php\PhpPropertyReflection;
 use PHPStan\Type\{MixedType, Type, VerbosityLevel};
 use function count, is_bool;
 
@@ -76,6 +79,35 @@ final class Declarations
 			count($scalars) === 1 && $scalars[0] !== null => var_export($scalars[0], return: true),
 			$value->isArray()->yes() && $value->isIterableAtLeastOnce()->no() => '[]',
 			default => null,
+		};
+	}
+
+
+	public function findDeprecation(Member $member): ?Deprecation
+	{
+		$class = $this->phpstan->findClass($member->declaringClass);
+		$reflection = $class === null ? null : self::findNativeMember($class, $member->kind, $member->name);
+		if ($reflection === null || !$reflection->isDeprecated()->yes()) {
+			return null;
+		}
+
+		return Deprecation::fromDescription($reflection->getDeprecatedDescription() ?? '');
+	}
+
+
+	/** The member of that kind the class declares natively, itself or through an ancestor. */
+	private static function findNativeMember(
+		ClassReflection $class,
+		MemberKind $kind,
+		string $name,
+	): ClassConstantReflection|ExtendedMethodReflection|PhpPropertyReflection|null
+	{
+		return match ($kind) {
+			MemberKind::Constant => $class->hasConstant($name) ? $class->getConstant($name) : null,
+			MemberKind::Method, MemberKind::StaticMethod, MemberKind::Constructor => $class->hasNativeMethod($name)
+				? $class->getNativeMethod($name)
+				: null,
+			MemberKind::Property, MemberKind::StaticProperty => $class->hasNativeProperty($name) ? $class->getNativeProperty($name) : null,
 		};
 	}
 
@@ -174,5 +206,35 @@ final class Declarations
 			false => Tristate::No,
 			null => Tristate::Maybe,
 		};
+	}
+
+
+	public function findClassDeprecation(string $class): ?Deprecation
+	{
+		$reflection = $this->phpstan->findClass($class);
+		if ($reflection === null) {
+			return null;
+		} elseif (strcasecmp($reflection->getName(), $class) === 0) {
+			$description = $reflection->isDeprecated() ? $reflection->getDeprecatedDescription() ?? '' : null;
+		} else {
+			// an alias the process made at run time is reflected as the class aliased, which is not what the name declares
+			$file = $this->phpstan->findAutoloadedFile($class);
+			$description = $file === null ? null : $this->phpstan->findDeclaredDeprecation($class, $file);
+		}
+
+		if ($description === null) {
+			return null;
+		}
+
+		$namespace = QualifiedNames::extractNamespace($class);
+		if (!preg_match('~^\\\\?(\w+(?:\\\\\w+)*)$~D', Deprecation::findReplacementCode($description) ?? '', $m)) {
+			return new Deprecation($description);
+		}
+
+		$beside = ltrim("$namespace\\$m[1]", '\\');
+		$replacement = str_contains($m[1], '\\')
+			? $this->findClassName($m[1]) ?? $this->findClassName($beside)
+			: $this->findClassName($beside) ?? $this->findClassName($m[1]);
+		return new Deprecation($description, $replacement);
 	}
 }
