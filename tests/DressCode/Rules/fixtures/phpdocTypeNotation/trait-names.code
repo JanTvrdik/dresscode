@@ -1,12 +1,13 @@
 <?php
 namespace App;
 
-// a trait is no type, so the name is the built-in one
+// a trait is no type, so the name is the built-in one, a trait of this file as one the types see
 trait Integer
 {
 }
 
 /**
  * @param Integer $i
+ * @param Boolean $b
  */
-function f($i) {}
+function f($i, $b) {}

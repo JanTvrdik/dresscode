@@ -1,4 +1,5 @@
 <?php
+// types off
 // risky
 // {"staticMethodVisibilities": ["private", "protected", "public"]}
 final class Report

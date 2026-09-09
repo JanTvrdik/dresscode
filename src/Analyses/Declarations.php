@@ -12,6 +12,7 @@ use PHPStan\Reflection\{
 	ClassConstantReflection, ClassReflection, ExtendedMethodReflection, ExtendedParameterReflection,
 };
 use PHPStan\Reflection\Php\PhpPropertyReflection;
+use PHPStan\TrinaryLogic;
 use PHPStan\Type\{MixedType, Type, VerbosityLevel};
 use function count, is_bool;
 
@@ -45,6 +46,21 @@ final class Declarations
 			? $reflection->getNativeMethod($method)->getVariants()
 			: [];
 		return count($variants) === 1 ? array_map(self::toParameter(...), $variants[0]->getParameters()) : null;
+	}
+
+
+	public function countsArguments(string $class, string $method): bool
+	{
+		$reflection = $this->phpstan->findClass($class);
+		if ($reflection === null || !$reflection->hasNativeMethod($method)) {
+			return true;
+		}
+
+		return array_any(
+			$reflection->getNativeMethod($method)->getVariants(),
+			fn($variant) => $variant->isVariadic()
+				&& !array_any($variant->getParameters(), fn(ExtendedParameterReflection $parameter) => $parameter->isVariadic()),
+		);
 	}
 
 
@@ -95,6 +111,15 @@ final class Declarations
 	}
 
 
+	public function isAbstract(Member $member): Tristate
+	{
+		$class = $this->phpstan->findClass($member->declaringClass);
+		$reflection = $class === null ? null : self::findNativeMember($class, $member->kind, $member->name);
+		$abstract = $reflection instanceof ClassConstantReflection ? false : $reflection?->isAbstract();
+		return self::toTristate($abstract instanceof TrinaryLogic ? ($abstract->maybe() ? null : $abstract->yes()) : $abstract);
+	}
+
+
 	/** The member of that kind the class declares natively, itself or through an ancestor. */
 	public static function findNativeMember(
 		ClassReflection $class,
@@ -115,6 +140,12 @@ final class Declarations
 	public function findClassName(string $name, bool $traits = false): ?string
 	{
 		return $this->phpstan->findClassName($name, $traits);
+	}
+
+
+	public function findFunctionName(string $name): ?string
+	{
+		return $this->phpstan->findFunctionName($name);
 	}
 
 

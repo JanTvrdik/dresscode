@@ -1,0 +1,10 @@
+<?php
+namespace App;
+
+use Acme\Shop\discounts;
+
+final class Cart
+{
+	use discounts;
+	use \acme\shop\Discounts;
+}

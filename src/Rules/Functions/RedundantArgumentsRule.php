@@ -7,12 +7,12 @@
 
 namespace DressCode\Rules\Functions;
 
-use DressCode\Analyses\PhpSignatures;
+use DressCode\Analyses\{PhpSignatures, Types};
 use DressCode\{Decision, Domain, GlobalCalls, NodeRule, Risk, RuleContext, RuleInfo, Stage};
 use PhpSyntax\Analyses\NameResolver;
 use PhpSyntax\{Node, SymbolKind, Token};
-use PhpSyntax\Nodes\{ArgumentNode, FileNode, NameNode, ParameterNode, PlainNodeList};
-use PhpSyntax\Nodes\Expression\FunctionCallNode;
+use PhpSyntax\Nodes\{ArgumentListNode, ArgumentNode, FileNode, NameNode, ParameterNode, PlainNodeList};
+use PhpSyntax\Nodes\Expression\{FunctionCallNode, MethodCallNode, NewNode, StaticMethodCallNode};
 use PhpSyntax\Nodes\Statement\{FunctionNode, NamespaceNode};
 use function count, is_bool;
 
@@ -25,11 +25,13 @@ use function count, is_bool;
  * its parameter defaults to, `json_encode($data, 0)`: named anywhere, or by position at the end of the call. The
  * defaults are those of a function of PHP every version from 8.0 on agrees on, and of a function declared at the top of
  * the file unless it counts its arguments; one declared under a condition or in a function body may give way to another
- * declaration of the name, and a method is left alone, a child being free to declare another default. The `strict`
+ * declaration of the name, and of a method or a constructor the types of the code find for every class the receiver
+ * may be, the same in each and counting its arguments in none, a child declaring another default being one that breaks
+ * the contract of its type. Without the types a method is left alone. The `strict`
  * argument of the functions that `StrictComparisonArgumentRequiredRule` governs and the `escape` argument of the CSV
  * functions stay, being a choice the code makes.
  */
-#[RuleInfo(Stage::Structure, analyses: [PhpSignatures::class, NameResolver::class])]
+#[RuleInfo(Stage::Structure, analyses: [PhpSignatures::class, NameResolver::class, Types::class])]
 final class RedundantArgumentsRule extends NodeRule
 {
 	/** function => the name of the parameter, the position it stands at, and the version that deprecated it */
@@ -55,24 +57,33 @@ final class RedundantArgumentsRule extends NodeRule
 
 	public function getVisitedNodes(): array
 	{
-		return [FunctionCallNode::class];
+		return [FunctionCallNode::class, MethodCallNode::class, StaticMethodCallNode::class, NewNode::class];
 	}
 
 
 	public function enter(Node|Token $node, RuleContext $context): void
 	{
+		$arguments = $node instanceof FunctionCallNode
+			|| $node instanceof MethodCallNode
+			|| $node instanceof StaticMethodCallNode
+			|| $node instanceof NewNode
+			? $node->arguments
+			: null;
 		if (
-			!$node instanceof FunctionCallNode
-			|| $node->arguments->items->isEmpty()
-			|| $node->arguments->isPartialApplication()
+			$arguments === null
+			|| $arguments->items->isEmpty()
+			|| $arguments->isPartialApplication()
 			|| $node->hasInnerComment()
 		) {
 			return;
 		}
 
 		// the ignored argument, which only the last one may be, goes first, so that the defaults before it end the call
-		self::removeIgnored($node, $context);
-		self::removeDefaults($node, $context);
+		if ($node instanceof FunctionCallNode) {
+			self::removeIgnored($node, $context);
+		}
+
+		self::removeDefaults($node, $arguments, $context);
 	}
 
 
@@ -102,9 +113,13 @@ final class RedundantArgumentsRule extends NodeRule
 	}
 
 
-	private static function removeDefaults(FunctionCallNode $call, RuleContext $context): void
+	private static function removeDefaults(
+		FunctionCallNode|MethodCallNode|StaticMethodCallNode|NewNode $call,
+		ArgumentListNode $arguments,
+		RuleContext $context,
+	): void
 	{
-		$items = $call->arguments->items->getItems();
+		$items = $arguments->items->getItems();
 		$last = $items[count($items) - 1] ?? null;
 		if (
 			$last === null
@@ -112,7 +127,9 @@ final class RedundantArgumentsRule extends NodeRule
 				$items,
 				fn(Node $item) => $item instanceof ArgumentNode && ($item->name !== null || $item === $last) && $item->value->hasValue(),
 			)
-			|| ($found = self::findDefaults($call, $context)) === null
+			|| ($found = $call instanceof FunctionCallNode
+				? self::findDefaults($call, $context)
+				: self::findMethodDefaults($call, $context)) === null
 		) {
 			return;
 		}
@@ -151,7 +168,7 @@ final class RedundantArgumentsRule extends NodeRule
 				risk: $risky === null ? null : Risk::NameUncertain,
 				because: $risky,
 			)) {
-				$call->arguments->items->removeItem($argument);
+				$arguments->items->removeItem($argument);
 			}
 		}
 	}
@@ -203,6 +220,44 @@ final class RedundantArgumentsRule extends NodeRule
 			$defaults[$parameter->name] = $parameter->variadic || $required ? null : $parameter->default;
 		}
 		return [$function, $defaults, GlobalCalls::findUncertainty($call, $context)];
+	}
+
+
+	/**
+	 * The method the call calls, as `Class::method`, with the default of each of its parameters as PHP code, null for one
+	 * without a default to compare or a variadic one: the same in every class the types say the receiver may be, null
+	 * where they say none, where a class does not have the method, counts its arguments or two declare it with other
+	 * defaults.
+	 * @return ?array{string, array<string, ?string>, null}
+	 */
+	private static function findMethodDefaults(MethodCallNode|StaticMethodCallNode|NewNode $call, RuleContext $context): ?array
+	{
+		$types = $context->findAnalysis(Types::class);
+		$access = $call instanceof NewNode ? $types?->findConstructorAccess($call) : $types?->findMemberAccess($call);
+		if ($types === null || $access === null || $access->classes === []) {
+			return null;
+		}
+
+		$found = null;
+		foreach ($access->classes as $class) {
+			$parameters = $types->findMethodParameters($class, $access->name);
+			if ($parameters === null || $types->countsArguments($class, $access->name)) {
+				return null;
+			}
+
+			$defaults = [];
+			foreach ($parameters as $parameter) {
+				$defaults[$parameter->name] = $parameter->variadic ? null : $parameter->default;
+			}
+
+			if ($found !== null && $found !== $defaults) {
+				return null;
+			}
+
+			$found = $defaults;
+		}
+
+		return [$access->classes[0] . '::' . $access->name, $found, null];
 	}
 
 

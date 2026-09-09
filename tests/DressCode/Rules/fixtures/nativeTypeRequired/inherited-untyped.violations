@@ -1,4 +1,4 @@
-47: The property `$title` must have the native type `string` from its `@var` annotation.
+48: The property `$title` must have the native type `string` from its `@var` annotation.
 	risky BehaviorChanges: the property is then uninitialized until written, where it was null
-51: The parameter `$count` must have the native type `int` from its `@param` annotation.
+52: The parameter `$count` must have the native type `int` from its `@param` annotation.
 	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`

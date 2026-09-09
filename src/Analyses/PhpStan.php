@@ -15,6 +15,7 @@ use DressCode\Violation;
 use Nette\Utils\FileSystem;
 use PhpParser\{Node, NodeFinder};
 use PhpParser\Node\Expr\Variable;
+use PhpParser\Node\Name\FullyQualified;
 use PhpParser\Node\Stmt;
 use PhpParser\Node\Stmt\{Class_, ClassLike, Enum_, EnumCase, Interface_};
 use PHPStan\Analyser\{NodeScopeResolver, Scope, ScopeContext, ScopeFactory};
@@ -221,6 +222,18 @@ final class PhpStan
 	{
 		$class = $this->findClass($name);
 		return $class === null || (!$traits && $class->isTrait()) ? null : $class->getName();
+	}
+
+
+	/**
+	 * The declared spelling of a function the project, its packages or PHP declare, given its fully qualified name in
+	 * any letter case without a leading backslash; null for a name nothing declares.
+	 */
+	public function findFunctionName(string $name): ?string
+	{
+		$provider = $this->getContainer()->getByType(ReflectionProvider::class);
+		$node = new FullyQualified($name);
+		return $provider->hasFunction($node, null) ? $provider->getFunction($node, null)->getName() : null;
 	}
 
 

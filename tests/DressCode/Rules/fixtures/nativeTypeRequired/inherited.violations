@@ -1,0 +1,10 @@
+14: The property `$note` must have the native type `string` from its `@var` annotation.
+	risky BehaviorChanges: the property is then uninitialized until written, where it was null
+21: The parameter `$mode` must have the native type `string` from its `@param` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`
+21: The parameter `$tries` must have the native type `int` from its `@param` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`
+37: The parameter `$label` must have the native type `?string` from its `@param` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`
+56: The parameter `$title` must have the native type `string` from its `@param` annotation.
+	risky BehaviorChanges: a value the annotation did not foresee then throws a `TypeError`

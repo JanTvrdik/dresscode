@@ -7,6 +7,7 @@
 
 namespace DressCode\Rules\ControlFlow;
 
+use DressCode\Analyses\Types;
 use DressCode\{Decision, Domain, NodeRule, RuleContext, RuleInfo, Stage};
 use PhpSyntax\Analyses\NameResolver;
 use PhpSyntax\{Node, Token};
@@ -22,7 +23,7 @@ use PhpSyntax\Nodes\Statement\TryNode;
  * or in the parentheses of the one that stays, leaves them as they are. A class the kept catch names already, however
  * the name is written, is not written twice. An unreachable catch is not merged.
  */
-#[RuleInfo(Stage::Structure, requires: ['php' => '>=7.1'], analyses: [NameResolver::class])]
+#[RuleInfo(Stage::Structure, requires: ['php' => '>=7.1'], analyses: [NameResolver::class, Types::class])]
 final class NoRepeatedCatchesRule extends NodeRule
 {
 	public static function getDecisions(): array
@@ -52,7 +53,11 @@ final class NoRepeatedCatchesRule extends NodeRule
 			if (
 				$kept === null
 				|| !self::repeats($catch, $kept)
-				|| NoUnreachableCatchesRule::isUnreachable($catch, $context->getAnalysis(NameResolver::class))
+				|| NoUnreachableCatchesRule::isUnreachable(
+					$catch,
+					$context->getAnalysis(NameResolver::class),
+					$context->findAnalysis(Types::class),
+				)
 			) {
 				$kept = $catch;
 				continue;

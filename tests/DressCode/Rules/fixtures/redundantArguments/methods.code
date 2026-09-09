@@ -1,0 +1,20 @@
+<?php
+
+namespace Acme\Shop;
+
+use Acme\Mail\{Mailer, Queue, Transport};
+
+function send(Mailer $mailer, Transport $transport, Mailer|Queue $either, $unknown): void
+{
+	$mailer->deliver('a@b', 0, false);
+	$mailer->deliver('a@b', html: false);
+	$mailer?->deliver('a@b', 1, false);
+	$transport->send('hello', 0);
+	Mailer::create('host', 30);
+	new Mailer('host', 25);
+
+	// a method that counts its arguments, or the receiver may be two classes with other defaults, or no known one
+	$mailer->header('X-Mailer', null);
+	$either->deliver('a@b', 0);
+	$unknown->deliver('a@b', 0);
+}

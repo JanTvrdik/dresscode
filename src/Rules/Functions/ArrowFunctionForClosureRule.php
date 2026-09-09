@@ -7,7 +7,7 @@
 
 namespace DressCode\Rules\Functions;
 
-use DressCode\Analyses\{Parameter, PhpSignatures};
+use DressCode\Analyses\{Parameter, PhpSignatures, Types};
 use DressCode\{Decision, DecisionKind, Domain, NodeRule, RuleContext, RuleInfo, Stage, Values};
 use DressCode\Domains\Flag;
 use DressCode\Rules\NodeHelpers;
@@ -19,8 +19,8 @@ use PhpSyntax\Nodes\{
 };
 use PhpSyntax\Nodes\Expression\{
 	ArrayAccessNode, ArrayNode, ArrowFunctionNode, BinaryOpNode, ClosureNode,
-	CombinedAssignmentNode, FunctionCallNode, MatchNode, MethodCallNode, ParenthesizedNode,
-	PostfixOpNode, PrefixOpNode, PropertyFetchNode, TernaryNode, VariableNode,
+	CombinedAssignmentNode, FunctionCallNode, MatchNode, MethodCallNode, NewNode, ParenthesizedNode,
+	PostfixOpNode, PrefixOpNode, PropertyFetchNode, StaticMethodCallNode, TernaryNode, VariableNode,
 };
 use PhpSyntax\Nodes\Member\{EnumCaseNode, PropertyItemNode};
 use PhpSyntax\Nodes\Statement\ReturnNode;
@@ -38,7 +38,7 @@ use function count, in_array;
  * expression, which takes a static closure but no arrow function. A closure with an empty body is `fn() => null`
  * by `functions.arrowFunction.emptyBody`, unless it returns `void`, `never` or by reference.
  */
-#[RuleInfo(Stage::Structure, analyses: [NameResolver::class, PhpSignatures::class])]
+#[RuleInfo(Stage::Structure, analyses: [NameResolver::class, PhpSignatures::class, Types::class])]
 final class ArrowFunctionForClosureRule extends NodeRule
 {
 	private const Plain = 'functions.arrowFunction.oneExpression';
@@ -270,7 +270,10 @@ final class ArrowFunctionForClosureRule extends NodeRule
 			!$argument instanceof ArgumentNode
 			|| $argument->ellipsis !== null
 			|| !$argument->parent instanceof SeparatedNodeList
-			|| !$call instanceof FunctionCallNode
+			|| !($call instanceof FunctionCallNode
+				|| $call instanceof MethodCallNode
+				|| $call instanceof StaticMethodCallNode
+				|| $call instanceof NewNode)
 			|| ($parameters = NodeHelpers::findParameters($call, $context)) === null
 		) {
 			return null;

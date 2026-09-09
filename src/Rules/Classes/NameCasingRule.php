@@ -7,7 +7,7 @@
 
 namespace DressCode\Rules\Classes;
 
-use DressCode\Analyses\PhpDoc;
+use DressCode\Analyses\{PhpDoc, Types};
 use DressCode\{Decision, DecisionKind, NodeRule, RuleContext, RuleInfo, Stage, Values};
 use DressCode\Domains\{Names, Words};
 use DressCode\Rules\NodeHelpers;
@@ -26,13 +26,13 @@ use PhpSyntax\Nodes\Expression\VariableNode;
  * A kind whose decision is `keep` is not checked. A method or a function whose name begins with a double
  * underscore is PHP's and not checked, and a variable or parameter written with underscores alone (`$_`) is
  * a placeholder saying the value is of no interest, not a name. A method whose name the code does not choose is not
- * checked either: one PHP calls on a stream wrapper, a class declaring `stream_open()`. Any other such name is left
- * alone by a pattern in `naming.except`, matched against the name as it is reported, so without the `$` of a variable
- * or a property.
+ * checked either: one a parent or an interface declares, which the types tell and without them is reported, and one
+ * PHP calls on a stream wrapper, a class declaring `stream_open()`. Any other such name is left alone by a pattern in
+ * `naming.except`, matched against the name as it is reported, so without the `$` of a variable or a property.
  * A declaration marked deprecated is left alone: what carries the old name of something already renamed cannot be
  * renamed again. Nothing is renamed.
  */
-#[RuleInfo(Stage::Structure, analyses: [PhpDoc::class, NameResolver::class])]
+#[RuleInfo(Stage::Structure, analyses: [PhpDoc::class, NameResolver::class, Types::class])]
 final class NameCasingRule extends NodeRule
 {
 	private const StreamWrapperMethods = [
@@ -224,7 +224,7 @@ final class NameCasingRule extends NodeRule
 			|| preg_match(self::Patterns[$case], $name)
 			|| $this->isExcepted($name)
 			|| ($declaration !== null && NodeHelpers::isDeprecated($declaration, $context))
-			|| ($declaration instanceof Member\MethodNode && self::isPrescribed($declaration, $name))
+			|| ($declaration instanceof Member\MethodNode && self::isPrescribed($declaration, $name, $context))
 		) {
 			return;
 		}
@@ -259,17 +259,18 @@ final class NameCasingRule extends NodeRule
 
 
 	/**
-	 * Whether the name of the method is one the code does not choose: one PHP calls on a stream wrapper, a class
-	 * declaring `stream_open()`, which no interface names.
+	 * Whether the name of the method is one the code does not choose: one a parent or an interface declares, as the
+	 * types tell, or one PHP calls on a stream wrapper, a class declaring `stream_open()`, which no interface names.
 	 */
-	private static function isPrescribed(Member\MethodNode $node, string $name): bool
+	private static function isPrescribed(Member\MethodNode $node, string $name, RuleContext $context): bool
 	{
 		$class = $node->parent?->parent;
-		return in_array(strtolower($name), self::StreamWrapperMethods, true)
+		return (in_array(strtolower($name), self::StreamWrapperMethods, true)
 			&& $class instanceof ClassLikeNode
 			&& array_any(
 				$class->members->getItems(),
 				fn(Node $member) => $member instanceof Member\MethodNode && strcasecmp($member->name->token->text, 'stream_open') === 0,
-			);
+			))
+			|| $context->findAnalysis(Types::class)?->findOverridden($node) !== null;
 	}
 }

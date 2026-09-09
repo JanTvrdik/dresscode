@@ -1,5 +1,6 @@
 <?php
 // {"assignment.increment": "keep", "assignment.addingOne": "forbidden"}
+// types off
 // risky
 $a++;
 $b--;

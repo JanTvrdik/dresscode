@@ -7,8 +7,8 @@
 
 namespace DressCode\Rules\Classes;
 
-use DressCode\Analyses\PhpSymbols;
-use DressCode\{Decision, Domain, NodeRule, RuleContext, RuleInfo, Stage, Values};
+use DressCode\Analyses\{PhpSymbols, Types};
+use DressCode\{Decision, Domain, NodeRule, RuleContext, RuleInfo, Stage, Tristate, Values};
 use PhpSyntax\Analyses\NameResolver;
 use PhpSyntax\{Node, SymbolKind, Token};
 use PhpSyntax\Nodes\Statement\{ClassNode, InterfaceNode, TraitNode};
@@ -19,10 +19,11 @@ use function strlen;
  * Whether the kind of a type is repeated in its name: `forbidden` reports `AbstractFoo` for an abstract class,
  * `FooInterface` for an interface, `FooTrait` for a trait and `FooError` for a plain class, `required` reports an
  * interface, a trait or an abstract class whose name does not carry the word its kind is named by. An exception is
- * a class extending a class of PHP named after an exception, or a class of the file that is one. Reported either
- * way, never fixed, because renaming a type is not a change of one file.
+ * a class the types of the code say is an `Exception`, or without them one extending a class of PHP named after an
+ * exception, or a class of the file that is one. Reported either way, never fixed, because renaming a type
+ * is not a change of one file.
  */
-#[RuleInfo(Stage::Structure, analyses: [NameResolver::class, PhpSymbols::class])]
+#[RuleInfo(Stage::Structure, analyses: [NameResolver::class, PhpSymbols::class, Types::class])]
 final class ClassKindInNameRule extends NodeRule
 {
 	private const Required = 'required';
@@ -191,8 +192,14 @@ final class ClassKindInNameRule extends NodeRule
 
 	private static function isException(ClassNode $node, RuleContext $context): bool
 	{
-		// a parent of PHP is told by its name and one of the file by its own parents
 		$resolver = $context->getAnalysis(NameResolver::class);
+		$types = $context->findAnalysis(Types::class);
+		$class = $resolver->getDeclaredName($node);
+		if ($types !== null && $class !== null) {
+			return $types->isSubtype($class, 'Exception') === Tristate::Yes;
+		}
+
+		// without the types, a parent of PHP is told by its name and one of the file by its own parents
 		for ($depth = 0; $node?->extends !== null && $depth < 10; $depth++) {
 			$parent = $resolver->resolveClass($node->extends, $node);
 			$builtin = $context->getAnalysis(PhpSymbols::class)->findClassName($parent);

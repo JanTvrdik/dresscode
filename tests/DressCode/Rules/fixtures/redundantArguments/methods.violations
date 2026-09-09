@@ -1,0 +1,7 @@
+9: Useless `priority` argument of `Acme\Mail\Mailer::deliver()`, because it repeats the default value.
+9: Useless `html` argument of `Acme\Mail\Mailer::deliver()`, because it repeats the default value.
+10: Useless `html` argument of `Acme\Mail\Mailer::deliver()`, because it repeats the default value.
+11: Useless `html` argument of `Acme\Mail\Mailer::deliver()`, because it repeats the default value.
+12: Useless `priority` argument of `Acme\Mail\Transport::send()`, because it repeats the default value.
+13: Useless `timeout` argument of `Acme\Mail\Mailer::create()`, because it repeats the default value.
+14: Useless `port` argument of `Acme\Mail\Mailer::__construct()`, because it repeats the default value.

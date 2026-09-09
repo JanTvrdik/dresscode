@@ -1,0 +1,3 @@
+4: The class name `Acme\Shop\discounts` must be written `Acme\Shop\Discounts`.
+8: The class name `discounts` must be written `Discounts`.
+9: The class name `acme\shop\Discounts` must be written `Acme\Shop\Discounts`.

@@ -7,8 +7,8 @@
 
 namespace DressCode\Rules;
 
-use DressCode\Analyses\{IndentationSnapshot, Parameter, PhpDoc, PhpSignatures};
-use DressCode\{Claim, CodeWriter, Gap, GlobalCalls, Line, Risk, RuleContext, Style};
+use DressCode\Analyses\{IndentationSnapshot, Parameter, PhpDoc, PhpSignatures, Types};
+use DressCode\{Claim, CodeWriter, Gap, GlobalCalls, Line, Risk, RuleContext, Style, Tristate};
 use PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagNode;
 use PhpSyntax\Analyses\NameResolver;
 use PhpSyntax\{Builder, ConstantExpressionFeature, Indentation, Node, SymbolKind, Token, Trivia};
@@ -1066,27 +1066,36 @@ final class NodeHelpers
 
 
 	/**
-	 * The parameters of the function the call calls, as the declaration in the file or the signature of PHP says; null
-	 * where neither tells.
+	 * The parameters of the function, the method or the constructor the call calls, as the declaration in the file,
+	 * the signature of PHP or, of a method or a constructor, the types say; null where none of them tells.
 	 * @return ?list<Parameter>
 	 */
-	public static function findParameters(Expression\FunctionCallNode $call, RuleContext $context): ?array
+	public static function findParameters(
+		Expression\FunctionCallNode|Expression\MethodCallNode|Expression\StaticMethodCallNode|Expression\NewNode $call,
+		RuleContext $context,
+	): ?array
 	{
-		if (!$call->name instanceof NameNode) {
-			return null;
+		if ($call instanceof Expression\FunctionCallNode) {
+			if (!$call->name instanceof NameNode) {
+				return null;
+			}
+
+			$resolver = $context->getAnalysis(NameResolver::class);
+			$function = $resolver->resolveFunction($call->name);
+			$declaration = $resolver->findDeclaration($function, SymbolKind::Function);
+			return match (true) {
+				$declaration !== null => array_map(
+					fn(ParameterNode $parameter) => self::toParameter($parameter, $resolver),
+					$declaration->parameters->getItems(),
+				),
+				$resolver->isGlobalFunctionCall($call) => $context->getAnalysis(PhpSignatures::class)->findParameters($function),
+				default => null,
+			};
 		}
 
-		$resolver = $context->getAnalysis(NameResolver::class);
-		$function = $resolver->resolveFunction($call->name);
-		$declaration = $resolver->findDeclaration($function, SymbolKind::Function);
-		return match (true) {
-			$declaration !== null => array_map(
-				fn(ParameterNode $parameter) => self::toParameter($parameter, $resolver),
-				$declaration->parameters->getItems(),
-			),
-			$resolver->isGlobalFunctionCall($call) => $context->getAnalysis(PhpSignatures::class)->findParameters($function),
-			default => null,
-		};
+		$types = $context->findAnalysis(Types::class);
+		$access = $call instanceof Expression\NewNode ? $types?->findConstructorAccess($call) : $types?->findMemberAccess($call);
+		return $access === null ? null : $types->findParameters($access);
 	}
 
 
@@ -1156,8 +1165,9 @@ final class NodeHelpers
 	 * Whether the static context could change what the body of the method does: `$this` anywhere in it, a closure
 	 * that inherits it included and an anonymous class that has its own excluded, what `findDynamicVariableAccesses()`
 	 * finds, `debug_backtrace()`, which shows the object, `parent::` and a call through `self::`, `static::` or the name
-	 * of the class or an ancestor of a method the class does not declare static, which PHP makes with the object; any
-	 * class a class extending another names may be an ancestor. True for a method without a body.
+	 * of the class or an ancestor of a method the class does not declare static, which PHP makes with the object;
+	 * without the types, any class a class extending another names may be an ancestor. True for a method without
+	 * a body.
 	 */
 	public static function needsObject(MethodNode $method, RuleContext $context): bool
 	{
@@ -1202,7 +1212,8 @@ final class NodeHelpers
 			$own = $resolver->getDeclaredName($class);
 			if ($own === null || strcasecmp($named, $own) !== 0) {
 				$extends = $class instanceof Statement\ClassNode || $class instanceof AnonymousClassNode ? $class->extends : null;
-				return $extends === null;
+				$types = $context->findAnalysis(Types::class);
+				return $extends === null || ($own !== null && $types?->isSubtype($own, $named) === Tristate::No);
 			}
 		}
 

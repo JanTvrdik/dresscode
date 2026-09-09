@@ -7,7 +7,8 @@
 
 namespace DressCode\Rules\Expressions;
 
-use DressCode\{Decision, Domain, NodeRule, Risk, RuleContext, RuleInfo, Stage, Values};
+use DressCode\Analyses\Types;
+use DressCode\{Decision, Domain, NodeRule, Risk, RuleContext, RuleInfo, Stage, Tristate, Values};
 use DressCode\Domains\Words;
 use PhpSyntax\{Builder, Node, Token};
 use PhpSyntax\Nodes\Expression\{CombinedAssignmentNode, PostfixOpNode, PrefixOpNode};
@@ -20,11 +21,11 @@ use PhpSyntax\Nodes\Statement\{ExpressionStatementNode, ForNode};
  * An increment or a decrement whose value nobody reads, a statement or a step of `for`, is written in the form of
  * `expressions.assignment.increment`, `++$i` or `$i++`; one inside an expression gives its value and stays as it is.
  * `$a += 1` and `$a -= 1` are written as an increment and a decrement of that form, postfix where it is kept, only as
- * a whole statement, where the value of the expression cannot be observed. That is risky: null and a string
- * that is no number count differently, `null--` staying null and `'a'++` being `'b'`, and a number is not told from
- * them.
+ * a whole statement, where the value of the expression cannot be observed. That is risky but for a number: null and
+ * a string that is no number count differently, `null--` staying null and `'a'++` being `'b'`, so a target the types
+ * tell is no number stays as it is. Without the types, a number is not told from them.
  */
-#[RuleInfo(Stage::Structure)]
+#[RuleInfo(Stage::Structure, analyses: [Types::class])]
 final class IncrementRule extends NodeRule
 {
 	private const Increment = 'expressions.assignment.increment';
@@ -121,14 +122,17 @@ final class IncrementRule extends NodeRule
 		$operator = $node->operator->is('+=') ? '++' : '--';
 		$written = $this->renderIncrement($operator, $node->target->text);
 		$last = $node->target->getLastToken();
+		$type = $context->findAnalysis(Types::class)?->isOfType($node->target, 'int|float');
+		$number = $type === Tristate::Yes;
 		if (
-			$last->hasCommentUpTo($node->expression->token)
+			$type === Tristate::No
+			|| $last->hasCommentUpTo($node->expression->token)
 			|| !$context->report(
 				$node,
 				"The `{$node->operator->text} 1` assignment must be written `$written`.",
 				decision: self::AddingOne,
-				risk: Risk::TypeUnknown,
-				because: "the target may be a string, which `$operator` changes as text",
+				risk: $number ? null : Risk::TypeUnknown,
+				because: $number ? null : "the target may be a string, which `$operator` changes as text",
 			)
 		) {
 			return;

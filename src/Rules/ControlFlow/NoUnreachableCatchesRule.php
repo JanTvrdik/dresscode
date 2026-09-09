@@ -7,7 +7,8 @@
 
 namespace DressCode\Rules\ControlFlow;
 
-use DressCode\{Decision, Domain, NodeRule, RuleContext, RuleInfo, Stage};
+use DressCode\Analyses\Types;
+use DressCode\{Decision, Domain, NodeRule, RuleContext, RuleInfo, Stage, Tristate};
 use PhpSyntax\Analyses\NameResolver;
 use PhpSyntax\{Node, Token};
 use PhpSyntax\Nodes\CatchNode;
@@ -15,11 +16,11 @@ use PhpSyntax\Nodes\Statement\TryNode;
 
 
 /**
- * A catch whose every class a previous one catches already, `Throwable` or the class itself, can never run; reported,
- * never removed. A catch after one of its parent class is not told from a reachable one, the rule not asking what the
- * classes extend.
+ * A catch whose every class a previous one catches already, `Throwable`, the class itself or, with the types, a class it
+ * extends, can never run; reported, never removed. Without the types a catch after one of its parent class is not told
+ * from a reachable one.
  */
-#[RuleInfo(Stage::Structure, analyses: [NameResolver::class])]
+#[RuleInfo(Stage::Structure, analyses: [NameResolver::class, Types::class])]
 final class NoUnreachableCatchesRule extends NodeRule
 {
 	public static function getDecisions(): array
@@ -45,10 +46,11 @@ final class NoUnreachableCatchesRule extends NodeRule
 		}
 
 		$resolver = $context->getAnalysis(NameResolver::class);
+		$types = $context->findAnalysis(Types::class);
 		$caught = [];
 		foreach ($node->catches->getItems() as $catch) {
 			$classes = self::resolveClasses($catch, $resolver);
-			$by = self::findCatching($classes, $caught);
+			$by = self::findCatching($classes, $caught, $types);
 			if ($by !== null) {
 				$context->report($catch, "Unreachable catch block, because a previous one catches `$by`.", fixable: false);
 			}
@@ -59,7 +61,7 @@ final class NoUnreachableCatchesRule extends NodeRule
 
 
 	/** Whether a catch before this one in its try catches every class of it. */
-	public static function isUnreachable(CatchNode $catch, NameResolver $resolver): bool
+	public static function isUnreachable(CatchNode $catch, NameResolver $resolver, ?Types $types): bool
 	{
 		$try = $catch->parent?->parent;
 		$caught = [];
@@ -71,7 +73,7 @@ final class NoUnreachableCatchesRule extends NodeRule
 			array_push($caught, ...self::resolveClasses($previous, $resolver));
 		}
 
-		return self::findCatching(self::resolveClasses($catch, $resolver), $caught) !== null;
+		return self::findCatching(self::resolveClasses($catch, $resolver), $caught, $types) !== null;
 	}
 
 
@@ -86,11 +88,13 @@ final class NoUnreachableCatchesRule extends NodeRule
 	 * @param  list<string>  $classes
 	 * @param  list<string>  $caught
 	 */
-	private static function findCatching(array $classes, array $caught): ?string
+	private static function findCatching(array $classes, array $caught, ?Types $types): ?string
 	{
 		return array_find($caught, fn(string $previous) => array_all(
 			$classes,
-			fn(string $class) => strcasecmp($previous, 'Throwable') === 0 || strcasecmp($class, $previous) === 0,
+			fn(string $class) => strcasecmp($previous, 'Throwable') === 0
+				|| $types?->isSubtype($class, $previous) === Tristate::Yes
+				|| strcasecmp($class, $previous) === 0,
 		));
 	}
 }
