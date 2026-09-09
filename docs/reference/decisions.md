@@ -13,7 +13,7 @@ meeting the deprecation wherever it runs on the version that made it.
 
 **naming** (13): [abstractClassAffix](#namingabstractclassaffix), [class](#namingclass), [constant](#namingconstant), [enumCase](#namingenumcase), [errorAffix](#namingerroraffix), [except](#namingexcept), [exceptionAffix](#namingexceptionaffix), [function](#namingfunction), [interfaceAffix](#naminginterfaceaffix), [method](#namingmethod), [property](#namingproperty), [traitAffix](#namingtraitaffix), [variable](#namingvariable)
 
-**casing** (7): [class](#casingclass), [function](#casingfunction), [hexDigit](#casinghexdigit), [keyword](#casingkeyword), [magicConstant](#casingmagicconstant), [trueFalseNull](#casingtruefalsenull), [type](#casingtype)
+**casing** (8): [class](#casingclass), [function](#casingfunction), [hexDigit](#casinghexdigit), [keyword](#casingkeyword), [magicConstant](#casingmagicconstant), [method](#casingmethod), [trueFalseNull](#casingtruefalsenull), [type](#casingtype)
 
 **qualification** (15): [class.currentNamespace](#qualificationclasscurrentnamespace), [class.global](#qualificationclassglobal), [class.otherNamespace](#qualificationclassothernamespace), [class.phpdoc](#qualificationclassphpdoc), [constant.currentNamespace](#qualificationconstantcurrentnamespace), [constant.global](#qualificationconstantglobal), [constant.optimized](#qualificationconstantoptimized), [constant.otherNamespace](#qualificationconstantothernamespace), [currentClass](#qualificationcurrentclass), [function.currentNamespace](#qualificationfunctioncurrentnamespace), [function.global](#qualificationfunctionglobal), [function.optimized](#qualificationfunctionoptimized), [function.otherNamespace](#qualificationfunctionothernamespace), [leadingBackslash](#qualificationleadingbackslash), [staticInFinalClass](#qualificationstaticinfinalclass)
 
@@ -444,6 +444,15 @@ The case of the magic constants such as `__DIR__`.
 - Takes: `uppercase` (`__DIR__`, `__CLASS__`); `lowercase` (`__dir__`, `__class__`); `keep`
 - The standards: perCs `keep`, psr12 `keep`, nette `uppercase`
 - Rule `DressCode\Rules\Literals\BuiltinCasingRule`, stage Structure
+
+### casing.method
+
+The case of the name of a method called, as its declaration writes it, and of a method overriding another, as the overridden one writes it; a magic method of PHP as PHP writes it, the others only with the types of the code.
+
+- By default `keep`
+- Takes: `declared` (`$order->getTotal()`, never `$order->gettotal()`); `keep`
+- The standards: perCs `keep`, psr12 `keep`, nette `declared`
+- Rule `DressCode\Rules\Functions\MethodCasingRule`, stage Structure
 
 ### casing.trueFalseNull
 

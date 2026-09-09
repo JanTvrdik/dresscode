@@ -915,6 +915,7 @@ final readonly class Violation
 - `DressCode\Rules\Functions\FunctionNameSpacingRule`
 - `DressCode\Rules\Functions\GetDebugTypeForTernaryRule`
 - `DressCode\Rules\Functions\JsonValidateForDecodeRule`
+- `DressCode\Rules\Functions\MethodCasingRule`
 - `DressCode\Rules\Functions\MultilineCallRule`
 - `DressCode\Rules\Functions\MultilineClosureUseRule`
 - `DressCode\Rules\Functions\MultilineSignatureRule`
