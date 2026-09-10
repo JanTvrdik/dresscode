@@ -51,6 +51,7 @@ final class CorePlugin implements Plugin
 				Rules\Arrays\TrailingCommaRule::class,
 				Rules\Classes\ClassConstantForConstantCallRule::class,
 				Rules\Classes\ClassHeadSpacingRule::class,
+				Rules\Classes\ClassKeywordForStringRule::class,
 				Rules\Classes\ClassKindInNameRule::class,
 				Rules\Classes\ClassNameNotationRule::class,
 				Rules\Classes\FinalForInternalClassRule::class,

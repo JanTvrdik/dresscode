@@ -117,6 +117,29 @@ test('the member a call or a constant access reaches', function () {
 });
 
 
+test('a class a .phpt declares is named only by that file, one under tests by every test', function () {
+	$dir = createTempDir('test-classes');
+	mkdir("$dir/tests");
+	file_put_contents("$dir/tests/Helper.php", "<?php\nnamespace App\\Tests;\n\nclass Helper\n{\n}\n");
+	file_put_contents("$dir/tests/a.phpt", "<?php\nnamespace App\\Tests;\n\nclass Script\n{\n}\n");
+	file_put_contents("$dir/tests/b.phpt", "<?php\n");
+	file_put_contents("$dir/Model.php", "<?php\n");
+	$phpstan = new Analyses\PhpStan(
+		$dir,
+		["$dir/tests/Helper.php", "$dir/tests/a.phpt", "$dir/tests/b.phpt", "$dir/Model.php"],
+		dirname($dir) . '/cache',
+	);
+	$canName = function (string $file) use ($dir, $phpstan): array {
+		$types = new Analyses\Types((new Parser)->parse((string) file_get_contents("$dir/$file")), "$dir/$file", $phpstan);
+		return [$types->canNameClass('App\Tests\Script'), $types->canNameClass('App\Tests\Helper')];
+	};
+
+	Assert::same([true, true], $canName('tests/a.phpt'));
+	Assert::same([false, true], $canName('tests/b.phpt'));
+	Assert::same([false, false], $canName('Model.php'));
+});
+
+
 test('what the declaration of a member deprecates, and the class the member is reached through', function () {
 	$file = orderSample();
 	$types = analyse($file);

@@ -171,6 +171,7 @@ final class Types implements DressCode\Analyses\PassAnalysis
 	public function findDeprecation(DressCode\Analyses\Member $member): ?DressCode\Analyses\Deprecation
 	public function isAbstract(DressCode\Analyses\Member $member): DressCode\Tristate
 	public function findClassName(string $name, bool $traits = false): ?string
+	public function canNameClass(string $name): bool
 	public function findFunctionName(string $name): ?string
 	public function isSubtype(string $class, string $ancestor): DressCode\Tristate
 	public function isAttributeClass(string $class): DressCode\Tristate
@@ -813,6 +814,7 @@ final readonly class Violation
 - `DressCode\Rules\Arrays\TrailingCommaRule`
 - `DressCode\Rules\Classes\ClassConstantForConstantCallRule`
 - `DressCode\Rules\Classes\ClassHeadSpacingRule`
+- `DressCode\Rules\Classes\ClassKeywordForStringRule`
 - `DressCode\Rules\Classes\ClassKindInNameRule`
 - `DressCode\Rules\Classes\ClassNameNotationRule`
 - `DressCode\Rules\Classes\FinalForInternalClassRule`

@@ -1,0 +1,5 @@
+<?php
+namespace App;
+
+$helper = 'App\Tests\Helper';
+$user = 'App\Model\User';

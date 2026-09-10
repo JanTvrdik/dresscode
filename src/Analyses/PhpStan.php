@@ -29,7 +29,7 @@ use PHPStan\Reflection\BetterReflection\BetterReflectionProvider;
 use PHPStan\Reflection\{ClassReflection, ReflectionProvider};
 use PHPStan\Type\Type;
 use PhpSyntax\Trivia;
-use function ini_get, is_string;
+use function ini_get, is_string, strlen;
 
 
 /**
@@ -300,6 +300,29 @@ final class PhpStan
 			? []
 			: (new PhpDoc)->parse(new Trivia(Trivia::DocComment, $docComment))->getDeprecatedTagValues();
 		return $tags === [] ? null : (string) $tags[0]->description;
+	}
+
+
+	/** Whether the file is one of the tests of the project: a `.phpt`, or a file under `tests` or `test` of the root. */
+	public function isTestFile(string $file): bool
+	{
+		$file = $this->resolvePath($file);
+		$root = Helpers::canonicalizePath(FileSystem::normalizePath($this->root)) . '/';
+		return str_starts_with(strtolower($file), strtolower($root))
+			&& (str_ends_with($file, '.phpt') || preg_match('~^tests?/~i', substr($file, strlen($root))) === 1);
+	}
+
+
+	/** Whether the two paths, either of them relative to the root, are one file. */
+	public function isSameFile(string $a, string $b): bool
+	{
+		return strcasecmp($this->resolvePath($a), $this->resolvePath($b)) === 0;
+	}
+
+
+	private function resolvePath(string $file): string
+	{
+		return Helpers::canonicalizePath(FileSystem::normalizePath(FileSystem::isAbsolute($file) ? $file : "$this->root/$file"));
 	}
 
 

@@ -50,6 +50,7 @@ expressions:
 		ofTrueFalse: forbidden               # `$a > 1`, not `$a > 1 ? true : false`
 
 literals:
+	classNameInString: forbidden             # `Order::class`, not `'Acme\Shop\Order'`
 	concatenatedLiterals: forbidden          # `'ab'`, not `'a' . 'b'`
 	emptyStringConcatenation: forbidden      # no `. ''`
 

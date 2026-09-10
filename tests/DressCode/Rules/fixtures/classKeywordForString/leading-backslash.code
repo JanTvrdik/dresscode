@@ -1,0 +1,4 @@
+<?php
+// a class name in a string never needs a leading backslash
+$a = '\App\Model\User';
+$b = '\DateTimeImmutable';

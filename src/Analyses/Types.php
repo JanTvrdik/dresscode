@@ -641,6 +641,22 @@ final class Types implements PassAnalysis
 
 
 	/**
+	 * Whether the file may name the class as one it reaches: not where only the tests of the project declare it and the
+	 * file is not one of them, the autoload of the tests being no part of the code, and not where a `.phpt` other than
+	 * the file declares it, a script no autoload loads.
+	 */
+	public function canNameClass(string $name): bool
+	{
+		$file = $this->phpstan->findClass($name)?->getFileName();
+		return match (true) {
+			$file === null => true,
+			str_ends_with($file, '.phpt') => $this->phpstan->isSameFile($file, $this->path),
+			default => !$this->phpstan->isTestFile($file) || $this->phpstan->isTestFile($this->path),
+		};
+	}
+
+
+	/**
 	 * The declared spelling of a function the project, its packages or PHP declare, given its fully qualified name in
 	 * any letter case without a leading backslash; null for a name nothing declares.
 	 */
