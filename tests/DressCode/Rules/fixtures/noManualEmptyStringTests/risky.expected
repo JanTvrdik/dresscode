@@ -1,0 +1,8 @@
+<?php
+// risky
+namespace App;
+
+function test(string $s): void
+{
+	$b = $s === '';
+}

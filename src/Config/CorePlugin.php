@@ -169,6 +169,7 @@ final class CorePlugin implements Plugin
 				Rules\Functions\NoExplicitInvokeCallsRule::class,
 				Rules\Functions\NoInnerFunctionsRule::class,
 				Rules\Functions\NoIsNullRule::class,
+				Rules\Functions\NoManualEmptyStringTestsRule::class,
 				Rules\Functions\NoManualSubstringTestsRule::class,
 				Rules\Functions\NoSettypeRule::class,
 				Rules\Functions\RedundantArgumentsRule::class,
