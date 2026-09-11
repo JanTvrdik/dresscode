@@ -20,6 +20,7 @@ classes:
 	modifiers:
 		implied: forbidden                   # `final` in a final class
 	overridingMethod:
+		parentCallOnly: forbidden            # one only forwarding to `parent::`, risky
 		ReturnTypeWillChange: forbidden      # on a method declaring its return type
 	untypedPropertyNullDefault: forbidden    # `public $a;`, not `public $a = null;`
 
