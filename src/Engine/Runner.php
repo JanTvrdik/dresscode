@@ -41,6 +41,9 @@ final readonly class Runner
 		public ?\Closure $warmUp = null,
 		/** @var ?\Closure(): ?list<string>  the files the results depend on beyond the configuration, once the run knows them */
 		public ?\Closure $findDependencies = null,
+		private TypeAnalysisStatus $typeAnalysis = TypeAnalysisStatus::Unavailable,
+		/** the configuration lists functions or constants the namespaces declare */
+		private bool $namespacesListed = false,
 	) {
 		$this->root = Helpers::canonicalizePath($root);
 		$this->processors = $processors instanceof FileProcessor ? FileProcessors::of($processors) : $processors;
@@ -50,7 +53,7 @@ final readonly class Runner
 	/** What a reporter is told of the run before the first file. */
 	public function createRunInfo(bool $fix, int $fileCount): RunInfo
 	{
-		return new RunInfo($this->root, $fix, $fileCount);
+		return new RunInfo($this->root, $fix, $fileCount, $this->typeAnalysis, $this->namespacesListed);
 	}
 
 

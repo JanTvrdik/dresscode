@@ -8,8 +8,8 @@
 namespace DressCode\Reporters;
 
 use DressCode\Console\Markup;
-use DressCode\Engine\{Diff, FileSummary, RunInfo, RunResult};
-use DressCode\{FileResult, Reporter, Severity, Violation};
+use DressCode\Engine\{Diff, FileSummary, RunInfo, RunResult, TypeAnalysisStatus};
+use DressCode\{FileResult, Reporter, Risk, Severity, Violation};
 use Nette\CommandLine\{Ansi, Console};
 use Nette\Utils\FileSystem;
 use function count, sprintf, strlen;
@@ -31,6 +31,11 @@ final class ConsoleReporter implements Reporter
 
 	private bool $fix = false;
 	private int $fileCount = 0;
+
+	private TypeAnalysisStatus $typeAnalysis = TypeAnalysisStatus::Unavailable;
+
+	/** the configuration lists functions or constants the namespaces declare */
+	private bool $namespacesListed = false;
 	private float $started = 0.0;
 
 	/** some file was listed, so the verdict needs a blank line above it */
@@ -57,6 +62,8 @@ final class ConsoleReporter implements Reporter
 	{
 		$this->fix = $run->fix;
 		$this->fileCount = $run->fileCount;
+		$this->typeAnalysis = $run->typeAnalysis;
+		$this->namespacesListed = $run->namespacesListed;
 		$this->started = microtime(as_float: true);
 		$this->listed = $this->separate = false;
 	}
@@ -225,10 +232,20 @@ final class ConsoleReporter implements Reporter
 			$this->write(Markup::highlightCode($this->console, "Warning: $warning", 'yellow') . "\n\n");
 		}
 
+		// the fixes left for want of consent, by what would decide them, each with how its risk is taken away
+		$risks = array_filter(Risk::cases(), fn(Risk $risk) => $result->countRefusedBy($risk) > 0);
+		foreach ($risks as $risk) {
+			$this->write($this->formatRefused($risk, $result) . "\n");
+		}
+
 		// in a check, what no fix takes away, which nothing in the configuration changes
 		$unfixable = $this->fix ? 0 : $result->countUnfixable();
 		if ($unfixable) {
-			$this->write(($unfixable === 1 ? '1 violation has' : "$unfixable violations have") . " no fix, the rules only report them.\n\n");
+			$this->write(($unfixable === 1 ? '1 violation has' : "$unfixable violations have") . " no fix, the rules only report them.\n");
+		}
+
+		if ($risks || $unfixable) {
+			$this->write("\n");
 		}
 
 		$this->write($this->console->color(
@@ -239,6 +256,37 @@ final class ConsoleReporter implements Reporter
 			},
 			$this->formatVerdict($result),
 		) . "\n");
+	}
+
+
+	/**
+	 * The line of the summary for the fixes the run refused for the risk: how many, why, how the risk is taken away,
+	 * and the page of the manual that says so.
+	 */
+	private function formatRefused(Risk $risk, RunResult $result): string
+	{
+		$count = $result->countRefusedBy($risk);
+		[$wait, $them, $decisions] = $count === 1
+			? ['1 risky fix waits', 'it', 'its decision']
+			: ["$count risky fixes wait", 'them', 'their decisions'];
+		$text = match ($risk) {
+			Risk::NameUncertain => "$wait, a name may reach a function of the namespace: " . ($this->namespacesListed
+				? 'set `nameResolution: certain`'
+				: 'list what the namespaces declare under `namespaces`, or set `nameResolution: certain` if they declare nothing'),
+			Risk::TypeUnknown => match ($this->typeAnalysis) {
+				TypeAnalysisStatus::Available => "$wait, the type is unknown: set `typeAnalysis: phpstan`",
+				TypeAnalysisStatus::Enabled => "$wait, not even the types tell: check $them by hand",
+				TypeAnalysisStatus::Unavailable => "$wait, the type is unknown: check $them by hand",
+			},
+			Risk::BehaviorChanges => ($count === 1 ? '1 risky fix changes' : "$count risky fixes change")
+				. " what the code does: accept $decisions in `fixRisky` or decide $them by hand",
+		};
+		$docs = match ($risk) {
+			Risk::TypeUnknown => 'types#enable',
+			Risk::NameUncertain => 'namespaces#name-resolution',
+			Risk::BehaviorChanges => 'configuration#risky-fixes',
+		};
+		return Markup::highlightCode($this->console, "$text.") . ' ' . Markup::formatDocsLink($this->console, $docs);
 	}
 
 
