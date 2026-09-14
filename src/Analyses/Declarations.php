@@ -49,6 +49,28 @@ final class Declarations
 	}
 
 
+	/** @return ?list<Parameter> */
+	public function findFunctionParameters(string $function): ?array
+	{
+		$variants = $this->phpstan->findFunction($function)?->getVariants() ?? [];
+		return count($variants) === 1 ? array_map(self::toParameter(...), $variants[0]->getParameters()) : null;
+	}
+
+
+	public function isOverridable(string $class, string $method): Tristate
+	{
+		$reflection = $this->phpstan->findClass($class);
+		if ($reflection === null || !$reflection->hasNativeMethod($method)) {
+			return Tristate::Maybe;
+		}
+
+		$declaration = $reflection->getNativeMethod($method);
+		return $declaration->isPrivate() || $declaration->isFinal()->yes() || $reflection->isFinalByKeyword()
+			? Tristate::No
+			: Tristate::Yes;
+	}
+
+
 	public function countsArguments(string $class, string $method): bool
 	{
 		$reflection = $this->phpstan->findClass($class);

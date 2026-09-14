@@ -163,6 +163,8 @@ final class Types implements DressCode\Analyses\PassAnalysis
 	public function findConstructorAccess(PhpSyntax\Nodes\ExpressionNode $node): ?DressCode\Analyses\MemberAccess
 	public function findParameters(DressCode\Analyses\MemberAccess $access): ?list<DressCode\Analyses\Parameter>
 	public function findMethodParameters(string $class, string $method): ?list<DressCode\Analyses\Parameter>
+	public function findFunctionParameters(string $function): ?list<DressCode\Analyses\Parameter>
+	public function isOverridable(string $class, string $method): DressCode\Tristate
 	public function countsArguments(string $class, string $method): bool
 	public function findDeclaringClass(PhpSyntax\Nodes\Member\MethodNode $declaration): ?string
 	public function findOverridden(PhpSyntax\Nodes\Member\MethodNode|PhpSyntax\Nodes\Member\ClassConstNode|PhpSyntax\Nodes\Member\EnumCaseNode|PhpSyntax\Nodes\Member\PropertyNode|PhpSyntax\Nodes\ParameterNode $declaration): ?DressCode\Analyses\Member
@@ -924,6 +926,7 @@ final readonly class Violation
 - `DressCode\Rules\Functions\MultilineCallRule`
 - `DressCode\Rules\Functions\MultilineClosureUseRule`
 - `DressCode\Rules\Functions\MultilineSignatureRule`
+- `DressCode\Rules\Functions\NamedArgumentForBooleanRule`
 - `DressCode\Rules\Functions\NamedArgumentSpacingRule`
 - `DressCode\Rules\Functions\NewInitializerForNullDefaultRule`
 - `DressCode\Rules\Functions\NoAliasFunctionsRule`

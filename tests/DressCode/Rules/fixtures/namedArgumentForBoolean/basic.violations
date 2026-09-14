@@ -1,0 +1,7 @@
+3: The boolean argument of `json_decode()` must be named `associative`.
+4: The boolean argument of `json_decode()` must be named `associative`.
+5: The boolean argument of `htmlspecialchars()` must be named `double_encode`.
+6: The boolean argument of `array_keys()` must be named `strict`.
+7: The boolean argument of `mb_detect_encoding()` must be named `strict`.
+8: The boolean argument of `var_export()` must be named `return`.
+11: The boolean argument of `json_decode()` must be named `associative`.

@@ -1,0 +1,18 @@
+8: The boolean argument of `Acme\Shop\Cart::__construct()` must be named `persistent`.
+9: The boolean argument of `Acme\Shop\Cart::create()` must be named `persistent`.
+10: The boolean argument of `Acme\Shop\Order::close()` must be named `force`.
+11: The boolean argument of `Acme\Shop\Order::close()` must be named `force`.
+12: The boolean argument of `Acme\Shop\format()` must be named `escape`.
+13: The boolean argument of `Acme\Shop\format()` must be named `escape`.
+16: The boolean arguments of `Acme\Shop\Cart::add()` must be named `replace`, `notify`.
+	risky TypeUnknown: a class declaring `add()` again may name its parameters otherwise
+17: The boolean argument of `Acme\Shop\Cart::add()` must be named `replace`.
+	risky TypeUnknown: a class declaring `add()` again may name its parameters otherwise
+18: The boolean argument of `Acme\Shop\Notifier::notify()` must be named `urgent`.
+	risky TypeUnknown: a class declaring `notify()` again may name its parameters otherwise
+39: The boolean argument of `Acme\Shop\Sheet::log()` must be named `verbose`.
+40: The boolean argument of `Acme\Shop\Sheet::render()` must be named `compact`.
+41: The boolean argument of `Acme\Shop\Sheet::render()` must be named `compact`.
+	risky TypeUnknown: a class declaring `render()` again may name its parameters otherwise
+42: The boolean argument of `Acme\Shop\Sheet::render()` must be named `compact`.
+	risky TypeUnknown: a class declaring `render()` again may name its parameters otherwise

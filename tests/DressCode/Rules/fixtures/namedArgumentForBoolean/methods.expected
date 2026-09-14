@@ -1,0 +1,49 @@
+<?php
+// namespacedFunctions Acme\Shop\format
+
+namespace Acme\Shop;
+
+function process(Cart $cart, Order $order, Notifier $notifier, $unknown): void
+{
+	new Cart(persistent: true);
+	Cart::create(persistent: false);
+	$order->close(force: true);
+	$order?->close(force: true);
+	format('a', escape: false);
+	\Acme\Shop\format('a', escape: false);
+
+	// a child may declare the method again under other names of parameters
+	$cart->add('apple', 2, true, false);
+	$cart->add('apple', 2, true, notify: false);
+	$notifier->notify('Sold out', true);
+
+	// the parameter is no bool, the receiver is unknown, or the method is a setter or an exception
+	$cart->add('apple', true);
+	$cart->store(true, false);
+	$unknown->close(true);
+	$cart->setVisible(true);
+	$order->open(true);
+}
+
+
+class Sheet
+{
+	public function render(bool $compact = false): string
+	{
+		return '';
+	}
+
+
+	public function run(): void
+	{
+		$this->log(verbose: true);
+		self::render(compact: true);
+		$this->render(true);
+		static::render(true);
+	}
+
+
+	private function log(bool $verbose): void
+	{
+	}
+}

@@ -23,6 +23,9 @@ imports:
 	grouping:
 		class: grouped
 
+functions:
+	namedBooleanArgument: required
+
 overrides:
 	-
 		paths: [src]

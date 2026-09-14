@@ -1,0 +1,3 @@
+functions:
+	namedBooleanArgument: required
+	namedBooleanArgumentExcept: [print_r, 'Acme\Shop\Order::open']

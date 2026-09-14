@@ -1,0 +1,27 @@
+<?php
+
+$a = json_decode($json, true);
+$a = json_decode($json, TRUE, flags: JSON_THROW_ON_ERROR);
+$a = htmlspecialchars($s, ENT_QUOTES, 'UTF-8', false);
+$a = array_keys($array, 1, true);
+$a = mb_detect_encoding($s, null, true);
+$a = var_export($value, /* as a string */ true);
+$a = json_decode(
+	$json,
+	true,
+);
+
+// a positional argument follows, the parameter is no bool, the value is no literal, or the argument is named already
+$a = json_decode($json, false, 512);
+$a = array_fill(0, 3, false);
+$a = str_repeat('a', true);
+$a = json_decode($json, $associative);
+$a = json_decode($json, associative: true);
+$a = $callback(true);
+$a = json_decode(...);
+
+// PHP calls the function without a frame, or the compiler optimizes it, which a named argument prevents
+$a = in_array($needle, $haystack, true);
+
+// an exception
+$a = print_r($value, true);

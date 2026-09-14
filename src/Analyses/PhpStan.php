@@ -26,7 +26,7 @@ use PHPStan\Parser\Parser;
 use PHPStan\Php\PhpVersionFactory;
 use PHPStan\PhpDoc\TypeStringResolver;
 use PHPStan\Reflection\BetterReflection\BetterReflectionProvider;
-use PHPStan\Reflection\{ClassReflection, ReflectionProvider};
+use PHPStan\Reflection\{ClassReflection, FunctionReflection, ReflectionProvider};
 use PHPStan\Type\Type;
 use PhpSyntax\Trivia;
 use function ini_get, is_string, strlen;
@@ -231,9 +231,16 @@ final class PhpStan
 	 */
 	public function findFunctionName(string $name): ?string
 	{
+		return $this->findFunction($name)?->getName();
+	}
+
+
+	/** The function of that fully qualified name, in any letter case; null for a name nothing declares. */
+	public function findFunction(string $name): ?FunctionReflection
+	{
 		$provider = $this->getContainer()->getByType(ReflectionProvider::class);
 		$node = new FullyQualified($name);
-		return $provider->hasFunction($node, null) ? $provider->getFunction($node, null)->getName() : null;
+		return $provider->hasFunction($node, null) ? $provider->getFunction($node, null) : null;
 	}
 
 

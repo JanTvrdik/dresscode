@@ -422,6 +422,28 @@ final class Types implements PassAnalysis
 
 
 	/**
+	 * The parameters of the function the project, its packages or PHP declare, given its fully qualified name in any
+	 * letter case without a leading backslash; null for a name nothing declares and for a function of several variants.
+	 * @return ?list<Parameter>
+	 */
+	public function findFunctionParameters(string $function): ?array
+	{
+		return $this->declarations->findFunctionParameters($function);
+	}
+
+
+	/**
+	 * Whether a child of the class may declare the method again, which an instance of the child then runs instead: no
+	 * for a private or final method and for a final class, an enum and an anonymous class among them; maybe for a method
+	 * the class does not have and for a class nothing declares.
+	 */
+	public function isOverridable(string $class, string $method): Tristate
+	{
+		return $this->declarations->isOverridable($class, $method);
+	}
+
+
+	/**
 	 * Whether the method reads its arguments by `func_get_args()`, `func_get_arg()` or `func_num_args()`, so that an
 	 * argument written as the default may still change what it does; true for a method nothing declares.
 	 */

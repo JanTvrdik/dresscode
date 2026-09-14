@@ -55,6 +55,7 @@ test('a decision is made by a set or a standard, or written by the project on pu
 		'mistakes.neverReturnType.anonymousFunction', // the signature of a closure usually belongs to the call it is passed to
 		'mistakes.readonlyProperty', // a guarantee the code takes on, which no older construct gave
 		'functions.staticClosure', // what the code means when it binds a closure, which only the project knows
+		'functions.namedBooleanArgument', // a named argument ties the call to the name of the parameter, which a project accepts
 		'indentation.singleLevel', // a measure of the shape of a body, not its layout
 		'phpdoc.annotation.itemTypes', // what the items of an array are, which only reports and a project asks for
 		'multiline.items.coalesce', 'multiline.items.pipe', // operands of `??` and `|>`, which no standard spreads

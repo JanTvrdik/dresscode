@@ -160,6 +160,7 @@ final class CorePlugin implements Plugin
 				Rules\Functions\MultilineCallRule::class,
 				Rules\Functions\MultilineClosureUseRule::class,
 				Rules\Functions\MultilineSignatureRule::class,
+				Rules\Functions\NamedArgumentForBooleanRule::class,
 				Rules\Functions\NamedArgumentSpacingRule::class,
 				Rules\Functions\NewInitializerForNullDefaultRule::class,
 				Rules\Functions\NoAliasFunctionsRule::class,
