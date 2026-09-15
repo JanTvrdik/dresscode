@@ -79,7 +79,7 @@ final readonly class CheckCommand
 
 		[$factory, $resolution, $configFile] = $this->context->resolveProject($args, $configuration, $check->only ?? []);
 		[$config, $root] = [$resolution->config, $resolution->root];
-		$fixRisky = (bool) ($check->fixRisky ?? false);
+		$fixRisky = in_array(true, $check->fixRisky ?? [], true); // a bare `--fix-risky`, the names given go to the configuration
 		if ($run->worker !== null) { // the parent keeps the cache; the baseline decides what is reported
 			$runner = $factory->createRunner(
 				$resolution,
@@ -331,8 +331,8 @@ final readonly class CheckCommand
 			$command[] = '--strict-rules';
 		}
 
-		if ($check->fixRisky ?? false) { // what a worker may fix has to be what the parent was asked for
-			$command[] = '--fix-risky';
+		foreach ($check->fixRisky ?? [] as $value) { // what a worker may fix has to be what the parent was asked for
+			$command[] = is_string($value) ? "--fix-risky=$value" : '--fix-risky';
 		}
 
 		return $command;
