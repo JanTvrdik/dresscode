@@ -213,6 +213,7 @@ final class RuleContext
 			? $this->fingerprints->create($decision, $message, $line)
 			: $this->fingerprints->createFor($construct, $decision, $message, $line);
 		$baselined = $this->fingerprints->matchBaseline($fingerprint);
+		$fixable = $fixable && !$this->policy->isReportedOnly($decision);
 		$risk = $fixable ? $risk : null;
 		$refused = $risk !== null && !$this->policy->acceptsRisk($decision);
 		$this->reports[] = new Engine\Report(

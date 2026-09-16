@@ -140,6 +140,7 @@ final class NeonReader
 			])->skipDefaults()->castTo('array'),
 			'nameResolution' => Expect::anyOf('certain', 'uncertain'),
 			'fixRisky' => Expect::listOf('string', wrap: true),
+			'reportOnly' => Expect::listOf('string', wrap: true),
 			'severity' => Expect::arrayOf(Expect::anyOf('warning', 'error'), 'string'),
 			'suppressionComments' => Expect::arrayOf(Expect::anyOf(
 				Expect::listOf('string', wrap: true),

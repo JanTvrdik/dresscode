@@ -81,7 +81,7 @@ final class Catalogue
 	 */
 	public const ReservedKeys = [
 		'use', 'typeAnalysis', 'namespaces', 'nameResolution', 'targets', 'paths', 'excludePaths',
-		'fileExtensions', 'skipWhen', 'baseline', 'cacheDir', 'rules', 'analyses', 'fixRisky', 'severity',
+		'fileExtensions', 'skipWhen', 'baseline', 'cacheDir', 'rules', 'analyses', 'fixRisky', 'reportOnly', 'severity',
 		'suppressionComments', 'overrides',
 	];
 

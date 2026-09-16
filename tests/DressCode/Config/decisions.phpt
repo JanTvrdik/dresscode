@@ -174,9 +174,9 @@ test('the run narrowed to a path reports that decision alone and changes no valu
 });
 
 
-test('the command line sets a decision over everything, and fixRisky and severity take a path', function () {
+test('the command line sets a decision over everything, and fixRisky, reportOnly and severity take a path', function () {
 	$dir = createDecisionsProject(
-		['dresscode.neon' => "use: nette\nfixRisky: [types.declaration.parameter]\nseverity: {blankLines: warning}\ntypes:\n\tdeclaration:\n\t\tparameter: required\n"],
+		['dresscode.neon' => "use: nette\nfixRisky: [types.declaration.parameter]\nreportOnly: [blankLines]\nseverity: {blankLines: warning}\ntypes:\n\tdeclaration:\n\t\tparameter: required\n"],
 	);
 	$resolved = resolveFile("$dir/dresscode.neon", new Profile(decisions: ['blankLines' => ['aroundMethods' => 3]]));
 	Assert::same([3, 3], $resolved->decisions['blankLines.aroundMethods']->value->getCountRange());
@@ -197,7 +197,14 @@ test('the command line sets a decision over everything, and fixRisky and severit
 	Assert::same(0, $code);
 	$data = json_decode((string) stream_get_contents($out), associative: true);
 	Assert::same(
-		['value' => [1, 2], 'layer' => 'the command line', 'inactive' => null, 'selected' => true, 'severity' => 'error'],
+		[
+			'value' => [1, 2],
+			'layer' => 'the command line',
+			'inactive' => null,
+			'selected' => true,
+			'severity' => 'error',
+			'reportOnly' => true,
+		],
 		$data['decisions']['blankLines.aroundMethods'],
 	);
 	Assert::exception(

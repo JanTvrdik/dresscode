@@ -257,7 +257,7 @@ final readonly class Config extends DressCode\Profile
 	public readonly ?string $cacheDir
 	public readonly ?string $typeAnalysis
 	public readonly ?string $ruleUrl
-	public function __construct(list<string|DressCode\Plugin> $use = [], array<int|class-string<DressCode\Rule>, class-string<DressCode\Rule>|Closure(): DressCode\Rule> $rules = [], array<string, string> $targets = [], array{functions?: list<string>, constants?: list<string>} $namespaces = [], ?string $nameResolution = null, list<string> $fixRisky = [], array<string, string> $severity = [], array<string, string|list<string>|array{decisions: string|list<string>, example?: string}> $suppressionComments = [], list<DressCode\Override> $overrides = [], list<string> $paths = [], list<string> $excludePaths = [], list<string> $fileExtensions = ['php'], ?callable(string $content, string $path): bool $skipWhen = null, ?string $baseline = null, ?string $cacheDir = null, array<string|int, string|callable(PhpSyntax\Nodes\FileNode, string): object> $analyses = [], ?string $typeAnalysis = null, ?string $ruleUrl = null, array<string, mixed> $decisions = [])
+	public function __construct(list<string|DressCode\Plugin> $use = [], array<int|class-string<DressCode\Rule>, class-string<DressCode\Rule>|Closure(): DressCode\Rule> $rules = [], array<string, string> $targets = [], array{functions?: list<string>, constants?: list<string>} $namespaces = [], ?string $nameResolution = null, list<string> $fixRisky = [], list<string> $reportOnly = [], array<string, string> $severity = [], array<string, string|list<string>|array{decisions: string|list<string>, example?: string}> $suppressionComments = [], list<DressCode\Override> $overrides = [], list<string> $paths = [], list<string> $excludePaths = [], list<string> $fileExtensions = ['php'], ?callable(string $content, string $path): bool $skipWhen = null, ?string $baseline = null, ?string $cacheDir = null, array<string|int, string|callable(PhpSyntax\Nodes\FileNode, string): object> $analyses = [], ?string $typeAnalysis = null, ?string $ruleUrl = null, array<string, mixed> $decisions = [])
 	public function getRuleFactories(): array<class-string<DressCode\Rule>, Closure(): DressCode\Rule>
 ```
 
@@ -599,9 +599,10 @@ readonly class Profile
 	public readonly array<string, array{decisions: list<string>, example: ?string}> $suppressionComments
 	public readonly array<string, string> $targets
 	public readonly list<string> $fixRisky
+	public readonly list<string> $reportOnly
 	public readonly array<string, string> $severity
 	public readonly array<string, mixed> $decisions
-	public function __construct(list<string|DressCode\Plugin> $use = [], array<string, string> $targets = [], array{functions?: list<string>, constants?: list<string>} $namespaces = [], ?string $nameResolution = null, list<string> $fixRisky = [], array<string, string> $severity = [], array<string, string|list<string>|array{decisions: string|list<string>, example?: string}> $suppressionComments = [], array<string, mixed> $decisions = [])
+	public function __construct(list<string|DressCode\Plugin> $use = [], array<string, string> $targets = [], array{functions?: list<string>, constants?: list<string>} $namespaces = [], ?string $nameResolution = null, list<string> $fixRisky = [], list<string> $reportOnly = [], array<string, string> $severity = [], array<string, string|list<string>|array{decisions: string|list<string>, example?: string}> $suppressionComments = [], array<string, mixed> $decisions = [])
 ```
 
 ## `DressCode\QualifiedNames`

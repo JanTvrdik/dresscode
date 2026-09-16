@@ -66,6 +66,7 @@ final readonly class ConfigPrinter
 		$named = array_filter(
 			$this->config->decisions,
 			fn(ResolvedDecision $decision, string $path) => isset($this->config->fixRisky[$path])
+				|| isset($this->config->reportOnly[$path])
 				|| isset($this->config->warningDecisions[$path]),
 			ARRAY_FILTER_USE_BOTH,
 		);
@@ -127,6 +128,7 @@ final readonly class ConfigPrinter
 				? ', outside --only'
 				: '')
 			. (isset($this->config->fixRisky[$path]) ? ', risky fixes accepted' : '')
+			. (isset($this->config->reportOnly[$path]) ? ', only reported' : '')
 			. (isset($this->config->warningDecisions[$path]) ? ', only warns' : '');
 	}
 
@@ -177,6 +179,7 @@ final readonly class ConfigPrinter
 				'selected' => $decision->decision->kind !== DecisionKind::Parameter
 					&& $this->config->values->isSelected($decision->decision->path),
 				'severity' => isset($this->config->warningDecisions[$decision->decision->path]) ? 'warning' : 'error',
+				'reportOnly' => isset($this->config->reportOnly[$decision->decision->path]),
 			], $this->config->decisions)
 				?: new \stdClass,
 		], pretty: true) . "\n";

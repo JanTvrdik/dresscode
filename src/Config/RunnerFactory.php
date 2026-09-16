@@ -150,6 +150,7 @@ final readonly class RunnerFactory
 						baseline: $baselineFile,
 						warningDecisions: $variant->warningDecisions,
 						fixRisky: $fixRisky ?: $variant->fixRisky,
+						reportOnly: $variant->reportOnly,
 						strict: $strict,
 					),
 					gates: $variant->getGates(),

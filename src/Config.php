@@ -57,6 +57,7 @@ final readonly class Config extends Profile
 	 *   class, or its class with the factory of a rule with dependencies
 	 * @param array{functions?: list<string>, constants?: list<string>} $namespaces
 	 * @param list<string> $fixRisky
+	 * @param list<string> $reportOnly
 	 * @param array<string, string> $targets  `php` => the version the code is written for
 	 * @param array<string, string> $severity
 	 * @param array<string, string|list<string>|array{decisions: string|list<string>, example?: string}> $suppressionComments
@@ -73,6 +74,7 @@ final readonly class Config extends Profile
 		array $namespaces = [],
 		?string $nameResolution = null,
 		array $fixRisky = [],
+		array $reportOnly = [],
 		array $severity = [],
 		array $suppressionComments = [],
 		/** @var list<Override> */
@@ -103,6 +105,7 @@ final readonly class Config extends Profile
 			$namespaces,
 			$nameResolution,
 			$fixRisky,
+			$reportOnly,
 			$severity,
 			$suppressionComments,
 			$decisions,

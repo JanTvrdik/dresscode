@@ -32,7 +32,7 @@ final readonly class Violation
 		public string $fingerprint,
 		/**
 		 * the run has a fix for this occurrence, whether or not it makes it (a refused risky fix is fixable); false where
-		 * the rule only reports it
+		 * the rule only reports it, or the project reports the decision only (`reportOnly`)
 		 */
 		public bool $fixable = true,
 		/** the fix of this occurrence may change what the code does, so it waits until the run allows one; what would decide */

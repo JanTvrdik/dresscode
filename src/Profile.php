@@ -14,9 +14,10 @@ use function is_array, is_string;
 
 /**
  * What decides how a file is processed: the presets it uses, the decisions, the version of PHP the code is written
- * for, what its namespaces declare, and the rules whose risky fixes are accepted or whose violations only warn. A
- * preset is a file of this shape under a name, an override is a profile for a part of the tree, and the configuration
- * is the one of the whole project. Where profiles meet, a value is the last one said and a list adds up.
+ * for, what its namespaces declare, and the rules whose risky fixes are accepted, whose violations are only reported
+ * or only warn. A preset is a file of this shape under a name, an override is a profile for a part of the tree, and
+ * the configuration is the one of the whole project. Where profiles meet, a value is the last one said and a list adds
+ * up.
  */
 readonly class Profile
 {
@@ -69,6 +70,11 @@ readonly class Profile
 		 * change what the code does
 		 */
 		public array $fixRisky = [],
+		/**
+		 * @var list<string>  decisions, sections, presets or classes of rules whose violations are reported and never
+		 * fixed, as when the project brings a tool in or makes such a fix by hand
+		 */
+		public array $reportOnly = [],
 		/**
 		 * how a violation counts: a decision, a group, a section, a preset or the class of a rule => `warning` or `error`,
 		 * for every requirement under it whose value this layer or one below it said

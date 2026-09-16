@@ -1116,6 +1116,26 @@ test('a violation the rule has no fix for is no fix waiting, with the consent or
 });
 
 
+test('a decision the configuration only reports is never fixed, nor offered to the consent fixRisky gives', function () {
+	$root = createTempDir('report-only');
+	mkdir("$root/src");
+	$config = "$root/reportOnly.php";
+	$code = "<?php\nin_array(1, [1]);\n";
+	file_put_contents("$root/src/a.php", $code);
+	file_put_contents(
+		$config,
+		"<?php\nreturn new DressCode\\Config(paths: ['src'], fixRisky: ['mistakes.strictArgument'], reportOnly: ['mistakes'], decisions: ['mistakes' => ['strictArgument' => 'required']]);\n",
+	);
+
+	[, $out] = runApp($root, ['check', '--config', $config, '--no-cache', '--format', 'json']);
+	$summary = json_decode($out, associative: true)['summary'];
+	Assert::same([1, 0], [$summary['remaining'], $summary['refused']]);
+	[$code1] = runApp($root, ['fix', '--config', $config, '--no-cache']);
+	Assert::same(1, $code1);
+	Assert::same($code, file_get_contents("$root/src/a.php"));
+});
+
+
 test('a risky fix only the types could decide is a warning until it is made, and the summary says how to decide it', function () {
 	$root = createTempDir('type-unknown');
 	mkdir("$root/src");

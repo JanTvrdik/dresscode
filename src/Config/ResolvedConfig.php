@@ -55,6 +55,8 @@ final readonly class ResolvedConfig
 		public array $decisions = [],
 		/** @var array<string, true>  the decisions whose fixes that may change what the code does the project accepts */
 		public array $fixRisky = [],
+		/** @var array<string, true>  the decisions whose violations are reported and never fixed */
+		public array $reportOnly = [],
 		/** @var array<string, true>  the decisions whose violations only warn */
 		public array $warningDecisions = [],
 		/** @var list<ResolvedConfig>  what each override of the configuration comes to for a file it alone matches */
@@ -159,6 +161,7 @@ final readonly class ResolvedConfig
 			'suppressionComments' => $this->suppressionComments,
 			'decisions' => array_map(fn(ResolvedDecision $decision) => $decision->value->toData(), $this->decisions),
 			'fixRisky' => array_keys($this->fixRisky),
+			'reportOnly' => array_keys($this->reportOnly),
 			'selected' => array_keys(array_filter(
 				$this->decisions,
 				fn(ResolvedDecision $decision) => $decision->decision->kind !== DecisionKind::Parameter

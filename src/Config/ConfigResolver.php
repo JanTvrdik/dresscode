@@ -70,7 +70,7 @@ final class ConfigResolver
 		?array $only = null,
 	): ResolvedConfig
 	{
-		$fixRisky = $fixRiskyPaths = $severities = $use = $suppressionComments = $suppressionExamples = [];
+		$fixRisky = $fixRiskyPaths = $reportOnly = $severities = $use = $suppressionComments = $suppressionExamples = [];
 		$symbols = [SymbolKind::Function->name => [], SymbolKind::Constant->name => []];
 		$php = $resolution = null;
 		$typeAnalysis = ($commandLine instanceof Config ? $commandLine->typeAnalysis : null) ?? $config->typeAnalysis;
@@ -96,6 +96,10 @@ final class ConfigResolver
 					$expanded = $this->expandName($name);
 					$fixRisky += array_fill_keys($expanded->rules, true);
 					$fixRiskyPaths += array_fill_keys($expanded->paths, true);
+				}
+
+				foreach ($profile->reportOnly as $name) {
+					$reportOnly += array_fill_keys($this->expandName($name)->paths, true);
 				}
 
 				$severities[] = $this->collectSeverity($profile->severity);
@@ -172,7 +176,7 @@ final class ConfigResolver
 		$this->warnRepeated($repeated);
 		if ($overrides === []) {
 			$narrowed === null
-				? $this->checkFixRisky($config, $active, $ofOverrides)
+				? $this->checkFixPolicies($config, $active, $ofOverrides)
 				: $this->checkOnly($narrowed, $active, $inactive, $ofOverrides, $use);
 		}
 
@@ -199,6 +203,7 @@ final class ConfigResolver
 			decisions: $decisions,
 			values: $values,
 			fixRisky: $fixRiskyPaths,
+			reportOnly: $reportOnly,
 			warningDecisions: self::findWarningDecisions($decisions, array_column($collected, 0), $severities),
 			overrides: $resolvedOverrides,
 		);
@@ -756,25 +761,27 @@ final class ConfigResolver
 
 
 	/**
-	 * A name in fixRisky whose rules run nowhere, not even where an override turns them on, makes the entry a line that
-	 * does nothing, which is worth a warning.
+	 * A name in fixRisky or reportOnly whose rules run nowhere, not even where an override turns them on, makes the entry
+	 * a line that does nothing, which is worth a warning.
 	 * @param  array<class-string<Rule>, ResolvedRule>  $active
 	 * @param  array<class-string<Rule>, true>  $ofOverrides
 	 * @throws ConfigurationException
 	 */
-	private function checkFixRisky(Config $config, array $active, array $ofOverrides): void
+	private function checkFixPolicies(Config $config, array $active, array $ofOverrides): void
 	{
 		foreach (self::listProfiles($config, array_keys($config->overrides)) as [$layer, $profile]) {
-			foreach ($profile->fixRisky as $entry) {
-				try {
-					$expanded = $this->expandName($entry);
-				} catch (ConfigurationException $e) {
-					throw self::locate($e, $layer);
-				}
+			foreach (['fixRisky' => $profile->fixRisky, 'reportOnly' => $profile->reportOnly] as $key => $entries) {
+				foreach ($entries as $entry) {
+					try {
+						$expanded = $this->expandName($entry);
+					} catch (ConfigurationException $e) {
+						throw self::locate($e, $layer);
+					}
 
-				if (!array_filter($expanded->rules, fn(string $class) => isset($active[$class]) || isset($ofOverrides[$class]))) {
-					$this->warnings["fixRisky $expanded->name"] = ucfirst($expanded->format())
-						. ' is named in `fixRisky` but runs nowhere; the entry does nothing.';
+					if (!array_filter($expanded->rules, fn(string $class) => isset($active[$class]) || isset($ofOverrides[$class]))) {
+						$this->warnings["$key $expanded->name"] = ucfirst($expanded->format())
+							. " is named in `$key` but runs nowhere; the entry does nothing.";
+					}
 				}
 			}
 		}

@@ -12,8 +12,8 @@ use function is_array;
 
 /**
  * How a run treats what the rules report, the same for every file of one configuration: what silences a report, what
- * leaves it unrecorded or only warns, which fixes that may change what the code does it makes, and whether a broken
- * rule contract throws.
+ * leaves it unrecorded or only warns, which fixes that may change what the code does it makes, which fixes it never
+ * makes, and whether a broken rule contract throws.
  * @internal
  */
 final readonly class ReportPolicy
@@ -36,6 +36,8 @@ final readonly class ReportPolicy
 		 * those of the decisions
 		 */
 		public bool|array $fixRisky = false,
+		/** @var array<string, true>  decisions whose violations are reported and never fixed */
+		public array $reportOnly = [],
 		/** a broken rule contract throws instead of warning */
 		public bool $strict = false,
 	) {
@@ -47,5 +49,12 @@ final readonly class ReportPolicy
 	public function acceptsRisk(string $decision): bool
 	{
 		return $this->fixRisky === true || (is_array($this->fixRisky) && isset($this->fixRisky[$decision]));
+	}
+
+
+	/** Whether the violations of the decision are only reported, the project making or leaving their fixes itself. */
+	public function isReportedOnly(string $decision): bool
+	{
+		return isset($this->reportOnly[$decision]);
 	}
 }
