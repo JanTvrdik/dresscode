@@ -50,7 +50,9 @@ DressCode is a tool, not a library, so it does not have to be installed in the p
 global installation is the simplest way; just make sure the directory of global Composer binaries is in your
 `PATH`. For CI, where you want the version of the tool pinned, install it into a directory of its own with
 `composer create-project dresscode/dresscode temp/dresscode`. It can also be a development dependency of your
-project (`composer require --dev dresscode/dresscode`); the project then has to run on PHP 8.4 to 8.6 too.
+project (`composer require --dev dresscode/dresscode`), which is the way to go once you want DressCode to
+ask your PHPStan about the [types of your code](#types-from-phpstan); the project then has to run on
+PHP 8.4 to 8.6 too.
 
 DressCode itself runs on PHP 8.4 to 8.6. **That is the PHP of the tool, not the PHP your code is written for.**
 The second number DressCode reads from `require.php` in your `composer.json`, and it never writes syntax that
@@ -261,7 +263,9 @@ to the care of each rule's author; the core of the tool enforces it.
   if it does not. From one file you cannot tell, so rewriting it to `str_contains()` is a risky fix. DressCode
   reports it and waits until you allow it, for one decision in the key `fixRisky` or for one run with
   `--fix-risky`. Or you tell it the truth once, `nameResolution: certain` (or list what your namespaces do
-  declare under `namespaces`), and such fixes stop being risky at all.
+  declare under `namespaces`), and such fixes stop being risky at all. Until then they only warn, and the
+  summary says for every kind of risk what would decide it; where the types would, `typeAnalysis: phpstan`
+  does.
 - **No priorities.** When two rules touch the same code, their order matters. DressCode does not number the
   rules; it runs them again and again until the code stops changing. Two rules pulling the same code back
   and forth are detected, and the run names them.
@@ -336,6 +340,27 @@ both at once: the rewrite and the formatting happen in the same run, with one co
 DressCode understands the syntax of new PHP even when it runs on an older one: it fills in the pieces of
 syntax the running PHP does not know yet, so DressCode on PHP 8.4 reads a file with the pipe operator of
 PHP 8.5, a file PHP 8.4 itself would reject.
+
+ <!---->
+
+Types from PHPStan
+==================
+
+The syntax tree knows every byte of a file, but not that `$form` is a form, what a class inherits, or what
+the declaration of a method says. If your project has PHPStan, DressCode asks it, with your `phpstan.neon`
+and its extensions, so the answers are as good as the analysis you already trust. For that, DressCode has
+to be installed in the project next to PHPStan (`composer require --dev phpstan/phpstan dresscode/dresscode`),
+and one line of the configuration does the rest:
+
+```neon
+typeAnalysis: phpstan
+```
+
+That unlocks the rules a style tool cannot otherwise have: `UserRepository::class` in place of a string
+naming an existing class, and, once you set `upgrading.classes.Override: required`, `#[\Override]` on a method that overrides a
+method of its parent. PHPStan only answers; it rewrites and reports nothing. Without the key, a decision that
+needs types stays out where a standard makes it, and where your configuration does, the run says what is
+missing.
 
  <!---->
 
@@ -430,7 +455,9 @@ Against PHP_CodeSniffer, fixing is where the difference shows: `dresscode fix` t
 the time `phpcbf` needs for PSR-12. `phpcs`, which only reports, is faster at reporting than
 `dresscode check`, which works the fixes out in memory as well.
 
-Upgrading code takes a fraction of what Rector needs, 1.6 s against 128.5 s over Symfony 3.4.
+Upgrading code takes a fraction of what Rector needs, 1.6 s against 128.5 s over Symfony 3.4, and with
+the [types from PHPStan](#types-from-phpstan) it is still faster: 4.4 s against 10.5 s over Laravel with
+PHPStan's cache warm, 9.0 s against 195 s with it cold.
 
 Measured in October 2026 on PHP 8.5, against PHP CS Fixer 3.95, PHP_CodeSniffer 4.0 and Rector 2.6, as the
 median of three runs.
@@ -443,6 +470,8 @@ Limits
 - **It runs on PHP 8.4 to 8.6.** The code it checks can be written for PHP 8.0 and newer; code for
   an older version is checked as PHP 8.0, with a warning.
 - **A file that does not parse is left alone.** It is reported as a syntax error and not touched.
+- **Types come from PHPStan.** Without PHPStan in the project, DressCode does not know what a variable is
+  or what a class inherits, and the rules that would need to know stay out.
 
  <!---->
 
