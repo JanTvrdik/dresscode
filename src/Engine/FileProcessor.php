@@ -16,8 +16,12 @@ use DressCode\{ConfigurationException, ConvergenceException, FileResult, RuleExc
  */
 interface FileProcessor
 {
-	/** @throws RuleException|ConvergenceException|ConfigurationException */
-	function process(string $path, string $code): FileResult;
+	/**
+	 * @param  array<string, true>  $acceptedRisks  fingerprints of the occurrences whose risky fix is allowed on top of
+	 *   what the configuration allows
+	 * @throws RuleException|ConvergenceException|ConfigurationException
+	 */
+	function process(string $path, string $code, array $acceptedRisks = []): FileResult;
 
 	/**
 	 * The decisions the rules report in this run.

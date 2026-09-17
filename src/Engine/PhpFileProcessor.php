@@ -59,8 +59,12 @@ final readonly class PhpFileProcessor implements FileProcessor
 	}
 
 
-	/** @throws RuleException|ConvergenceException|ConfigurationException */
-	public function process(string $path, string $code): FileResult
+	/**
+	 * @param  array<string, true>  $acceptedRisks  fingerprints of the occurrences whose risky fix is allowed on top of
+	 *   what the configuration allows
+	 * @throws RuleException|ConvergenceException|ConfigurationException
+	 */
+	public function process(string $path, string $code, array $acceptedRisks = []): FileResult
 	{
 		$style = $this->detectLineEnding ? $this->style->withLineEnding(Style::detectLineEnding($code)) : $this->style;
 		$text = $code;
@@ -86,7 +90,7 @@ final readonly class PhpFileProcessor implements FileProcessor
 			}
 
 			try {
-				$result = $passLoop->run($file, $text, $path, $style, $this->phpVersion);
+				$result = $passLoop->run($file, $text, $path, $style, $this->phpVersion, $acceptedRisks);
 			} catch (RuleException $e) {
 				// the types refuse code PHP would not compile, whichever rule asks for them first
 				$previous = $e->getPrevious();

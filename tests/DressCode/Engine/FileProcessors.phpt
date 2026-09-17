@@ -20,7 +20,7 @@ final class ProcessorsStub implements FileProcessor
 	}
 
 
-	public function process(string $path, string $code): FileResult
+	public function process(string $path, string $code, array $acceptedRisks = []): FileResult
 	{
 		$this->paths[] = $path;
 		return new FileResult($path, $code, $code);
