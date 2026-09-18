@@ -1,0 +1,8 @@
+<?php
+// {"api": {"replacedClasses": {"App\\Legacy\\Timestamps": "App\\Model\\Timestamps"}}}
+namespace App;
+
+final class Order
+{
+	use Model\Timestamps;
+}

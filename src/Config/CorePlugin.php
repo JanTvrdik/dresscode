@@ -9,7 +9,9 @@ namespace DressCode\Config;
 
 use DressCode\Analyses\IndentationPlan;
 use DressCode\{Decision, DecisionKind, Domain, Plugin, PluginManifest, Rules};
-use DressCode\Domains\{Count, Names, Shapes, Words};
+use DressCode\Domains\{Count, GrammarEntry, Map, Names, Shapes, Words};
+use DressCode\Upgrading\MemberMapGrammar;
+use Nette\Schema\{Context, Expect, Schema};
 use function dirname;
 
 
@@ -24,11 +26,12 @@ final class CorePlugin implements Plugin
 	 * The presets that are complete standards; the other presets are sets.
 	 */
 	public const Standards = ['perCs', 'psr12', 'nette'];
+	private const QualifiedName = '\\\\?\w+(\\\\\w+)*';
 
 
 	public function getManifest(): PluginManifest
 	{
-		// built once, since nothing of it changes
+		// built once, the grammars of the maps above all, since nothing of it changes
 		static $manifest;
 		return $manifest ??= new PluginManifest(
 			presets: [
@@ -227,6 +230,7 @@ final class CorePlugin implements Plugin
 				Rules\Types\ConstantTypeRequiredRule::class,
 				Rules\Types\TypeDeclarationSpacingRule::class,
 				Rules\Types\TypeNotationRule::class,
+				Rules\Upgrading\ReplacedClassesRule::class,
 				Rules\Upgrading\NoDeprecatedMembersRule::class,
 				Rules\Upgrading\NoDeprecatedPhpArgumentsRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,
@@ -343,6 +347,13 @@ final class CorePlugin implements Plugin
 					default: ['Traversable'],
 				),
 
+				// the maps of what the libraries retired, which the project writes, each read by its grammar
+				new Decision(
+					MemberMapGrammar::ReplacedClasses,
+					new Map(new GrammarEntry, wildcards: false, grammar: self::createReplacedClassesGrammar(), caseInsensitive: true),
+					'A class written instead of another one, both fully qualified (`Acme\\Old\\Mailer: Acme\\Mail\\Mailer`)',
+				),
+
 				// the newer constructs, decided once for every rule writing them
 				new Decision(
 					'upgrading.functions.arraySearchFunctions',
@@ -404,5 +415,22 @@ final class CorePlugin implements Plugin
 				'How the imports of constants are put into `use` statements, a name of the global namespace never grouped',
 			),
 		];
+	}
+
+
+	private static function createReplacedClassesGrammar(): Schema
+	{
+		$name = fn() => Expect::string()->pattern(self::QualifiedName);
+		return Expect::arrayOf($name(), $name())
+			->description('The class → the class written instead, both fully qualified')
+			->transform(function (array $options, Context $context): array {
+				foreach ($options as $old => $new) {
+					if (strcasecmp(ltrim((string) $old, '\\'), ltrim($new, '\\')) === 0) {
+						$context->addError("The class `$old` is given as its own replacement.", 'dresscode.sameClass');
+					}
+				}
+
+				return $options;
+			});
 	}
 }

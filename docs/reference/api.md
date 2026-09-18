@@ -400,6 +400,14 @@ final readonly class Flag extends DressCode\Domain
 	public function describe(): string
 ```
 
+## `DressCode\Domains\GrammarEntry`
+
+```php
+final readonly class GrammarEntry extends DressCode\Domain
+	public function toArray(): array
+	public function describe(): string
+```
+
 ## `DressCode\Domains\Map`
 
 ```php
@@ -407,9 +415,11 @@ final readonly class Map extends DressCode\Domain
 	public readonly DressCode\Domain $values
 	public readonly bool $wildcards
 	public readonly ?array<string, string> $words
+	public readonly ?Nette\Schema\Schema $grammar
 	public readonly bool $caseInsensitive
 	public readonly ?Closure(string): string $canonicalize
-	public function __construct(DressCode\Domain $values, bool $wildcards = true, ?array<string, string> $words = null, bool $caseInsensitive = false, ?Closure(string): string $canonicalize = null)
+	public function __construct(DressCode\Domain $values, bool $wildcards = true, ?array<string, string> $words = null, ?Nette\Schema\Schema $grammar = null, bool $caseInsensitive = false, ?Closure(string): string $canonicalize = null)
+	public function read(array<string, mixed> $entries, string $path): array<mixed>
 	public function merge(DressCode\Value $below, DressCode\Value $above, string $path = ''): DressCode\Value
 	public function toArray(): array
 	public function describe(): string
@@ -752,6 +762,13 @@ enum Tristate
 	case Maybe
 ```
 
+## `DressCode\Upgrading\MemberMapGrammar`
+
+```php
+final class MemberMapGrammar
+	public const ReplacedClasses = 'upgrading.api.replacedClasses'
+```
+
 ## `DressCode\Value`
 
 ```php
@@ -1000,6 +1017,7 @@ final readonly class Violation
 - `DressCode\Rules\Types\TypeNotationRule`
 - `DressCode\Rules\Upgrading\NoDeprecatedMembersRule`
 - `DressCode\Rules\Upgrading\NoDeprecatedPhpArgumentsRule`
+- `DressCode\Rules\Upgrading\ReplacedClassesRule`
 - `DressCode\Rules\Variables\NoGlobalStatementsRule`
 - `DressCode\Rules\Variables\NoRepeatedAssignmentsRule`
 - `DressCode\Rules\Variables\NoSeparateIssetsRule`
