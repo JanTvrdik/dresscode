@@ -5,7 +5,7 @@ use DressCode\{
 	CodeWriter, 	Config, ConfigurationException, Decision, Domain, NodeRule, Override, Plugin, PluginManifest, Profile, RuleContext, RuleInfo, Stage,
 };
 use DressCode\Config\{ComposerJson, PhpVersionSource, RunnerFactory};
-use DressCode\Engine\Runner;
+use DressCode\Engine\{Runner, TypeAnalysisStatus};
 use DressCode\Reporters\NullReporter;
 use PhpSyntax\{Node, Token};
 use PhpSyntax\Nodes\Expression\VariableNode;
@@ -388,6 +388,101 @@ test('a target older than the oldest PHP DressCode fixes code for is raised to i
 	$resolution = $factory->resolve(new Config(targets: ['php' => '7.4']), $root);
 	Assert::same(['8.0', PhpVersionSource::Configuration], [$resolution->resolvedConfig->phpVersion, $resolution->phpVersionSource]);
 	Assert::same([$warning => null], $resolution->warnings);
+});
+
+
+test('the types of the code come from the PHPStan of the project when the configuration says so', function () {
+	$root = createTempDir('types');
+	mkdir("$root/stubs");
+	copy(__DIR__ . '/../Analyses/fixtures/types/stubs/Order.php', "$root/stubs/Order.php");
+	// a file that declares a class, which is what makes PHPStan read it from the disk
+	$code = <<<'XX'
+		<?php
+
+		use Acme\Shop\Order;
+
+		class Check
+		{
+			public function run(Order $order): string
+			{
+				return $order::STATUS_PAID;
+			}
+		}
+		XX;
+	file_put_contents("$root/Check.php", $code);
+
+	$factory = new RunnerFactory;
+	$runner = $factory->createRunner(
+		$factory->resolve(
+			new Config(
+				paths: ['stubs'],
+				typeAnalysis: 'phpstan',
+				decisions: ['upgrading' => ['declarations' => ['deprecatedMember' => 'forbidden']]],
+			),
+			$root,
+		),
+		cache: false,
+	);
+	// the run names the file relative to the root, while the working directory is another
+	$result = $runner->processCode("$root/Check.php", $code);
+	Assert::same(
+		['9: Constant `Acme\Shop\Order::STATUS_PAID` is deprecated: use Order::StatusPaid.'],
+		array_map(fn($violation) => "$violation->line: $violation->message", $result->violations),
+	);
+
+	// without the types a decision the project makes is refused, not left out
+	Assert::exception(
+		fn() => $factory->resolve(new Config(decisions: ['upgrading' => ['declarations' => ['deprecatedMember' => 'forbidden']]]), $root),
+		ConfigurationException::class,
+		'Decision `upgrading.declarations.deprecatedMember` needs the types of the code; %a%',
+	);
+});
+
+
+test('types without PHPStan beside DressCode are a warning, and the run goes without them', function () {
+	$root = createTempDir('types-missing');
+	// a preset may ask for what the run cannot give, the project may not
+	file_put_contents("$root/preset.neon", "upgrading:\n\tdeclarations:\n\t\tdeprecatedMember: forbidden\n");
+	$factory = new RunnerFactory(phpstanInstalled: false);
+	$resolution = $factory->resolve(new Config(use: ["$root/preset.neon"], typeAnalysis: 'phpstan'), $root);
+	Assert::null($resolution->resolvedConfig->typeAnalysis);
+	Assert::same(
+		'it needs the types of the code and phpstan/phpstan is not installed beside DressCode',
+		$resolution->resolvedConfig->findRule(DressCode\Rules\Upgrading\NoDeprecatedMembersRule::class)?->inactiveMessage,
+	);
+	Assert::same(
+		['The configuration sets `typeAnalysis: phpstan`, but `phpstan/phpstan` is not installed beside DressCode, so the run goes without the types of the code.' => 'types#enable'],
+		$resolution->warnings,
+	);
+	Assert::same(
+		TypeAnalysisStatus::Unavailable,
+		$factory->createRunner($resolution, cache: false)->createRunInfo(fix: false, fileCount: 0)->typeAnalysis,
+	);
+
+	// a decision the project makes cannot be left out, so it is refused
+	Assert::exception(
+		fn() => $factory->resolve(
+			new Config(typeAnalysis: 'phpstan', decisions: ['upgrading' => ['declarations' => ['deprecatedMember' => 'forbidden']]]),
+			$root,
+		),
+		ConfigurationException::class,
+		'Decision `upgrading.declarations.deprecatedMember` needs the types of the code, but `phpstan/phpstan` is not installed beside DressCode.',
+	);
+});
+
+
+test('the command line asks for the types without a configuration that sets them, and PHPStan missing refuses the run', function () {
+	$root = createTempDir('types-command');
+	$commandLine = new Config(use: ['deprecations'], typeAnalysis: 'phpstan');
+	$resolution = new RunnerFactory(phpstanInstalled: true)->resolve(new Config, $root, $commandLine);
+	Assert::same('phpstan', $resolution->resolvedConfig->typeAnalysis);
+	Assert::true($resolution->resolvedConfig->findRule(DressCode\Rules\Upgrading\NoDeprecatedMembersRule::class)?->isActive());
+
+	Assert::exception(
+		fn() => new RunnerFactory(phpstanInstalled: false)->resolve(new Config, $root, $commandLine),
+		ConfigurationException::class,
+		'The command needs the types of the code, but `phpstan/phpstan` is not installed beside DressCode.',
+	);
 });
 
 
@@ -778,6 +873,58 @@ test('a file changed in the second the run began is part of the identity by its 
 	touch($file, $time);
 	clearstatcache();
 	Assert::false($cached());
+
+	// with the types, a declaration of the project changed alike
+	mkdir("$root/src");
+	file_put_contents("$root/src/Order.php", "<?php\nnamespace Acme\\Shop;\n\nclass Order\n{\n\tpublic const Paid = 'a';\n}\n");
+	$cached = fn() => buildRunner(
+		new Config(
+			paths: ['src'],
+			typeAnalysis: 'phpstan',
+			cacheDir: "$root/cache",
+			decisions: ['upgrading' => ['declarations' => ['deprecatedMember' => 'forbidden']]],
+		),
+		$root,
+	)->run(['x.php'], false, new NullReporter)->files[0]->cached;
+	touch("$root/src/Order.php", $time);
+	clearstatcache();
+	Assert::false($cached());
+	file_put_contents("$root/src/Order.php", "<?php\nnamespace Acme\\Shop;\n\nclass Order\n{\n\tpublic const Paid = 'b';\n}\n");
+	touch("$root/src/Order.php", $time);
+	clearstatcache();
+	Assert::false($cached());
+});
+
+
+test('a stub the configuration of PHPStan reads outside the analysed paths drops the cache once it changes', function () {
+	$root = createTempDir('runner-factory-stub');
+	mkdir("$root/src");
+	mkdir("$root/stubs");
+	file_put_contents("$root/phpstan.neon", "parameters:\n\tstubFiles:\n\t\t- stubs/Order.stub\n");
+	$stub = "$root/stubs/Order.stub";
+	file_put_contents($stub, "<?php\nnamespace Acme\\Shop;\n\nclass Order\n{\n\tpublic const Paid = 'a';\n}\n");
+	touch($stub, time() - 20);
+	file_put_contents("$root/x.php", "<?php\n\$a = \\Acme\\Shop\\Order::Paid;\n");
+	// the types are an analysis built by a closure, cached only under a file of the configuration
+	file_put_contents("$root/dresscode.neon", '');
+	$cached = fn() => buildRunner(
+		new Config(
+			paths: ['src'],
+			typeAnalysis: 'phpstan',
+			cacheDir: "$root/cache",
+			decisions: ['upgrading' => ['declarations' => ['deprecatedMember' => 'forbidden']]],
+		),
+		$root,
+		configFile: "$root/dresscode.neon",
+	)->run(['x.php'], false, new NullReporter)->files[0]->cached;
+
+	Assert::false($cached());
+	Assert::true($cached());
+	file_put_contents($stub, "<?php\nnamespace Acme\\Shop;\n\nclass Order\n{\n\tpublic const Paid = 'bb';\n}\n");
+	touch($stub, time() - 10);
+	clearstatcache();
+	Assert::false($cached());
+	Assert::true($cached());
 });
 
 

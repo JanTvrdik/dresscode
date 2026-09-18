@@ -1,0 +1,18 @@
+<?php
+// risky
+
+namespace App;
+
+use Acme\Text\Text;
+
+function validate(string $input, Text $text): bool
+{
+	return Text::check($input)
+		&& \Acme\Text\Text::check($input)
+		// the parameter is named otherwise there, so a named argument would not bind
+		&& Text::check(s: $input)
+		// the replacement cannot be called from here
+		&& Text::guard($input)
+		// an instance method has no object of the other class to be called on
+		&& $text->verify($input);
+}

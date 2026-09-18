@@ -1,0 +1,20 @@
+66: Property `Acme\Shop\Ledger::$narrow` is deprecated: use $wide.
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike
+67: Constant `Acme\Shop\Ledger::LIMIT` is deprecated: use WIDE_LIMIT.
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike
+74: Constant `Acme\Shop\Ledger::MAX` is deprecated: use MAX_ROWS.
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike
+75: Property `Acme\Shop\Ledger::$rows` is deprecated: use $entries.
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike
+76: Static property `Acme\Shop\Ledger::$last` is deprecated: use $next.
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike
+77: Property `Acme\Shop\Ledger::$frozen` is deprecated: use $locked.
+78: Property `Acme\Shop\Ledger::$open` is deprecated: use $guarded.
+79: Property `Acme\Shop\Ledger::$mixed` is deprecated: use $shielded.
+80: Property `Acme\Shop\Ledger::$plain` is deprecated: use $viewed.
+81: Property `Acme\Shop\Ledger::$sum` is deprecated: use $total.
+82: Property `Acme\Shop\Ledger::$strict` is deprecated: use $loose.
+83: Property `Acme\Shop\Ledger::$sealedAlso` is deprecated: use $sealedToo.
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike
+84: Property `Acme\Shop\Ledger::$outside` is deprecated: use $inside.
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike

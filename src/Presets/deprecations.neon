@@ -7,6 +7,8 @@ expressions:
 	cast: canonical                           # `(int)`, not `(integer)`, PHP 8.5
 
 upgrading:
+	declarations:
+		deprecatedMember: forbidden
 	php:
 		nullArrayKey: forbidden               # `['' => 1]`, not `[null => 1]`, PHP 8.5
 		caseSemicolon: forbidden              # `case 1:`, not `case 1;`, PHP 8.5

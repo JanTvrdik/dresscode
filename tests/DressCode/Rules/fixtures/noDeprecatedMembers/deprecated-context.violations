@@ -1,0 +1,2 @@
+30: Method `Acme\Shop\Order::recalc()` is deprecated: use recalculate().
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike

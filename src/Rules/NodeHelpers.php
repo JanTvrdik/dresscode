@@ -15,7 +15,7 @@ use PhpSyntax\{Builder, ConstantExpressionFeature, Indentation, Node, SymbolKind
 use PhpSyntax\Nodes\{
 	AnonymousClassNode, ArgumentListNode, ArgumentNode, AttributeAwareNode, AttributeGroupNode, AttributeNode,
 	ClassLikeNode, ClosureUseListNode, DestructuringNode, ElseifNode, Expression, ExpressionNode, FileNode,
-	IdentifierNode, MatchArmNode, NameNode, ParameterNode, PlainNodeList, Scalar,
+	IdentifierNode, MatchArmNode, MemberNode, NameNode, ParameterNode, PlainNodeList, Scalar,
 	SeparatedNodeList, Statement, StatementNode, Type, TypeNode, UseItemNode, VariadicPlaceholderNode,
 };
 use PhpSyntax\Nodes\Member\MethodNode;
@@ -249,6 +249,28 @@ final class NodeHelpers
 
 		return $declaration instanceof AttributeAwareNode
 			&& $context->getAnalysis(NameResolver::class)->hasAttribute($declaration, \Deprecated::class);
+	}
+
+
+	/**
+	 * Whether the node stands in a declaration that is deprecated itself, a class, a member, a function or a constant:
+	 * code kept for the compatibility it gives uses what is deprecated with it, and goes together with it.
+	 */
+	public static function isInDeprecatedDeclaration(Node|Token $node, RuleContext $context): bool
+	{
+		for ($declaration = $node instanceof Node ? $node : $node->parent; $declaration !== null; $declaration = $declaration->parent) {
+			if (
+				($declaration instanceof ClassLikeNode
+					|| $declaration instanceof MemberNode
+					|| $declaration instanceof Statement\FunctionNode
+					|| $declaration instanceof Statement\ConstNode)
+				&& self::isDeprecated($declaration, $context)
+			) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 

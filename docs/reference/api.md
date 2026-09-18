@@ -12,6 +12,7 @@ final readonly class Deprecation
 	public readonly ?string $replacementName
 	public readonly bool $replacementIsCall
 	public function __construct(string $description, ?string $replacementClass = null, ?string $replacementName = null, bool $replacementIsCall = false)
+	public function formatDescription(): string
 ```
 
 ## `DressCode\Analyses\IndentationPlan`
@@ -96,6 +97,7 @@ final readonly class Parameter
 	public readonly bool $byReference
 	public readonly ?string $default
 	public function __construct(string $name, ?string $type = null, bool $optional = false, bool $variadic = false, bool $byReference = false, ?string $default = null)
+	public function canReplace(DressCode\Analyses\Parameter $other): bool
 ```
 
 ## `DressCode\Analyses\PassAnalysis`
@@ -173,6 +175,8 @@ final class Types implements DressCode\Analyses\PassAnalysis
 	public function findOverriddenSignature(PhpSyntax\Nodes\Member\MethodNode $declaration): ?DressCode\Analyses\OverriddenSignature
 	public function findDeprecation(DressCode\Analyses\Member $member): ?DressCode\Analyses\Deprecation
 	public function isAbstract(DressCode\Analyses\Member $member): DressCode\Tristate
+	public function canReplace(DressCode\Analyses\Member $member, string $name): bool
+	public function canReplaceByStaticMethod(DressCode\Analyses\Member $member, string $class, string $method, bool $named): bool
 	public function findClassName(string $name, bool $traits = false): ?string
 	public function canNameClass(string $name): bool
 	public function findFunctionName(string $name): ?string
@@ -994,6 +998,7 @@ final readonly class Violation
 - `DressCode\Rules\Types\NullableTypeForDefaultNullRule`
 - `DressCode\Rules\Types\TypeDeclarationSpacingRule`
 - `DressCode\Rules\Types\TypeNotationRule`
+- `DressCode\Rules\Upgrading\NoDeprecatedMembersRule`
 - `DressCode\Rules\Upgrading\NoDeprecatedPhpArgumentsRule`
 - `DressCode\Rules\Variables\NoGlobalStatementsRule`
 - `DressCode\Rules\Variables\NoRepeatedAssignmentsRule`

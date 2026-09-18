@@ -1,0 +1,7 @@
+10: Static method `Acme\Text\Text::check()` is deprecated: use Encoding::isValid().
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike
+11: Static method `Acme\Text\Text::check()` is deprecated: use Encoding::isValid().
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike
+13: Static method `Acme\Text\Text::check()` is deprecated: use Encoding::isValid().
+15: Static method `Acme\Text\Text::guard()` is deprecated: use Encoding::hidden().
+17: Method `Acme\Text\Text::verify()` is deprecated: use Encoding::isValid().

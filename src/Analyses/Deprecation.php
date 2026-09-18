@@ -68,4 +68,12 @@ final readonly class Deprecation
 			? (string) preg_replace('~^->~', '', $m[1])
 			: null;
 	}
+
+
+	/** The description as the end of a message after a colon: on one line and without its period; empty when it says nothing. */
+	public function formatDescription(): string
+	{
+		$description = rtrim((string) preg_replace('~\s+~', ' ', trim($this->description)), '.');
+		return $description === '' ? '' : ": $description";
+	}
 }

@@ -719,6 +719,31 @@ final class Types implements PassAnalysis
 
 
 	/**
+	 * Whether the member of that name, which the class declaring the member has, can be written in its place without
+	 * touching anything else: of the same kind and staticness, and for a method one that takes every call of the
+	 * member the same way, the parameters of the member in the same order under the same names, each taking what
+	 * the one of the member takes, and none required that the member does not have; at least as visible as the
+	 * member, a private member of an ancestor being seen nowhere; for a property also at least as writable, and of the same
+	 * native type.
+	 */
+	public function canReplace(Member $member, string $name): bool
+	{
+		return $this->declarations->canReplace($member, $name);
+	}
+
+
+	/**
+	 * Whether a public static method of another class can be called in place of the static method of the member: it takes
+	 * every call of the member the same way, as `canReplace()` asks, the names of the parameters counting only where the
+	 * call names its arguments.
+	 */
+	public function canReplaceByStaticMethod(Member $member, string $class, string $method, bool $named): bool
+	{
+		return $this->declarations->canReplaceByStaticMethod($member, $class, $method, $named);
+	}
+
+
+	/**
 	 * The declared spelling of a class, interface or enum, with `$traits` also of a trait, the project, its packages or
 	 * PHP declare, given its fully qualified name in any letter case without a leading backslash; null for a name
 	 * nothing declares.
