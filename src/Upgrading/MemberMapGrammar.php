@@ -14,4 +14,5 @@ namespace DressCode\Upgrading;
 final class MemberMapGrammar
 {
 	public const ReplacedClasses = 'upgrading.api.replacedClasses';
+	public const ReplacedFunctions = 'upgrading.api.replacedFunctions';
 }
