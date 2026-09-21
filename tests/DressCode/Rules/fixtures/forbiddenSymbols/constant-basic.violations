@@ -1,0 +1,5 @@
+5: Constant `E_STRICT` is forbidden: it no longer does anything.
+6: Constant `E_STRICT` is forbidden: it no longer does anything.
+8: Constant `MHASH_MD5` is forbidden: use `hash()`.
+10: Constant `App\Legacy\LIMIT` is forbidden.
+11: Constant `App\Legacy\SIZE` is forbidden.

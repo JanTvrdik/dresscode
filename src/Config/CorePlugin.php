@@ -230,8 +230,10 @@ final class CorePlugin implements Plugin
 				Rules\Types\ConstantTypeRequiredRule::class,
 				Rules\Types\TypeDeclarationSpacingRule::class,
 				Rules\Types\TypeNotationRule::class,
+				// what a map replaces is written first, so that what it forbids is reported of what remains
 				Rules\Upgrading\ReplacedClassesRule::class,
 				Rules\Upgrading\ReplacedFunctionsRule::class,
+				Rules\Upgrading\ForbiddenSymbolsRule::class,
 				Rules\Upgrading\NoDeprecatedMembersRule::class,
 				Rules\Upgrading\NoDeprecatedPhpArgumentsRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,
@@ -359,6 +361,21 @@ final class CorePlugin implements Plugin
 					new Map(new GrammarEntry, wildcards: false, grammar: self::createReplacedFunctionsGrammar(), caseInsensitive: true),
 					'A function written instead of another one (`acme_send: Acme\\Mail\\send`)',
 				),
+				new Decision(
+					MemberMapGrammar::ForbiddenClasses,
+					new Map(new GrammarEntry, wildcards: false, grammar: self::createForbiddenClassesGrammar(), caseInsensitive: true),
+					'A class that may not be used, with what to do instead (`Acme\\Legacy\\Db: "use the repository"`)',
+				),
+				new Decision(
+					MemberMapGrammar::ForbiddenFunctions,
+					new Map(new GrammarEntry, grammar: self::createForbiddenFunctionsGrammar(), caseInsensitive: true),
+					'A function that may not be called, with what to do instead',
+				),
+				new Decision(
+					MemberMapGrammar::ForbiddenConstants,
+					new Map(new GrammarEntry, grammar: self::createForbiddenConstantsGrammar()),
+					'A global constant that may not be used, with what to do instead (`E_STRICT: "it no longer does anything"`)',
+				),
 
 				// the newer constructs, decided once for every rule writing them
 				new Decision(
@@ -457,5 +474,26 @@ final class CorePlugin implements Plugin
 
 				return $options;
 			});
+	}
+
+
+	private static function createForbiddenClassesGrammar(): Schema
+	{
+		return Expect::arrayOf(Expect::string()->nullable(), Expect::string()->pattern(self::QualifiedName))
+			->description('The forbidden class, fully qualified → what to do instead, as the end of the message, or null for none');
+	}
+
+
+	private static function createForbiddenFunctionsGrammar(): Schema
+	{
+		return Expect::arrayOf(Expect::string()->nullable())
+			->description('The forbidden function or a pattern with `*`, a name without a backslash meaning the global function → what to do instead, as the end of the message, or null for none');
+	}
+
+
+	private static function createForbiddenConstantsGrammar(): Schema
+	{
+		return Expect::arrayOf(Expect::string()->nullable())
+			->description('The forbidden constant or a pattern with `*`, in its letter case, a name without a backslash meaning the global constant → what to do instead, as the end of the message, or null for none');
 	}
 }

@@ -1,0 +1,14 @@
+<?php
+// {"api": {"forbiddenConstants": {"E_STRICT": "it no longer does anything", "MHASH_*": "use `hash()`", "App\\Legacy\\*": null, "MHASH_KEPT": "keep"}}}
+namespace App;
+use const App\Legacy\LIMIT;
+error_reporting(E_ALL & ~E_STRICT);
+$a = \E_STRICT;
+$b = e_strict;
+$c = MHASH_MD5;
+$d = MHASH_KEPT;
+$e = LIMIT;
+$f = Legacy\SIZE;
+$g = Foo::E_STRICT;
+$h = defined('E_STRICT');
+$i = true;

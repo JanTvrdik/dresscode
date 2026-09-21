@@ -769,6 +769,9 @@ enum Tristate
 final class MemberMapGrammar
 	public const ReplacedClasses = 'upgrading.api.replacedClasses'
 	public const ReplacedFunctions = 'upgrading.api.replacedFunctions'
+	public const ForbiddenClasses = 'upgrading.api.forbiddenClasses'
+	public const ForbiddenFunctions = 'upgrading.api.forbiddenFunctions'
+	public const ForbiddenConstants = 'upgrading.api.forbiddenConstants'
 ```
 
 ## `DressCode\Value`
@@ -805,6 +808,7 @@ final readonly class Values
 	public function has(string $path): bool
 	public function find(string $path): ?DressCode\Value
 	public function readMap(string $path): array<mixed>
+	public function findWithdrawnNames(string $path): list<string>
 	public function isKept(string $path): bool
 	public function isSelected(string $path): bool
 ```
@@ -1017,6 +1021,7 @@ final readonly class Violation
 - `DressCode\Rules\Types\NullableTypeForDefaultNullRule`
 - `DressCode\Rules\Types\TypeDeclarationSpacingRule`
 - `DressCode\Rules\Types\TypeNotationRule`
+- `DressCode\Rules\Upgrading\ForbiddenSymbolsRule`
 - `DressCode\Rules\Upgrading\NoDeprecatedMembersRule`
 - `DressCode\Rules\Upgrading\NoDeprecatedPhpArgumentsRule`
 - `DressCode\Rules\Upgrading\ReplacedClassesRule`
