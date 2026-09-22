@@ -60,7 +60,7 @@ final readonly class RunnerFactory
 			);
 		}
 
-		$resolver = new ConfigResolver($this->registry, $typesAvailable, $root);
+		$resolver = new ConfigResolver($this->registry, $project, $typesAvailable, $root);
 		$resolved = $resolver->resolve($config, $target, [], $commandLine, $only);
 		$warnings = array_fill_keys($resolver->getWarnings(), null);
 		if (!$typesAvailable) {
@@ -121,6 +121,8 @@ final readonly class RunnerFactory
 				self::resolveAnalysedPaths($config, $root),
 				self::resolveCacheDir($config, $root) . '/phpstan',
 				$phpVersion,
+				$resolution->projectPackages->findNewerInstalledPaths(),
+				$resolution->projectPackages->findUnboundedInstalledPaths(),
 			);
 			$analyses[Analyses\Types::class] = fn(FileNode $file, string $path) => new Analyses\Types($file, $path, $phpstan);
 		}
@@ -173,7 +175,11 @@ final readonly class RunnerFactory
 					$configFile === null ? null : hash_file('xxh128', $configFile),
 					$this->stampSources($resolved, $analyses, $now),
 					// with the types a result depends on what the rest of the project declares
-					$resolved->typeAnalysis === null ? null : self::fingerprintProject($config, $root, $now),
+					$resolved->typeAnalysis === null ? null : [
+						$resolution->projectPackages->findNewerInstalledPaths(),
+						$resolution->projectPackages->findUnboundedInstalledPaths(),
+						self::fingerprintProject($config, $root, $now),
+					],
 				], $resolution->projectPackages),
 				serves: !$refreshCache,
 				// @ a file gone since is a changed one

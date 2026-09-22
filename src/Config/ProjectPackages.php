@@ -9,19 +9,30 @@ namespace DressCode\Config;
 
 use Composer\Semver\VersionParser;
 use DressCode\Engine\Helpers;
+use Nette\Utils\FileSystem;
 use function is_array, is_string;
 
 
 /**
- * The packages a project stands on, read from its composer.json and from the vendor/composer/installed.json beside it.
+ * The packages a project stands on, read from its composer.json and from the vendor/composer/installed.json beside it,
+ * and the versions of each the code must work with. For a package the project requires itself those are the versions its
+ * constraint allows, because code written for a newer one breaks wherever the constraint lets an older one in, so a
+ * constraint without a lower bound allows every version; for a package that only comes with another, which the project
+ * promises nothing about, it is every version too; for a development branch the project requires it is the newest of
+ * the line its alias names; and any version does for the project itself and for a branch without an alias, whose
+ * version says nothing. The installed version never answers, being only what happens to be in the vendor directory.
  * @internal
  */
 final readonly class ProjectPackages
 {
 	public function __construct(
+		/** the name of the root package, null where its composer.json gives none */
+		public ?string $rootName = null,
+		/** @var array<string, string>  package the project requires itself => its constraint */
+		private array $required = [],
 		/**
-		 * @var array<string, array{version: ?string, reference: ?string}>  installed package => the version it stands
-		 * for (null for any) and the source it came from
+		 * @var array<string, array{version: ?string, reference: ?string, path: ?string}>  installed package => the version
+		 * it stands for (null for any), the source it came from and where it lies
 		 */
 		public array $installed = [],
 	) {
@@ -40,6 +51,15 @@ final readonly class ProjectPackages
 		$vendorDir = $composer['config']['vendor-dir'] ?? 'vendor';
 		$vendor = Helpers::canonicalizePath(Helpers::toAbsolutePath(is_string($vendorDir) ? $vendorDir : 'vendor', $base));
 
+		$required = [];
+		foreach (['require', 'require-dev'] as $section) {
+			foreach (is_array($composer[$section] ?? null) ? $composer[$section] : [] as $package => $constraint) {
+				if (is_string($constraint)) {
+					$required[(string) $package] = $constraint;
+				}
+			}
+		}
+
 		$installed = [];
 		$data = ComposerJson::read("$vendor/composer/installed.json") ?? [];
 		foreach (is_array($data['packages'] ?? null) ? $data['packages'] : $data as $package) {
@@ -51,17 +71,129 @@ final readonly class ProjectPackages
 			$installed[$package['name']] = [
 				'version' => self::findInstalledVersion($package),
 				'reference' => is_string($reference) ? $reference : null,
+				'path' => is_string($package['install-path'] ?? null)
+					? Helpers::canonicalizePath(FileSystem::normalizePath("$vendor/composer/{$package['install-path']}"))
+					: null,
 			];
 		}
 
-		return new self($installed);
+		return new self(
+			is_string($composer['name'] ?? null) ? $composer['name'] : null,
+			$required,
+			$installed,
+		);
+	}
+
+
+	/** Whether the project has the package: it is the project itself, or it is installed. */
+	public function has(string $package): bool
+	{
+		return $package === $this->rootName
+			|| isset($this->installed[$package]);
+	}
+
+
+	/**
+	 * The versions of the package the code must work with, as a Composer constraint: the constraint the project
+	 * requires it with, `*` for a package it does not require, or the version a required branch stands for, `^3.1` or
+	 * `3.3.9999999.9999999`; null where any version does, and for a package the project does not have, which `has()`
+	 * tells apart.
+	 */
+	public function findConstraint(string $package): ?string
+	{
+		$required = $this->required[$package] ?? null;
+		if ($package === $this->rootName || !isset($this->installed[$package])) {
+			return null;
+		}
+
+		return match (true) {
+			$required === null => '*',
+			Versions::isBranch($required) => $this->installed[$package]['version'],
+			default => $required,
+		};
+	}
+
+
+	/**
+	 * The lowest version of the package the code must work with, `3.1` or `3.2.1`; null where it has no lower bound, where
+	 * any version does, and for a package the project does not have.
+	 */
+	public function findVersion(string $package): ?string
+	{
+		$constraint = $this->findConstraint($package);
+		return $constraint === null ? null : Versions::findLowestVersion($constraint);
+	}
+
+
+	/**
+	 * The directories of the installed packages the project supports from an older minor version than the installed one,
+	 * where a declaration may say what the oldest version does not, a deprecation and its replacement above all.
+	 * @return list<string>
+	 */
+	public function findNewerInstalledPaths(): array
+	{
+		$paths = [];
+		foreach ($this->installed as $package => ['version' => $installed, 'path' => $path]) {
+			$lowest = $this->findVersion($package);
+			if (
+				$path !== null
+				&& $installed !== null
+				&& $lowest !== null
+				&& version_compare(self::toMinorVersion($lowest), self::toMinorVersion($installed), '<')
+			) {
+				$paths[] = $path;
+			}
+		}
+
+		return $paths;
+	}
+
+
+	/**
+	 * The directories of the installed packages the project supports from no particular version, whose declarations
+	 * say what some version does, never which one the code must work with.
+	 * @return list<string>
+	 */
+	public function findUnboundedInstalledPaths(): array
+	{
+		$paths = [];
+		foreach ($this->installed as $package => ['path' => $path]) {
+			$constraint = $this->findConstraint($package);
+			if ($path !== null && $constraint !== null && Versions::findLowestVersion($constraint) === null) {
+				$paths[] = $path;
+			}
+		}
+
+		return $paths;
+	}
+
+
+	/**
+	 * The first of the required packages the project does not meet; null where it meets every one.
+	 * @param  array<string, string>  $required  package => Composer constraint
+	 */
+	public function findUnmetRequirement(array $required): ?UnmetRequirement
+	{
+		foreach ($required as $package => $constraint) {
+			if (!$this->has($package)) {
+				return new UnmetRequirement($package, $constraint, null);
+			}
+
+			$current = $this->findConstraint($package);
+			if ($current !== null && !Versions::isSubset($current, $constraint)) {
+				return new UnmetRequirement($package, $constraint, $current);
+			}
+		}
+
+		return null;
 	}
 
 
 	/**
 	 * What the packages contribute to the identity of a result: every installed one with the version it stands for
 	 * and the reference of the source it came from, so that a package upgraded under the same constraint invalidates
-	 * what was cached with the files it had before.
+	 * what was cached with the files it had before. A constraint the project widens or narrows is not here, because
+	 * that is answered by the rules the resolution comes to.
 	 * @return array<string, array{?string, ?string}>
 	 */
 	public function getIdentity(): array
@@ -69,6 +201,13 @@ final readonly class ProjectPackages
 		$identity = array_map(fn(array $package) => [$package['version'], $package['reference']], $this->installed);
 		ksort($identity);
 		return $identity;
+	}
+
+
+	/** The major and the minor version, `3.1` of `3.1.4` and of the alias `3.1.9999999.9999999-dev` of a branch. */
+	private static function toMinorVersion(string $version): string
+	{
+		return implode('.', array_slice(explode('.', $version), 0, 2));
 	}
 
 

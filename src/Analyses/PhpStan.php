@@ -72,6 +72,13 @@ final class PhpStan
 		private readonly string $tempDir,
 		/** the version of PHP the code is written for, which PHPStan parses it as where the running PHP is older */
 		private readonly ?string $phpVersion = null,
+		/**
+		 * @var list<string>  the directories of the packages installed in a newer version than the oldest one the project
+		 * supports, whose declarations may say what that one does not
+		 */
+		private readonly array $newerPackagePaths = [],
+		/** @var list<string>  the directories of the packages the project supports from no particular version */
+		private readonly array $unboundedPackagePaths = [],
 	) {
 	}
 
@@ -330,6 +337,42 @@ final class PhpStan
 	private function resolvePath(string $file): string
 	{
 		return Helpers::canonicalizePath(FileSystem::normalizePath(FileSystem::isAbsolute($file) ? $file : "$this->root/$file"));
+	}
+
+
+	/**
+	 * Whether the file belongs to a package installed in a newer version than the oldest one the project supports, so
+	 * that what a declaration in it deprecates may not be deprecated, nor its replacement there, in the version the code
+	 * must work with too.
+	 */
+	public function isAheadOfSupport(?string $file): bool
+	{
+		return self::isInPackages($file, $this->newerPackagePaths);
+	}
+
+
+	/**
+	 * Whether the file belongs to a package the project supports from no particular version, so that what a declaration
+	 * in it deprecates holds for the installed version only, and its replacement may not be there in another one.
+	 */
+	public function isUnbounded(?string $file): bool
+	{
+		return self::isInPackages($file, $this->unboundedPackagePaths);
+	}
+
+
+	/** @param  list<string>  $paths */
+	private static function isInPackages(?string $file, array $paths): bool
+	{
+		if ($file === null || $paths === []) {
+			return false;
+		}
+
+		$file = strtolower(Helpers::canonicalizePath(FileSystem::normalizePath($file))); // the reflection gives `vendor/composer/../`
+		return array_any(
+			$paths,
+			fn(string $path) => str_starts_with($file, strtolower(Helpers::canonicalizePath($path)) . '/'),
+		);
 	}
 
 

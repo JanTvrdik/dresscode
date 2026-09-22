@@ -35,6 +35,8 @@ final class ConfigResolver
 
 	public function __construct(
 		private readonly PluginRegistry $registry,
+		/** the packages the project stands on, which decide whether a rule requiring one runs */
+		private readonly ProjectPackages $project = new ProjectPackages,
 		/** the run can get the types the configuration or the command line asks for; without them it resolves as if it asked for none */
 		private readonly bool $typesAvailable = true,
 		/** the directory a file in `use` of the configuration and its overrides is relative to */
@@ -146,6 +148,7 @@ final class ConfigResolver
 		$resolver = new DecisionResolver(
 			$this->getCatalogue(),
 			$phpTarget,
+			$this->project,
 			typesAnalyzed: $typeAnalysis !== null && $this->typesAvailable,
 			certainNames: $resolution === 'certain',
 		);
@@ -251,7 +254,8 @@ final class ConfigResolver
 	/**
 	 * A rule runs where one of its requirements or facts takes effect and lies in the mask of the run; otherwise it says
 	 * why it does not. A preset may decide what cannot run here; a project deciding it asked for what it cannot get,
-	 * which is an error for the types and a warning for the target, unless another rule of the decision runs.
+	 * which is an error for the types and a warning for the target and for a package, unless another rule of the
+	 * decision runs.
 	 * @param  class-string<Rule>  $class
 	 * @param  array<string, ResolvedDecision>  $decisions  those the rule declares
 	 * @param  ?InactiveReason  $ruleReason  why the rule does not run whatever its values
@@ -285,6 +289,10 @@ final class ConfigResolver
 				: "Decision `$asked[0]` needs the types of the code, but `phpstan/phpstan` is not installed beside DressCode.", docs: 'types#enable');
 		} elseif ($named !== [] && $ruleReason === InactiveReason::Php) {
 			$this->warnings[$class] = "Decision `$named[0]` needs PHP {$info->requires['php']} and the target is $phpTarget; skipped.";
+		} elseif ($named !== [] && $ruleReason === InactiveReason::Package) {
+			$this->warnings[$class] = "Decision `$named[0]` needs "
+				. ($this->project->findUnmetRequirement($info->getRequiredPackages()) ?? throw new \LogicException)->format()
+				. '; skipped.';
 		}
 
 		[$reason, $message] = match (true) {
@@ -298,6 +306,7 @@ final class ConfigResolver
 				InactiveReason::Php,
 				"it needs PHP {$info->requires['php']} and the target is $phpTarget",
 			],
+			$ruleReason === InactiveReason::Package => [InactiveReason::Package, 'it needs a package the project does not have'],
 			$ruleReason === InactiveReason::Types
 				&& array_any(
 					$own,
@@ -698,12 +707,16 @@ final class ConfigResolver
 		foreach ($narrowed as $expanded) {
 			[$class, $rules] = [$expanded->rule, $expanded->rules];
 			$running = array_filter($rules, fn(string $rule) => isset($active[$rule]) || isset($ofOverrides[$rule]));
-			// a name whose rules the project cannot run, too new for its target, is skipped, so that one command of
-			// `--only` serves projects of several targets
+			// a name whose rules the project cannot run, too new for its target or for its packages, is skipped, so that
+			// one command of `--only` serves projects of several targets
 			if (
 				!$running
 				&& $rules !== []
-				&& array_all($rules, fn(string $rule) => ($inactive[$rule]->inactiveReason ?? null) === InactiveReason::Php)
+				&& array_all($rules, fn(string $rule) => in_array(
+					$inactive[$rule]->inactiveReason ?? null,
+					[InactiveReason::Php, InactiveReason::Package],
+					true,
+				))
 			) {
 				$skipped[$expanded->name] = [
 					'Option `--only` names ' . ($class === null ? $expanded->format() : "rule `$class`")

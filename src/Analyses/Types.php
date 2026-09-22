@@ -699,8 +699,9 @@ final class Types implements PassAnalysis
 
 
 	/**
-	 * What the declaration of the member says about its deprecation; null for a member that is not deprecated, and for
-	 * one its class does not have.
+	 * What the declaration of the member says about its deprecation; null for a member that is not deprecated, for
+	 * one its class does not have, and for one a package declares that the project supports in an older version than
+	 * the installed one, which need not deprecate it nor have its replacement.
 	 */
 	public function findDeprecation(Member $member): ?Deprecation
 	{
@@ -735,7 +736,7 @@ final class Types implements PassAnalysis
 	/**
 	 * Whether a public static method of another class can be called in place of the static method of the member: it takes
 	 * every call of the member the same way, as `canReplace()` asks, the names of the parameters counting only where the
-	 * call names its arguments.
+	 * call names its arguments; not one of a package installed in a newer version than the project supports.
 	 */
 	public function canReplaceByStaticMethod(Member $member, string $class, string $method, bool $named): bool
 	{
@@ -870,9 +871,10 @@ final class Types implements PassAnalysis
 
 	/**
 	 * What the declaration of the class says about its deprecation; null for one that is not deprecated or that nothing
-	 * declares. The replacement is the class its description names, `use Acme\Mail\SmtpTransport`, in its declared
-	 * spelling: a bare name is looked up beside the deprecated class before it is taken as written, a qualified one the
-	 * other way round, and there is none where neither exists.
+	 * declares, and for one of a package the project supports in an older version than the installed one. The replacement
+	 * is the class its description names, `use Acme\Mail\SmtpTransport`, in its declared spelling: a bare name is looked
+	 * up beside the deprecated class before it is taken as written, a qualified one the other way round, and there is
+	 * none where neither exists.
 	 */
 	public function findClassDeprecation(string $class): ?Deprecation
 	{

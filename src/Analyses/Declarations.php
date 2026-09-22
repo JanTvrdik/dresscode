@@ -129,7 +129,13 @@ final class Declarations
 			return null;
 		}
 
-		return Deprecation::fromDescription($reflection->getDeprecatedDescription() ?? '');
+		$file = $reflection->getDeclaringClass()->getFileName();
+		$description = $reflection->getDeprecatedDescription() ?? '';
+		return match (true) {
+			$this->phpstan->isAheadOfSupport($file) => null,
+			$this->phpstan->isUnbounded($file) => new Deprecation($description),
+			default => Deprecation::fromDescription($description),
+		};
 	}
 
 
@@ -170,6 +176,10 @@ final class Declarations
 			&& $replacement instanceof ExtendedMethodReflection
 			&& $replacement->isPublic()
 			&& $replacement->isStatic()
+			// a package installed newer than the project supports, or supported from no version, need not have the
+			// replacement in the oldest version
+			&& !$this->phpstan->isAheadOfSupport($replacement->getDeclaringClass()->getFileName())
+			&& !$this->phpstan->isUnbounded($replacement->getDeclaringClass()->getFileName())
 			&& $this->takesCalls($member, $class, $method, $named);
 	}
 
@@ -356,6 +366,7 @@ final class Declarations
 		if ($reflection === null) {
 			return null;
 		} elseif (strcasecmp($reflection->getName(), $class) === 0) {
+			$file = $reflection->getFileName();
 			$description = $reflection->isDeprecated() ? $reflection->getDeprecatedDescription() ?? '' : null;
 		} else {
 			// an alias the process made at run time is reflected as the class aliased, which is not what the name declares
@@ -363,12 +374,15 @@ final class Declarations
 			$description = $file === null ? null : $this->phpstan->findDeclaredDeprecation($class, $file);
 		}
 
-		if ($description === null) {
+		if ($description === null || $this->phpstan->isAheadOfSupport($file)) {
 			return null;
 		}
 
 		$namespace = QualifiedNames::extractNamespace($class);
-		if (!preg_match('~^\\\\?(\w+(?:\\\\\w+)*)$~D', Deprecation::findReplacementCode($description) ?? '', $m)) {
+		if (
+			$this->phpstan->isUnbounded($file)
+			|| !preg_match('~^\\\\?(\w+(?:\\\\\w+)*)$~D', Deprecation::findReplacementCode($description) ?? '', $m)
+		) {
 			return new Deprecation($description);
 		}
 

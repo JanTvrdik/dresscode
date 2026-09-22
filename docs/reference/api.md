@@ -687,6 +687,7 @@ final readonly class RuleInfo
 	public function __construct(DressCode\Stage $stage, bool $modifiesComments = false, array<string, string> $requires = [], bool $typesRequired = false, list<class-string> $analyses = [], list<string> $decisions = [], list<string> $reads = [])
 	public static function fromRule(DressCode\Rule|class-string<DressCode\Rule> $rule): DressCode\RuleInfo
 	public function getMinPhpVersion(): ?string
+	public function getRequiredPackages(): array<string, string>
 ```
 
 ## `DressCode\Severity`
