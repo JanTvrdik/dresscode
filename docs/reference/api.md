@@ -767,6 +767,34 @@ enum Tristate
 	case Maybe
 ```
 
+## `DressCode\Upgrading\ArgumentBindings`
+
+```php
+final readonly class ArgumentBindings
+	public readonly array<string, PhpSyntax\Nodes\ArgumentNode|list<PhpSyntax\Nodes\ArgumentNode>> $arguments
+	public readonly list<PhpSyntax\Nodes\ArgumentNode> $rest
+```
+
+## `DressCode\Upgrading\ArgumentPattern`
+
+```php
+final readonly class ArgumentPattern
+	public readonly list<DressCode\Upgrading\ArgumentPatternItem> $items
+	public static function any(): DressCode\Upgrading\ArgumentPattern
+	public static function parse(string $arguments): DressCode\Upgrading\ArgumentPattern
+	public function bind(PhpSyntax\Nodes\ArgumentListNode $arguments): ?DressCode\Upgrading\ArgumentBindings
+```
+
+## `DressCode\Upgrading\ArgumentPatternItem`
+
+```php
+final readonly class ArgumentPatternItem
+	public readonly ?string $placeholder
+	public readonly ?array{mixed} $literal
+	public readonly ?string $parameterName
+	public readonly bool $rest
+```
+
 ## `DressCode\Upgrading\MemberMapGrammar`
 
 ```php
@@ -776,6 +804,32 @@ final class MemberMapGrammar
 	public const ForbiddenClasses = 'upgrading.api.forbiddenClasses'
 	public const ForbiddenFunctions = 'upgrading.api.forbiddenFunctions'
 	public const ForbiddenConstants = 'upgrading.api.forbiddenConstants'
+```
+
+## `DressCode\Upgrading\MemberPattern`
+
+```php
+final readonly class MemberPattern
+	public readonly string $class
+	public readonly DressCode\Upgrading\MemberPatternKind $kind
+	public readonly string $name
+	public readonly ?DressCode\Upgrading\ArgumentPattern $arguments
+	public readonly bool $nonStatic
+	public readonly ?string $hook
+	public static function fromKey(string $key): DressCode\Upgrading\MemberPattern
+	public function matches(DressCode\Analyses\MemberAccess $access, DressCode\Analyses\Types $types): bool
+	public function getArgumentPattern(): DressCode\Upgrading\ArgumentPattern
+	public function getLookupName(): string
+```
+
+## `DressCode\Upgrading\MemberPatternKind`
+
+```php
+enum MemberPatternKind
+	case ConstantOrMethod
+	case Method
+	case Property
+	case Constructor
 ```
 
 ## `DressCode\Value`

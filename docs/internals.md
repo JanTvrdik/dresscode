@@ -15,7 +15,7 @@ Public:
 - `Decision`, `Domain`, `Domains\*`, `Value`, `Values`, `Config\Layer`, `Config\LayerKind`, `Config\Catalogue`: the decisions a rule declares, the values they take, the values decided for a file with the layer that said each, and the catalogue of them all
 - `Rule`, `NodeRule`, `GapRule`, `RuleInfo`, `RuleContext`, `Claim`, `Space`, `Line`, `Gap`, `Style`, `ImportStyle`, `LineSplits`, `Violation`: the API of a rule
 - `CodeWriter`, `GlobalCalls`, `QualifiedNames`: the helpers a rule of a package writes and reads names with, as one of the core does
-- `Upgrading\*`: the grammar of the maps of `upgrading.api`
+- `Upgrading\*`: the patterns of members and arguments the upgrading data are written in
 - `Stage`, `Severity`, `Tristate`, `Risk`, `DecisionKind`: the enums
 - `exceptions.php`, `Testing\exceptions.php`: the exceptions
 - `FileResult`: the result of a file
@@ -32,7 +32,7 @@ Internal:
 - `Analyses\Registry`, `Analyses\PhpStan`, `Analyses\Declarations`, `Analyses\PhpSymbolsData`, `Analyses\PhpSignaturesData`: the machinery of the analyses
 - `Testing\GapSurvey`: what the gap rules govern, recorded for the whitespace fuzz
 
-Of the public classes, the constructors of `Gap`, `RuleContext`, `FileResult`, `ImportStyle`, `LineSplits`, `Catalogue`, `IndentationPlan` and `IndentationSnapshot`, which only the engine, a factory or a parser makes, and the methods marked `@internal` (`Value::__construct()`, `Value::keep()`, `Values::__construct()`, `reportGap()`, `hasReports()`, `takeReports()`, `Types::__construct()`, `Config::MinPhpVersion`, `Catalogue::QuestionGroups`, `PlaceKinds`, `ReservedKeys`, `findLexiconProblems()`, `Deprecation::fromDescription()`, `findReplacementCode()`, `FileResult::markWritten()`, `IndentationPlan::register()`, `RuleContext::dropPassAnalysis()`) are the engine's alone. For a rule the name and the namespace of its class are public, so that a configuration can name it by class, while its methods are not. A rule never asks another one: what two rules share is a decision of a tree, which a rule that only reads it names in `RuleInfo::$reads` and reads from its values, the style of the run (`Style`, its imports among it), or an analysis of the file (`Analyses\IndentationPlan`).
+Of the public classes, the constructors of `Gap`, `RuleContext`, `FileResult`, `ImportStyle`, `LineSplits`, `ArgumentPatternItem`, `ArgumentBindings`, `Catalogue`, `IndentationPlan` and `IndentationSnapshot`, which only the engine, a factory or a parser makes, and the methods marked `@internal` (`Value::__construct()`, `Value::keep()`, `Values::__construct()`, `reportGap()`, `hasReports()`, `takeReports()`, `Types::__construct()`, `Config::MinPhpVersion`, `Catalogue::QuestionGroups`, `PlaceKinds`, `ReservedKeys`, `findLexiconProblems()`, `Deprecation::fromDescription()`, `findReplacementCode()`, `FileResult::markWritten()`, `IndentationPlan::register()`, `RuleContext::dropPassAnalysis()`) are the engine's alone. For a rule the name and the namespace of its class are public, so that a configuration can name it by class, while its methods are not. A rule never asks another one: what two rules share is a decision of a tree, which a rule that only reads it names in `RuleInfo::$reads` and reads from its values, the style of the run (`Style`, its imports among it), or an analysis of the file (`Analyses\IndentationPlan`).
 
 ## The tree a rule works with
 
