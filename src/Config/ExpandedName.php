@@ -17,7 +17,7 @@ use DressCode\Rule;
 final readonly class ExpandedName
 {
 	public function __construct(
-		/** the decision or the section, the preset or the class of the rule the name stands for */
+		/** the decision or the section, the preset, the package or the class of the rule the name stands for */
 		public string $name,
 		public bool $preset,
 		/** @var ?class-string<Rule>  the rule the name names outright */
@@ -26,6 +26,11 @@ final readonly class ExpandedName
 		public array $rules,
 		/** @var list<string>  the decisions it stands for */
 		public array $paths,
+		/**
+		 * a package, which stands for what its upgrading files set and the rules reading it, or a library for what the
+		 * files about it set
+		 */
+		public bool $package = false,
 	) {
 	}
 
@@ -36,6 +41,7 @@ final readonly class ExpandedName
 		return match (true) {
 			$this->rule !== null => "rule `$this->name`",
 			$this->preset => "preset `$this->name`",
+			$this->package => "package `$this->name`",
 			default => "decision `$this->name`",
 		};
 	}

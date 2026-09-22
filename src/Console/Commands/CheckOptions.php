@@ -41,7 +41,7 @@ final readonly class CheckOptions
 		public array $fixRisky = [],
 		/** @var list<string> */
 		#[Cli\Option(
-			'Only these: a decision, a section, a rule or a preset, narrowed to what the configuration runs; the values stay as the configuration resolves them',
+			'Only these: a decision, a section, a rule, a preset, or a package of upgrading data or a library for the maps of the files about it and the rules reading them, narrowed to what the configuration runs; the values stay as the configuration resolves them',
 			valueName: 'name',
 			repeatable: true,
 		)]

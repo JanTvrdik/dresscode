@@ -9,7 +9,7 @@ namespace DressCode\Config;
 
 use DressCode\Analyses\IndentationPlan;
 use DressCode\{Decision, DecisionKind, Domain, Plugin, PluginManifest, Rules};
-use DressCode\Domains\{Count, GrammarEntry, Map, Names, Shapes, Words};
+use DressCode\Domains\{Count, Flag, GrammarEntry, Map, Names, Shapes, Words};
 use DressCode\Upgrading\MemberMapGrammar;
 use Nette\Schema\{Context, Expect, Schema};
 use function dirname;
@@ -350,7 +350,15 @@ final class CorePlugin implements Plugin
 					default: ['Traversable'],
 				),
 
-				// the maps of what the libraries retired, which the project writes, each read by its grammar
+				// the maps of what the libraries retired, those the project writes and those the upgrading files of the installed
+				// packages lay under them, each read by its grammar
+				new Decision(
+					'upgrading.packages',
+					new Flag,
+					'Whether the code follows the upgrading files of the installed packages, their maps laid under those the project writes and the rules of the plugin of a package turned on where its files say',
+					kind: DecisionKind::Parameter,
+					default: false,
+				),
 				new Decision(
 					MemberMapGrammar::ReplacedClasses,
 					new Map(new GrammarEntry, wildcards: false, grammar: self::createReplacedClassesGrammar(), caseInsensitive: true),

@@ -186,6 +186,7 @@ final class Types implements DressCode\Analyses\PassAnalysis
 	public function isInterface(string $class): DressCode\Tristate
 	public function isFinalClass(string $class): DressCode\Tristate
 	public function hasMember(string $class, DressCode\Analyses\MemberKind $kind, string $name): bool
+	public function knowsConstant(string $name): bool
 	public function isPlainProperty(PhpSyntax\Nodes\ExpressionNode $access): DressCode\Tristate
 	public function isStaticMethod(string $class, string $method): DressCode\Tristate
 	public function findClassDeprecation(string $class): ?DressCode\Analyses\Deprecation
@@ -292,7 +293,8 @@ final class Catalogue
 final readonly class Layer
 	public readonly DressCode\Config\LayerKind $kind
 	public readonly ?string $name
-	public function __construct(DressCode\Config\LayerKind $kind, ?string $name = null)
+	public readonly ?string $package
+	public function __construct(DressCode\Config\LayerKind $kind, ?string $name = null, ?string $package = null)
 	public function describe(): string
 	public function formatReference(): string
 	public function isProject(): bool
@@ -306,6 +308,7 @@ enum LayerKind
 	case CommandLine
 	case Override
 	case Preset
+	case Package
 	case Caller
 ```
 
@@ -810,6 +813,7 @@ final readonly class Values
 	public function find(string $path): ?DressCode\Value
 	public function readMap(string $path): array<mixed>
 	public function findWithdrawnNames(string $path): list<string>
+	public function findPackageEntries(string $path): array<string, true>
 	public function isKept(string $path): bool
 	public function isSelected(string $path): bool
 ```

@@ -7,7 +7,7 @@
 
 namespace DressCode\Config;
 
-use DressCode\{ConfigurationException, Decision, DecisionKind, QualifiedNames, Rule};
+use DressCode\{ConfigurationException, Decision, DecisionKind, Plugin, QualifiedNames, Rule};
 use Nette\Utils\Helpers;
 use function array_key_exists, strlen;
 
@@ -33,6 +33,12 @@ final class PluginRegistry
 
 	/** @var array<string, string>  name => the file of the preset */
 	public private(set) array $presets = [];
+
+	/** @var array<string, class-string<Plugin>>  the packages whose plugins the project lets in => the plugin */
+	private array $pluginPackages = [];
+
+	/** @var array<class-string<Plugin>, string>  a plugin loaded => the section of its rules */
+	private array $pluginSections = [];
 
 	/** @var array<class-string<Rule>, string>  rule => the address of its page */
 	private array $urls = [];
@@ -217,6 +223,52 @@ final class PluginRegistry
 	}
 
 
+	/** The name as it is registered: one without a vendor is of the core. */
+	public static function qualify(string $name): string
+	{
+		return str_contains($name, '/') ? $name : self::Vendor . $name;
+	}
+
+
+	/**
+	 * Makes the name of a package whose plugin the project lets in known, so that `use` naming it names no preset.
+	 * @param  class-string<Plugin>  $plugin
+	 * @throws ConfigurationException
+	 */
+	public function registerPluginPackage(string $name, string $plugin): void
+	{
+		if (isset($this->presets[$name])) {
+			throw self::createSharedNameException($name);
+		}
+
+		$this->pluginPackages[$name] = $plugin;
+	}
+
+
+	/** Whether the name is of a package whose plugin the project lets in, one of the vendor of the core without it too. */
+	public function isPluginPackage(string $name): bool
+	{
+		return isset($this->pluginPackages[self::qualify($name)]);
+	}
+
+
+	/**
+	 * The section the plugin brings its rules under, which the loading of its manifest tells.
+	 * @param  class-string<Plugin>  $plugin
+	 */
+	public function registerPluginSection(string $plugin, string $section): void
+	{
+		$this->pluginSections[$plugin] = $section;
+	}
+
+
+	/** The section of the plugin of a package the project lets in, null for a package without one or whose plugin brings no rules. */
+	public function findPackageSection(string $package): ?string
+	{
+		return $this->pluginSections[$this->pluginPackages[$package] ?? ''] ?? null;
+	}
+
+
 	/** @throws ConfigurationException */
 	public function registerPreset(string $name, string $file): void
 	{
@@ -224,6 +276,8 @@ final class PluginRegistry
 		$existing = $this->presets[$name] ?? null;
 		if (!preg_match('~^[a-z0-9_.-]+/[a-zA-Z0-9_.-]+$~D', $name)) {
 			throw new ConfigurationException("Preset name `$name` is not `vendor/name`.");
+		} elseif (isset($this->pluginPackages[$name])) {
+			throw self::createSharedNameException($name);
 		} elseif ($existing !== null && $existing !== $file) {
 			throw new ConfigurationException("Preset name `$name` is used by both `$existing` and `$file`.");
 		} elseif (!is_file($file)) {
@@ -262,6 +316,12 @@ final class PluginRegistry
 	public function createUnknownNameException(string $name): ConfigurationException
 	{
 		return new ConfigurationException("Unknown decision, preset or rule `$name`." . self::suggest($name, array_keys($this->presets)));
+	}
+
+
+	private static function createSharedNameException(string $name): ConfigurationException
+	{
+		return new ConfigurationException("Package `$name` brings a plugin and a preset has the same name, so `use` cannot tell which one it names.");
 	}
 
 

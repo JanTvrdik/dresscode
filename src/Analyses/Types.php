@@ -823,6 +823,13 @@ final class Types implements PassAnalysis
 	}
 
 
+	/** Whether the project, its packages or PHP declare the global or namespaced constant, given its fully qualified name. */
+	public function knowsConstant(string $name): bool
+	{
+		return $this->phpstan->hasConstant($name);
+	}
+
+
 	/**
 	 * Whether the property the access reaches holds a plain value its reads and writes go straight to: declared,
 	 * neither readonly, virtual nor hooked, and one no child can hook, being private or final or of a final class.

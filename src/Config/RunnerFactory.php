@@ -44,8 +44,16 @@ final readonly class RunnerFactory
 	{
 		[$target, $source] = $this->getPhpTarget($config, $root);
 		$project = ProjectPackages::read($root);
+		$packages = PackageDiscovery::discover($project);
+		[$packagePlugins, $skipped, $unnamed] = $this->admitPackagePlugins(
+			$packages->plugins,
+			$config,
+			$commandLine,
+			$project->rootName,
+		);
 		$visited = [];
 		$plugins = [
+			...$this->loadPlugins($packagePlugins, $visited),
 			...$this->loadPlugins($config->plugins, $visited),
 			...$this->loadPlugins($commandLine instanceof Config ? $commandLine->plugins : [], $visited),
 		];
@@ -60,9 +68,9 @@ final readonly class RunnerFactory
 			);
 		}
 
-		$resolver = new ConfigResolver($this->registry, $project, $typesAvailable, $root);
+		$resolver = new ConfigResolver($this->registry, $packages->upgradingData, $project, $typesAvailable, $root, $skipped);
 		$resolved = $resolver->resolve($config, $target, [], $commandLine, $only);
-		$warnings = array_fill_keys($resolver->getWarnings(), null);
+		$warnings = array_fill_keys([...$packages->warnings, ...$unnamed, ...$resolver->getWarnings()], null);
 		if (!$typesAvailable) {
 			$warnings['The configuration sets `typeAnalysis: phpstan`, but `phpstan/phpstan` is not installed beside DressCode, so the run goes without the types of the code.'] = 'types#enable';
 		}
@@ -214,6 +222,37 @@ final readonly class RunnerFactory
 
 
 	/**
+	 * The plugins of the packages the project lets in, by naming the package, one of the vendor of the core with or
+	 * without it, or the plugin in `use`, its own package needing no name, the others skipped with a warning; a package
+	 * named makes its name no preset.
+	 * @param  array<string, class-string<Plugin>>  $plugins  package => its plugin
+	 * @return array{list<class-string<Plugin>>, list<string>, list<string>}  the plugins, the packages skipped, the warnings
+	 */
+	private function admitPackagePlugins(array $plugins, Config $config, ?Profile $commandLine, ?string $rootName): array
+	{
+		$named = [
+			...$config->use,
+			...$config->plugins,
+			...$commandLine->use ?? [],
+			...($commandLine instanceof Config ? $commandLine->plugins : []),
+		];
+		$admitted = $skipped = $warnings = [];
+		foreach ($plugins as $package => $plugin) {
+			$short = PluginRegistry::abbreviate($package);
+			if ($package === $rootName || array_any([$package, $short, $plugin], fn(string $name) => in_array($name, $named, true))) {
+				$admitted[] = $plugin;
+				$this->registry->registerPluginPackage($package, $plugin);
+			} else {
+				$skipped[] = $package;
+				$warnings[] = "Package `$package` brings the plugin `$plugin`, which loads only where `use` names the package or the plugin; skipped.";
+			}
+		}
+
+		return [$admitted, $skipped, $warnings];
+	}
+
+
+	/**
 	 * Makes the rules and presets the plugins bring known and returns what they bring, each class once and the plugins
 	 * a plugin builds on before it, registered before it too.
 	 * @param  list<class-string<Plugin>|Plugin>  $plugins
@@ -250,6 +289,7 @@ final readonly class RunnerFactory
 
 			$reached = array_values(array_unique($reached));
 			if ($manifest->section !== null) {
+				$this->registry->registerPluginSection($class, $manifest->section);
 				$this->registry->registerDependencies($manifest->section, $reached);
 			}
 

@@ -5,7 +5,7 @@ use DressCode\{
 	Override, Plugin, PluginManifest, Profile, Rule, RuleInfo, Stage,
 };
 use DressCode\Config\{ConfigResolver, PluginRegistry, ProjectPackages, ResolvedRule, RuleBuilder};
-use DressCode\Domains\Count;
+use DressCode\Domains\{Count, GrammarEntry, Map};
 use Tester\Assert;
 
 require __DIR__ . '/../../bootstrap.php';
@@ -135,9 +135,19 @@ final class RuleBoundedPackage extends ResolvedTestRule
 }
 
 
+#[RuleInfo(Stage::Structure)]
+final class RuleRenames extends ResolvedTestRule
+{
+	public static function getDecisions(): array
+	{
+		return [new Decision('project.renames', new Map(new GrammarEntry), 'A name written instead of another one')];
+	}
+}
+
+
 const ResolvedTestRules = [
 	RuleA::class, RuleB::class, RuleC::class, RuleD::class, RuleFuture::class, RuleTyped::class, RulePackaged::class, RuleAnyPackage::class,
-	RuleBoundedPackage::class,
+	RuleBoundedPackage::class, RuleRenames::class,
 ];
 
 
@@ -196,9 +206,10 @@ function createRegistry(): PluginRegistry
 }
 
 
-function createResolver(ProjectPackages $project = new ProjectPackages): ConfigResolver
+/** @param  list<Config\UpgradingData>  $packages */
+function createResolver(array $packages = [], ProjectPackages $project = new ProjectPackages): ConfigResolver
 {
-	return new ConfigResolver(createRegistry(), $project);
+	return new ConfigResolver(createRegistry(), $packages, $project);
 }
 
 
@@ -299,7 +310,7 @@ test('a rule requiring a package runs only where the version the project stands 
 
 		return [$inactive, $resolver->getWarnings()];
 	};
-	$installed = fn(?string $version) => ['version' => $version, 'reference' => null, 'path' => null];
+	$installed = fn(?string $version) => ['version' => $version, 'reference' => null, 'path' => null, 'extra' => []];
 	$config = new Config(use: ['test/packaged-preset']);
 
 	// a package the project does not have, or has below the version: left out, silently when a preset named the rule
@@ -738,19 +749,34 @@ test('the version of PHP a profile says is the target of its files, raised to th
 
 
 test('what the namespaces declare adds up over the layers, and only the configuration makes it certain', function () {
-	$resolver = createResolver();
+	$declaring = [new Config\UpgradingData(
+		new Config\Layer(Config\LayerKind::Package, 'upgrading.neon', 'fw/config'),
+		'fw/config',
+		new Profile(namespaces: ['functions' => ['Fw\Config\{service, param}'], 'constants' => ['Fw\VERSION']])->namespaces,
+		[],
+	)];
+	$resolver = createResolver($declaring);
+	// one symbol spelled twice is listed once, as PHP reads the letter case of a function and of a namespace
 	$uncertain = $resolver->resolve(
 		new Config(namespaces: ['functions' => ['App\helper', 'fw\config\SERVICE'], 'constants' => ['fw\VERSION', 'Fw\version']]),
 		Config::DefaultPhpVersion,
 	);
-	Assert::same(['App\helper' => 'the configuration', 'fw\config\SERVICE' => 'the configuration'], $uncertain->namespacedFunctions);
-	Assert::same(['fw\VERSION' => 'the configuration', 'Fw\version' => 'the configuration'], $uncertain->namespacedConstants);
+	Assert::same(
+		[
+			'Fw\Config\service' => 'upgrading.neon of fw/config',
+			'Fw\Config\param' => 'upgrading.neon of fw/config',
+			'App\helper' => 'the configuration',
+		],
+		$uncertain->namespacedFunctions,
+	);
+	Assert::same(['Fw\VERSION' => 'upgrading.neon of fw/config', 'Fw\version' => 'the configuration'], $uncertain->namespacedConstants);
 	Assert::same('uncertain', $uncertain->nameResolution);
 	Assert::false($uncertain->toNamespacedSymbols()->complete);
 	Assert::true($uncertain->toNamespacedSymbols()->hasFunction('App\helper'));
 
 	$certain = $resolver->resolve(new Config(nameResolution: 'certain'), Config::DefaultPhpVersion);
 	Assert::true($certain->toNamespacedSymbols()->complete);
+	Assert::true($certain->toNamespacedSymbols()->hasConstant('Fw\VERSION'));
 	Assert::notSame($uncertain->toArray(), $certain->toArray());
 
 	// a certain resolution turns on the guard of its lists, which nothing turns off, the fixes resting on the lists
@@ -835,6 +861,151 @@ test(
 		);
 		Assert::same(['test/base'], $resolved->use);
 		Assert::same([ProjectPlugin::class, ProjectPlugin::class], $resolved->plugins);
+	},
+);
+
+
+test('the maps of the upgrading files lie under those of the project where it says upgrading.packages', function () {
+	$packages = [
+		new Config\UpgradingData(
+			new Config\Layer(Config\LayerKind::Package, 'retired.neon', 'acme/lib'),
+			'acme/lib',
+			['functions' => [], 'constants' => []],
+			['replacedClasses' => ['Acme\Old' => 'Acme\New']],
+		),
+		new Config\UpgradingData(
+			new Config\Layer(Config\LayerKind::Package, 'modern.neon', 'acme/lib'),
+			'acme/lib',
+			['functions' => [], 'constants' => []],
+			['replacedClasses' => ['Acme\Legacy' => 'Acme\Modern']],
+		),
+	];
+	$map = function (Config $config) use ($packages): ?array {
+		$resolved = createResolver($packages)->resolve($config, '8.3');
+		return $resolved->findRule(DressCode\Rules\Upgrading\ReplacedClassesRule::class)?->isActive()
+			? array_map(fn($value) => $value->toData(), $resolved->values->get('upgrading.api.replacedClasses')->getEntries())
+			: null;
+	};
+
+	$consent = ['packages' => true];
+	Assert::same(
+		['Acme\Old' => 'Acme\New', 'Acme\Legacy' => 'Acme\Modern'],
+		$map(new Config(decisions: ['upgrading' => $consent])),
+	);
+	// a run narrowed to the maps of the libraries runs what the packages say, as one after their update does
+	$narrowed = createResolver($packages)->resolve(
+		new Config(decisions: ['upgrading' => $consent]),
+		'8.3',
+		only: ['upgrading.api'],
+	);
+	Assert::same([DressCode\Rules\Upgrading\ReplacedClassesRule::class], array_map(fn($rule) => $rule->class, $narrowed->getActiveRules()));
+	// the project has the last word on an entry, and a map of its own turns on no file
+	Assert::same(
+		['Acme\Legacy' => 'Acme\Modern', 'Acme\Old' => 'Acme\Newer'],
+		$map(new Config(decisions: ['upgrading' => $consent + ['api' => ['replacedClasses' => ['Acme\Old' => 'Acme\Newer']]]])),
+	);
+	Assert::same(
+		['Acme\Mine' => 'Acme\Ours'],
+		$map(new Config(decisions: ['upgrading' => ['api' => ['replacedClasses' => ['Acme\Mine' => 'Acme\Ours']]]])),
+	);
+	Assert::null($map(new Config));
+
+	// the map of a rule of a plugin or of the project is named by the path of its decision, and its data turn it on
+	$renames = [new Config\UpgradingData(
+		new Config\Layer(Config\LayerKind::Package, 'upgrading.neon', 'acme/lib'),
+		'acme/lib',
+		['functions' => [], 'constants' => []],
+		['project.renames' => ['old' => 'new']],
+	)];
+	Assert::false(createResolver($renames)->resolve(new Config, '8.3')->findRule(RuleRenames::class)?->isActive());
+	$resolved = createResolver($renames)->resolve(new Config(decisions: ['upgrading' => $consent]), '8.3');
+	Assert::true($resolved->findRule(RuleRenames::class)?->isActive());
+	Assert::same(['old' => 'new'], array_map(fn($value) => $value->toData(), $resolved->values->get('project.renames')->getEntries()));
+
+	// a run narrowed to one map builds the rule of that map alone, and still refuses a wrong entry of another one
+	$maps = ['replacedClasses' => ['Acme\Old' => 'Acme\New'], 'forbiddenClasses' => ['Acme\Legacy' => null]];
+	$built = fn(array $maps) => array_map(
+		fn(DressCode\Rule $rule) => $rule::class,
+		RuleBuilder::buildRules(
+			createResolver()->resolve(
+				new Config(decisions: ['upgrading' => ['api' => $maps]]),
+				'8.3',
+				only: ['upgrading.api.replacedClasses'],
+			),
+		),
+	);
+	Assert::same([DressCode\Rules\Upgrading\ReplacedClassesRule::class], $built($maps));
+	Assert::exception(
+		fn() => $built(['forbiddenClasses' => ['not a class!' => null]] + $maps),
+		ConfigurationException::class,
+		'Invalid entries of `upgrading.api.forbiddenClasses`: %a%',
+	);
+
+	// a map this DressCode does not know is a warning, not an error, because the package may be newer
+	$data = [new Config\UpgradingData(
+		new Config\Layer(Config\LayerKind::Package, 'upgrading.neon', 'acme/lib'),
+		'acme/lib',
+		['functions' => [], 'constants' => []],
+		['replacedThings' => []],
+	)];
+	$resolver = createResolver($data);
+	$resolver->resolve(new Config, '8.3');
+	Assert::same(
+		['Map `replacedThings`, which `upgrading.neon` of `acme/lib` sets, is not known to this DressCode; skipped.'],
+		$resolver->getWarnings(),
+	);
+
+	// unless the plugin of the package, whose rules the map would be of, is skipped, which is a warning of its own
+	$resolver = new ConfigResolver(createRegistry(), $data, pluginsSkipped: ['acme/lib']);
+	$resolver->resolve(new Config, '8.3');
+	Assert::same([], $resolver->getWarnings());
+});
+
+
+test(
+	'a package in only stands for what its upgrading files set and the rules reading it, a library for the files about it',
+	function () {
+		$data = fn(string $package, array $maps, ?string $library = null) => new Config\UpgradingData(
+			new Config\Layer(Config\LayerKind::Package, 'upgrading.neon', $package),
+			$library ?? $package,
+			['functions' => [], 'constants' => []],
+			$maps,
+		);
+		$packages = [
+			$data('acme/lib', ['replacedClasses' => ['Acme\Old' => 'Acme\New']]),
+			$data('dresscode/upgrade-other', ['replacedClasses' => ['Other\Old' => 'Other\New'], 'project.renames' => ['old' => 'new']]),
+			$data('dresscode/upgrade-other', ['replacedClasses' => ['Lib\Old' => 'Lib\New']], 'other/lib'),
+			$data('dresscode/upgrade-none', []),
+		];
+		$config = new Config(decisions: ['upgrading' => ['packages' => true]]);
+		$run = function (string $only, ?Config\UpgradingData $more = null) use ($packages, $config): array {
+			$resolved = createResolver($more === null ? $packages : [...$packages, $more])->resolve($config, '8.3', only: [$only]);
+			$classes = $resolved->findRule(DressCode\Rules\Upgrading\ReplacedClassesRule::class)?->isActive()
+				? array_keys($resolved->values->get('upgrading.api.replacedClasses')->getEntries())
+				: [];
+			return [$classes, array_map(fn($rule) => $rule->class, $resolved->getActiveRules())];
+		};
+
+		// one of the vendor of the core is named without the vendor too
+		Assert::same(
+			[['Other\Old', 'Lib\Old'], [DressCode\Rules\Upgrading\ReplacedClassesRule::class, RuleRenames::class]],
+			$run('upgrade-other'),
+		);
+		Assert::same([['Acme\Old'], [DressCode\Rules\Upgrading\ReplacedClassesRule::class]], $run('acme/lib'));
+		// a library stands for the files about it, whichever package ships them
+		Assert::same([['Lib\Old'], [DressCode\Rules\Upgrading\ReplacedClassesRule::class]], $run('other/lib'));
+		// a package shipping files that is also a library the files of another one are about stands for both
+		Assert::same(
+			['Acme\Old', 'B\Old'],
+			$run('acme/lib', $data('dresscode/upgrade-other', ['replacedClasses' => ['B\Old' => 'B\New']], 'acme/lib'))[0],
+		);
+		// a name covering a map lets in the maps of every package
+		Assert::same(['Acme\Old', 'Other\Old', 'Lib\Old'], $run('upgrading.api')[0]);
+		Assert::exception(
+			fn() => $run('upgrade-none'),
+			ConfigurationException::class,
+			'Option `--only` names package `dresscode/upgrade-none`, which has no rule that runs here; its upgrading files reach no version of a library the project has, or `upgrading.packages` is not `yes`.',
+		);
 	},
 );
 

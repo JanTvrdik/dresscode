@@ -7,6 +7,7 @@
 
 namespace DressCode;
 
+use DressCode\Config\LayerKind;
 use Nette\Utils\Helpers;
 
 
@@ -91,6 +92,19 @@ final readonly class Values
 		return $value->content === null
 			? []
 			: array_keys(array_filter($value->getEntries(), fn(Value $entry) => $entry->isKept()));
+	}
+
+
+	/**
+	 * The keys of the entries of a map the upgrading data of a package laid, not a layer of the project.
+	 * @return array<string, true>
+	 */
+	public function findPackageEntries(string $path): array
+	{
+		$value = $this->get($path);
+		return $value->content === null || $value->isKept()
+			? []
+			: array_map(fn() => true, array_filter($value->getEntries(), fn(Value $entry) => $entry->origin?->kind === LayerKind::Package));
 	}
 
 

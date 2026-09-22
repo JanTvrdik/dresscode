@@ -14,12 +14,15 @@ use function count, is_array, is_string;
 
 
 /**
- * Lays the profiles that decide for a file one over another, each above the presets it uses, and resolves every
- * decision and the rule owning it once into a ResolvedConfig.
+ * Lays the profiles that decide for a file one over another, each above the presets it uses, what the installed
+ * packages say under them all, and resolves every decision and the rule owning it once into a ResolvedConfig.
  * @internal
  */
 final class ConfigResolver
 {
+	/** the decision that lays the maps of the upgrading data of the packages under those of the project */
+	private const PackagesDecision = 'upgrading.packages';
+
 	/** @var array<string, string> */
 	private array $warnings = [];
 
@@ -35,12 +38,19 @@ final class ConfigResolver
 
 	public function __construct(
 		private readonly PluginRegistry $registry,
+		/**
+		 * @var list<UpgradingData>  what the installed packages say, the maps of each laid under the project where it says
+		 * `upgrading.packages: yes`
+		 */
+		private readonly array $upgradingData = [],
 		/** the packages the project stands on, which decide whether a rule requiring one runs */
 		private readonly ProjectPackages $project = new ProjectPackages,
 		/** the run can get the types the configuration or the command line asks for; without them it resolves as if it asked for none */
 		private readonly bool $typesAvailable = true,
 		/** the directory a file in `use` of the configuration and its overrides is relative to */
 		private readonly string $root = '.',
+		/** @var list<string>  the packages whose plugins the project does not let in, so the maps of their rules are unknown */
+		private readonly array $pluginsSkipped = [],
 	) {
 		$this->rulesOfOverrides = new \WeakMap;
 	}
@@ -78,6 +88,11 @@ final class ConfigResolver
 		$php = $resolution = null;
 		$typeAnalysis = ($commandLine instanceof Config ? $commandLine->typeAnalysis : null) ?? $config->typeAnalysis;
 		$decisionLayers = [];
+		// what the packages declare lies under every layer, which may add to it
+		foreach ($this->upgradingData as $package) {
+			self::addSymbols($symbols, $package->namespaces, $package->layer->describe());
+		}
+
 		['layers' => $collected, 'repeated' => $repeated] = $this->collectLayers(self::listProfiles($config, $overrides, $commandLine));
 		foreach ($collected as [$layer, $profile]) {
 			try {
@@ -153,6 +168,10 @@ final class ConfigResolver
 			certainNames: $resolution === 'certain',
 		);
 		$decisions = $resolver->resolve($decisionLayers);
+		if ($packageLayers = $this->collectPackageMaps($decisions, $narrowed)) {
+			$decisions = $resolver->resolve([...$packageLayers, ...$decisionLayers]);
+		}
+
 		$values = $resolver->createValues($decisions, $narrowed === null ? null : $this->collectSelection($narrowed));
 		foreach ($this->getCatalogue()->getDecisions() as $path => $decision) {
 			// a map the run is narrowed away from is refused where its entries are wrong all the same, no rule reading it
@@ -248,6 +267,80 @@ final class ConfigResolver
 	public function getCatalogue(): Catalogue
 	{
 		return $this->registry->getCatalogue();
+	}
+
+
+	/**
+	 * The maps of the upgrading files of the installed packages, and the requirements of the rules of their plugins they
+	 * turn on, as layers under every other one, where `upgrading.packages` is `yes`. A run narrowed by `only` gets the
+	 * maps of a package or a library it names, and those of the others only where another of its names covers the map.
+	 * @param  array<string, ResolvedDecision>  $decisions
+	 * @param  ?list<ExpandedName>  $narrowed
+	 * @return list<array{Layer, array<string, mixed>}>
+	 * @throws ConfigurationException  where a file turns on a rule another plugin or the core brings
+	 */
+	private function collectPackageMaps(array $decisions, ?array $narrowed): array
+	{
+		$named = $covered = [];
+		foreach ($narrowed ?? [] as $expanded) {
+			$expanded->package ? $named[$expanded->name] = true : $covered += array_fill_keys($expanded->paths, true);
+		}
+
+		$layers = [];
+		foreach ($this->upgradingData as $package) {
+			$layer = $package->buildDecisions(function (string $map) use ($package, $narrowed, $named, $covered): ?string {
+				$path = $this->findDataPath($map);
+				if ($path === null && !in_array($package->layer->package, $this->pluginsSkipped, true)) { // the plugin skipped says so
+					$this->warnings[$package->layer->describe() . " $map"] = "Map `$map`, which "
+						. $package->layer->formatReference()
+						. ' sets, is not known to this DressCode; skipped.';
+				} elseif (
+					$path !== null
+					&& !$this->getCatalogue()->find($path)?->domain instanceof Map
+					&& !$this->isOfPackagePlugin($path, $package->layer->package)
+				) {
+					throw new ConfigurationException(
+						$package->layer->formatReference() . " turns on `$path`, which is no rule of the plugin of its package.",
+					);
+				}
+
+				return $path !== null
+					&& ($narrowed === null
+						|| isset($named[$package->layer->package ?? ''])
+						|| isset($named[$package->package])
+						|| isset($covered[$path]))
+					? $path
+					: null;
+			});
+			if ($layer !== [] && ($decisions[self::PackagesDecision] ?? null)?->value->getFlag()) {
+				$layers[] = [$package->layer, $layer];
+			}
+		}
+
+		return $layers;
+	}
+
+
+	/** Whether the decision is one of the rules of the plugin the package ships. */
+	private function isOfPackagePlugin(string $path, ?string $package): bool
+	{
+		$section = $package === null ? null : $this->registry->findPackageSection($package);
+		return $section !== null && str_starts_with($path, "$section.");
+	}
+
+
+	/**
+	 * The decision a key of a section of an upgrading file sets: a map of `upgrading.api` by its name, a map of a plugin
+	 * or a requirement it turns on by its path.
+	 */
+	private function findDataPath(string $key): ?string
+	{
+		$decision = $this->getCatalogue()->find($key);
+		return match (true) {
+			$this->getCatalogue()->find("upgrading.api.$key")?->domain instanceof Map => "upgrading.api.$key",
+			$decision?->domain instanceof Map, $decision?->isRequirement() === true => $key,
+			default => null,
+		};
 	}
 
 
@@ -552,6 +645,10 @@ final class ConfigResolver
 	private function collectUsed(Profile $profile, Layer $source, array &$layers, array &$visited, array &$repeated): void
 	{
 		foreach ($profile->use as $entry) {
+			if ($this->registry->isPluginPackage($entry)) { // it lets the plugin of the package in, which is no layer
+				continue;
+			}
+
 			try {
 				// a preset by its name, or a file of the same shape by its path, which is its name too
 				$name = str_ends_with($entry, '.neon')
@@ -629,13 +726,29 @@ final class ConfigResolver
 
 
 	/**
-	 * What a name of `only`, `fixRisky` or `severity` stands for: a decision or a section for the decisions under it, a
-	 * rule for its own, a preset for every decision it and its parents make, each with the rules owning them. A section
-	 * named like a preset is written `section.*`, the bare name being refused as both.
+	 * What a name of `only`, `fixRisky` or `severity` stands for: a decision or a section for the decisions under it,
+	 * a package of upgrading data for what its files set, a library for what the files about it set, both for a name of
+	 * both, a rule for its own, a preset for every decision it and its parents make, each with the rules owning them. A
+	 * section named like a preset is written `section.*`, the bare name being refused as both.
 	 * @throws ConfigurationException
 	 */
 	private function expandName(string $name): ExpandedName
 	{
+		$package = $this->findDataPackage($name);
+		if ($package !== null) {
+			$paths = [];
+			foreach ($this->upgradingData as $data) {
+				if ($data->layer->package === $package || $data->package === $package) {
+					$keys = [...array_keys($data->maps), ...array_keys($data->requirements)];
+					array_push($paths, ...array_filter(array_map($this->findDataPath(...), $keys)));
+				}
+			}
+
+			$paths = array_values(array_unique($paths));
+			$rules = array_merge(...array_map($this->getCatalogue()->getRulesOf(...), $paths));
+			return new ExpandedName($package, false, null, array_values(array_unique($rules)), $paths, package: true);
+		}
+
 		$section = str_ends_with($name, '.*') ? substr($name, 0, -2) : null;
 		$paths = array_keys($this->getCatalogue()->getDecisionsUnder($section ?? $name));
 		$preset = $paths !== [] && $section === null && !str_contains($name, '.') ? $this->registry->findPreset($name) : null;
@@ -664,6 +777,25 @@ final class ConfigResolver
 		$paths = array_values(array_unique($paths));
 		$rules = array_merge(...array_map($this->getCatalogue()->getRulesOf(...), $paths));
 		return new ExpandedName($preset ?? $section ?? $name, $preset !== null, null, array_values(array_unique($rules)), $paths);
+	}
+
+
+	/**
+	 * The full name of the installed package the name stands for, one shipping upgrading files or one they are about,
+	 * one of the core without its vendor too.
+	 */
+	private function findDataPackage(string $name): ?string
+	{
+		$names = [$name, PluginRegistry::qualify($name)];
+		foreach ($this->upgradingData as $data) {
+			if ($data->layer->name !== null && in_array($data->layer->package, $names, true)) {
+				return $data->layer->package;
+			} elseif (in_array($data->package, $names, true)) {
+				return $data->package;
+			}
+		}
+
+		return null;
 	}
 
 
@@ -746,6 +878,8 @@ final class ConfigResolver
 			// a preset the configuration does not use is brought by `--use`, a decision it does not make by `--set`
 			$hint = match (true) {
 				$expanded->preset => "`--use $collective --only $collective` runs all its rules",
+				$expanded->package
+					=> 'its upgrading files reach no version of a library the project has, or `upgrading.packages` is not `yes`',
 				$this->getCatalogue()->find($collective) !== null => "`--set $collective=<value>` decides it for the run",
 				default => '`--set <path>=<value>` decides one of them for the run',
 			};

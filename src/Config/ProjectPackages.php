@@ -28,11 +28,15 @@ final readonly class ProjectPackages
 	public function __construct(
 		/** the name of the root package, null where its composer.json gives none */
 		public ?string $rootName = null,
+		/** the directory of the root package, null where the project has no composer.json */
+		public ?string $rootPath = null,
+		/** @var array<mixed>  what the composer.json of the root package says under extra */
+		public array $rootExtra = [],
 		/** @var array<string, string>  package the project requires itself => its constraint */
 		private array $required = [],
 		/**
-		 * @var array<string, array{version: ?string, reference: ?string, path: ?string}>  installed package => the version
-		 * it stands for (null for any), the source it came from and where it lies
+		 * @var array<string, array{version: ?string, reference: ?string, path: ?string, extra: array<mixed>}>  installed
+		 * package => the version it stands for (null for any), the source it came from, where it lies and its extra
 		 */
 		public array $installed = [],
 	) {
@@ -74,11 +78,14 @@ final readonly class ProjectPackages
 				'path' => is_string($package['install-path'] ?? null)
 					? Helpers::canonicalizePath(FileSystem::normalizePath("$vendor/composer/{$package['install-path']}"))
 					: null,
+				'extra' => is_array($package['extra'] ?? null) ? $package['extra'] : [],
 			];
 		}
 
 		return new self(
 			is_string($composer['name'] ?? null) ? $composer['name'] : null,
+			$base,
+			is_array($composer['extra'] ?? null) ? $composer['extra'] : [],
 			$required,
 			$installed,
 		);

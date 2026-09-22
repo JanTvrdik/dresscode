@@ -251,6 +251,13 @@ final class PhpStan
 	}
 
 
+	/** Whether something declares the global or namespaced constant of that fully qualified name. */
+	public function hasConstant(string $name): bool
+	{
+		return $this->getContainer()->getByType(ReflectionProvider::class)->hasConstant(new FullyQualified($name), null);
+	}
+
+
 	/**
 	 * The class, interface, trait or enum of that fully qualified name, in any letter case; null for a name nothing
 	 * declares, and for one whose ancestors run in a circle, which PHP refuses to load.

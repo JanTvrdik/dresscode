@@ -50,6 +50,7 @@ test('the version of a package the code must work with', function () {
 
 	$project = ProjectPackages::read("$root/src");
 	Assert::same('app/project', $project->rootName);
+	Assert::same($root, $project->rootPath);
 	Assert::same("$root/vendor/acme/transitive", $project->installed['acme/transitive']['path']);
 
 	// required by the project: the lowest version its constraint allows, whatever is installed
@@ -111,6 +112,7 @@ test('the packages installed in a newer minor version than the oldest one the pr
 
 test('a project without packages has none', function () {
 	$project = new ProjectPackages;
+	Assert::null($project->rootPath);
 	Assert::false($project->has('acme/lib'));
 	Assert::null($project->findVersion('acme/lib'));
 });

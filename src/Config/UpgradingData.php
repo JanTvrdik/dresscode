@@ -1,0 +1,72 @@
+<?php declare(strict_types=1);
+
+/**
+ * This file is part of the DressCode, a coding style and upgrade tool for PHP (https://dresscode.run)
+ * Copyright (c) 2026 David Grudl (https://davidgrudl.com)
+ */
+
+namespace DressCode\Config;
+
+use DressCode\Engine\Helpers;
+use function is_string;
+
+
+/**
+ * What one upgrading file says to the project: the maps of the sections the lowest version the code must work with
+ * reaches, those of the later ones it may run on as what they retire, the rules of the plugin of the package it turns
+ * on, and what the package declares in its namespaces.
+ * @internal
+ */
+final readonly class UpgradingData
+{
+	public function __construct(
+		/** the file and the package shipping it */
+		public Layer $layer,
+		/** the package whose versions the sections of the file are of */
+		public string $package,
+		/** @var array{functions: list<string>, constants: list<string>}  what the package declares in its namespaces, fully qualified */
+		public array $namespaces,
+		/** @var array<string, array<string, mixed>>  map => its entries, as the file writes them */
+		public array $maps,
+		/** @var array<string, array<string, string>>  forbidden map => the key of an entry => the version that retired it */
+		public array $retirements = [],
+		/** @var array<string, string>  the requirements of the rules of the plugin of the package it turns on => their values */
+		public array $requirements = [],
+	) {
+	}
+
+
+	/**
+	 * The maps and the requirements as the decisions of a layer, each under the path the closure gives it and left out
+	 * where it gives none, the sentence of a retired entry ending with the package and the version that retired it
+	 * (`, since acme/lib 3.0`).
+	 * @param  \Closure(string): ?string  $findPath  the map or the requirement => the path of its decision
+	 * @return array<string, mixed>
+	 */
+	public function buildDecisions(\Closure $findPath): array
+	{
+		$tree = [];
+		foreach ($this->maps as $map => $entries) {
+			$path = $findPath($map);
+			if ($path === null) {
+				continue;
+			}
+
+			foreach ($this->retirements[$map] ?? [] as $key => $version) {
+				$sentence = $entries[$key];
+				$entries[$key] = (is_string($sentence) ? rtrim($sentence, '.') . ', ' : '') . "since $this->package $version";
+			}
+
+			$tree = Helpers::placeValue($tree, $path, $entries);
+		}
+
+		foreach ($this->requirements as $requirement => $value) {
+			$path = $findPath($requirement);
+			if ($path !== null) {
+				$tree = Helpers::placeValue($tree, $path, $value);
+			}
+		}
+
+		return $tree;
+	}
+}
