@@ -173,6 +173,41 @@ test('a section above the lowest version is reported where the constraint reache
 });
 
 
+test(
+	'a later section has the last word on an entry, and a value NEON reads as an entity stays one for the grammar of the map',
+	function () {
+		$root = project(
+			'keep',
+			['acme/lib' => ['3.2.0.0', ['upgrading-dir' => 'upgrading']]],
+			[
+				'vendor/acme/lib/upgrading/upgrading.neon' => <<<'XX'
+					package: acme/lib
+
+					since 3:
+						replacedMembers:
+							Acme\Lib\Order::OLD: New
+							Acme\Lib\Order::$paid: isPaid()
+
+					since 3.2:
+						replacedMembers:
+							Acme\Lib\Order::OLD: keep
+
+					since 4:
+						replacedMembers:
+							Acme\Lib\Order::$paid: keep
+					XX,
+			],
+		);
+
+		[$data] = PackageDiscovery::discover(ProjectPackages::read($root))->upgradingData;
+		Assert::equal(
+			['replacedMembers' => ['Acme\Lib\Order::OLD' => 'keep', 'Acme\Lib\Order::$paid' => new Nette\Neon\Entity('isPaid')]],
+			$data->maps,
+		);
+	},
+);
+
+
 test('upgrading data for a package that is not installed is left out, and a package may carry the data of another', function () {
 	$root = project(
 		'carrier',

@@ -42,7 +42,7 @@ final readonly class UpgradingFile
 
 
 	/**
-	 * Reads the file.
+	 * Reads the file, a value as NEON gives it, an entity too, for the grammar of the map to read.
 	 * @throws ConfigurationException
 	 */
 	public static function fromFile(string $file, string $label): self
