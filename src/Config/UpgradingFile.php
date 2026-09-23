@@ -8,6 +8,7 @@
 namespace DressCode\Config;
 
 use DressCode\{ConfigurationException, Profile};
+use DressCode\Upgrading\MemberMapGrammar;
 use Nette\Neon\{Exception as NeonException, Neon};
 use function is_array, is_string;
 
@@ -120,7 +121,7 @@ final readonly class UpgradingFile
 
 					$maps[$map][$key] = $value;
 					unset($retirements[$map][$key]);
-					if (in_array($map, self::ForbiddenMaps, true) && $value !== 'keep') {
+					if (in_array($map, self::ForbiddenMaps, true) && $value !== MemberMapGrammar::Keep) {
 						$retirements[$map][$key] = $since;
 					}
 				}
@@ -176,7 +177,7 @@ final readonly class UpgradingFile
 		foreach ($section as $map => $entries) {
 			foreach ($entries as $key => $value) {
 				$target = self::findForbidden($map, (string) $key);
-				if ($target === null || $value === 'keep') {
+				if ($target === null || $value === MemberMapGrammar::Keep) {
 					continue;
 				}
 

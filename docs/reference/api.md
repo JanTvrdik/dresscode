@@ -799,11 +799,14 @@ final readonly class ArgumentPatternItem
 
 ```php
 final class MemberMapGrammar
+	public const Keep = 'keep'
 	public const ReplacedClasses = 'upgrading.api.replacedClasses'
 	public const ReplacedFunctions = 'upgrading.api.replacedFunctions'
 	public const ForbiddenClasses = 'upgrading.api.forbiddenClasses'
 	public const ForbiddenFunctions = 'upgrading.api.forbiddenFunctions'
 	public const ForbiddenConstants = 'upgrading.api.forbiddenConstants'
+	public static function createMapSchema(Nette\Schema\Schema $value, string $description, ?Closure(mixed, DressCode\Upgrading\MemberPattern): mixed $convert = null): Nette\Schema\Elements\Type
+	public static function createCodeSchema(): Nette\Schema\Elements\AnyOf
 ```
 
 ## `DressCode\Upgrading\MemberPattern`
