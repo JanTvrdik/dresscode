@@ -143,6 +143,8 @@ test('a section above the lowest version is reported where the constraint reache
 						Acme\Lib\Gone:
 					forbiddenFunctions:
 						Acme\Lib\helper: keep
+					replacedFunctions:
+						Acme\Lib\old_helper: {write: Acme\Lib\helper, from: '3.0'}
 
 				since 5.0:
 					replacedClasses:
@@ -152,11 +154,13 @@ test('a section above the lowest version is reported where the constraint reache
 		['require' => ['acme/lib' => '^3.2 || ^4.0']],
 	);
 
-	// what 3.0 rewrites is not reported again, and 5.0 lies above the constraint
+	// what 3.0 rewrites is not reported again, an entry right from a version the code reaches is rewritten, and 5.0 lies
+	// above the constraint
 	[$data] = PackageDiscovery::discover(ProjectPackages::read($root))->upgradingData;
 	Assert::same(
 		[
 			'replacedClasses' => ['Acme\Lib\Old' => 'Acme\Lib\Renamed'],
+			'replacedFunctions' => ['Acme\Lib\old_helper' => 'Acme\Lib\helper'],
 			'forbiddenClasses' => ['Acme\Lib\Gone' => null],
 		],
 		$data->maps,
@@ -166,6 +170,7 @@ test('a section above the lowest version is reported where the constraint reache
 	Assert::same(
 		[
 			'replacedClasses' => ['Acme\Lib\Old' => 'Acme\Lib\Renamed'],
+			'replacedFunctions' => ['Acme\Lib\old_helper' => 'Acme\Lib\helper'],
 			'forbiddenClasses' => ['Acme\Lib\Gone' => 'since acme/lib 4.0'],
 		],
 		$data->buildDecisions(fn(string $map) => $map),
@@ -403,6 +408,8 @@ test(
 			"package: acme/lib\n\nsince 1.0: [a, b]\n"
 				=> 'Upgrading file `upgrading/upgrading.neon` of `acme/lib`: The section `since 1.0` must be a map of maps to their entries.',
 			"package: acme/lib\n\nsince 1.0:\n\treplacedClasses: [a: b\n" => 'Upgrading file `upgrading/upgrading.neon` of `acme/lib` is not valid NEON: %a%',
+			"package: acme/lib\n\nsince 1.0:\n\treplacedClasses:\n\t\tOld: {write: New, from: 8}\n"
+				=> "Upgrading file `upgrading/upgrading.neon` of `acme/lib`: `from` of the entry `Old` of `replacedClasses` in `since 1.0` must be a version, as `'8.0'`.",
 		];
 		foreach ($errors as $content => $message) {
 			$root = project(

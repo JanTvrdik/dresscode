@@ -10,7 +10,7 @@ namespace DressCode\Config;
 use DressCode\{ConfigurationException, Profile};
 use DressCode\Upgrading\MemberMapGrammar;
 use Nette\Neon\{Exception as NeonException, Neon};
-use function is_array, is_string;
+use function array_key_exists, is_array, is_string;
 
 
 /**
@@ -26,6 +26,7 @@ final readonly class UpgradingFile
 
 	private const SectionPattern = '~^since (\d+(?:\.\d+)*)$~D';
 	private const PackagePattern = '~^[a-z0-9_.-]+/[a-z0-9_.-]+$~D';
+	private const VersionPattern = '~^\d+(?:\.\d+)*$~D';
 
 
 	private function __construct(
@@ -80,6 +81,13 @@ final readonly class UpgradingFile
 					throw new ConfigurationException("Upgrading file $label: The map `$map` in `$key` must be a map of entries; a package turns on only a rule of its own plugin, by the path of its decision and a word.");
 				}
 
+				foreach ($entries as $entry => $value) {
+					$from = is_array($value) ? $value['from'] ?? null : null;
+					if ($from !== null && (!is_string($from) || !preg_match(self::VersionPattern, $from))) {
+						throw new ConfigurationException("Upgrading file $label: `from` of the entry `$entry` of `$map` in `$key` must be a version, as `'8.0'`.");
+					}
+				}
+
 				$sections[$m[1]][$map] = $entries;
 			}
 		}
@@ -98,8 +106,8 @@ final readonly class UpgradingFile
 
 	/**
 	 * The data for code that must work with the versions of the constraint, null where any version does. An entry is
-	 * rewritten where the lowest version reaches its section, a later section having the last word on it: every entry
-	 * where any version does, none where there is no lower bound.
+	 * rewritten where the lowest version reaches its section, or the version `from` says its fix is right from, a later
+	 * section having the last word on it: every entry where any version does, none where there is no lower bound.
 	 * What a section above the lowest version retires, where a version the constraint allows reaches it, is reported
 	 * without a fix as the entry of a forbidden map (`retire()`), unless a section reached rewrites or forbids the same
 	 * thing already. A requirement is turned on where the lowest version reaches its section, and says nothing above it.
@@ -114,12 +122,13 @@ final readonly class UpgradingFile
 			$left = [];
 			foreach ($section as $map => $entries) {
 				foreach ($entries as $key => $value) {
-					if (!$reaches($since)) {
+					$from = is_array($value) ? $value['from'] ?? null : null;
+					if (!$reaches($since) && ($from === null || !$reaches($from))) {
 						$left[$map][$key] = $value;
 						continue;
 					}
 
-					$maps[$map][$key] = $value;
+					$maps[$map][$key] = self::removeFrom($value);
 					unset($retirements[$map][$key]);
 					if (in_array($map, self::ForbiddenMaps, true) && $value !== MemberMapGrammar::Keep) {
 						$retirements[$map][$key] = $since;
@@ -176,15 +185,16 @@ final readonly class UpgradingFile
 		$retired = [];
 		foreach ($section as $map => $entries) {
 			foreach ($entries as $key => $value) {
+				$write = is_array($value) ? $value['write'] ?? null : $value;
 				$target = self::findForbidden($map, (string) $key);
-				if ($target === null || $value === MemberMapGrammar::Keep) {
+				if ($target === null || $write === MemberMapGrammar::Keep) {
 					continue;
 				}
 
 				[$forbidden, $name] = $target;
 				$retired[] = match (true) {
-					$map === $forbidden => [$forbidden, $name, $value],
-					is_string($value) => [$forbidden, $name, 'replaced by `' . ltrim($value, '\\') . '`'],
+					$map === $forbidden => [$forbidden, $name, $write],
+					is_string($write) => [$forbidden, $name, 'replaced by `' . ltrim($write, '\\') . '`'],
 					default => [$forbidden, $name, 'replaced'],
 				};
 			}
@@ -217,5 +227,17 @@ final readonly class UpgradingFile
 	private static function identify(string $key): string
 	{
 		return strtolower(ltrim($key, '\\'));
+	}
+
+
+	/** The entry as the map reads it, without the version it is right from; `{write: X}` is X. */
+	private static function removeFrom(mixed $value): mixed
+	{
+		if (!is_array($value) || !array_key_exists('from', $value)) {
+			return $value;
+		}
+
+		unset($value['from']);
+		return array_keys($value) === ['write'] ? $value['write'] : $value;
 	}
 }
