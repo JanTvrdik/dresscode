@@ -43,7 +43,7 @@ final readonly class RunnerFactory
 	public function resolve(Config $config, string $root, ?Profile $commandLine = null, ?array $only = null): ResolvedProject
 	{
 		[$target, $source] = $this->getPhpTarget($config, $root);
-		$project = ProjectPackages::read($root);
+		$project = $this->readProjectPackages($config, $root);
 		$packages = PackageDiscovery::discover($project);
 		[$packagePlugins, $skipped, $unnamed] = $this->admitPackagePlugins(
 			$packages->plugins,
@@ -70,7 +70,16 @@ final readonly class RunnerFactory
 
 		$resolver = new ConfigResolver($this->registry, $packages->upgradingData, $project, $typesAvailable, $root, $skipped);
 		$resolved = $resolver->resolve($config, $target, [], $commandLine, $only);
-		$warnings = array_fill_keys([...$packages->warnings, ...$unnamed, ...$resolver->getWarnings()], null);
+		$missing = array_map(
+			fn(string $package) => $package === $project->rootName
+				? "The configuration names package `$package` in `targets`, but that is the project itself, whose code is any version of it; skipped."
+				: "The configuration names package `$package` in `targets`, but it is not installed; skipped.",
+			array_filter(
+				array_keys(array_diff_key($config->targets, ['php' => true])),
+				fn(string $package) => !$project->has($package) || $package === $project->rootName,
+			),
+		);
+		$warnings = array_fill_keys([...$packages->warnings, ...$unnamed, ...$missing, ...$resolver->getWarnings()], null);
 		if (!$typesAvailable) {
 			$warnings['The configuration sets `typeAnalysis: phpstan`, but `phpstan/phpstan` is not installed beside DressCode, so the run goes without the types of the code.'] = 'types#enable';
 		}
@@ -590,5 +599,12 @@ final readonly class RunnerFactory
 			$detected !== null => [$detected, PhpVersionSource::Composer],
 			default => [Config::DefaultPhpVersion, PhpVersionSource::Default],
 		};
+	}
+
+
+	/** The packages of the project with the versions the configuration says. */
+	public function readProjectPackages(Config $config, string $root): ProjectPackages
+	{
+		return ProjectPackages::read($root)->withTargets(array_diff_key($config->targets, ['php' => true]));
 	}
 }

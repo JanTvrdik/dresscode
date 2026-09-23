@@ -20,7 +20,8 @@ use function is_array, is_string;
  * constraint without a lower bound allows every version; for a package that only comes with another, which the project
  * promises nothing about, it is every version too; for a development branch the project requires it is the newest of
  * the line its alias names; and any version does for the project itself and for a branch without an alias, whose
- * version says nothing. The installed version never answers, being only what happens to be in the vendor directory.
+ * version says nothing. The installed version never answers, being only what happens to be in the vendor directory. The
+ * `targets` of the configuration say the one version of an installed package outright (`withTargets()`).
  * @internal
  */
 final readonly class ProjectPackages
@@ -39,6 +40,8 @@ final readonly class ProjectPackages
 		 * package => the version it stands for (null for any), the source it came from, where it lies and its extra
 		 */
 		public array $installed = [],
+		/** @var array<string, string>  package => the version the configuration says the code is written for */
+		private array $targets = [],
 	) {
 	}
 
@@ -92,6 +95,24 @@ final readonly class ProjectPackages
 	}
 
 
+	/**
+	 * The same project with the versions of packages its code is written for said outright, which `findConstraint()`
+	 * answers with before it asks the constraint: code is fixed for a version before the project moves to it.
+	 * @param  array<string, string>  $versions  package => version
+	 */
+	public function withTargets(array $versions): self
+	{
+		return new self(
+			$this->rootName,
+			$this->rootPath,
+			$this->rootExtra,
+			$this->required,
+			$this->installed,
+			$versions,
+		);
+	}
+
+
 	/** Whether the project has the package: it is the project itself, or it is installed. */
 	public function has(string $package): bool
 	{
@@ -101,10 +122,10 @@ final readonly class ProjectPackages
 
 
 	/**
-	 * The versions of the package the code must work with, as a Composer constraint: the constraint the project
-	 * requires it with, `*` for a package it does not require, or the version a required branch stands for, `^3.1` or
-	 * `3.3.9999999.9999999`; null where any version does, and for a package the project does not have, which `has()`
-	 * tells apart.
+	 * The versions of the package the code must work with, as a Composer constraint: the target, the constraint the
+	 * project requires it with, `*` for a package it does not require, or the version a required branch stands for,
+	 * `^3.1` or `3.3.9999999.9999999`; null where any version does, and for a package the project does not have, which
+	 * `has()` tells apart.
 	 */
 	public function findConstraint(string $package): ?string
 	{
@@ -113,7 +134,7 @@ final readonly class ProjectPackages
 			return null;
 		}
 
-		return match (true) {
+		return $this->targets[$package] ?? match (true) {
 			$required === null => '*',
 			Versions::isBranch($required) => $this->installed[$package]['version'],
 			default => $required,
