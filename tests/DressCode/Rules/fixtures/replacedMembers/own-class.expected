@@ -1,0 +1,57 @@
+<?php
+// {"api": {"replacedMembers": {"Acme\\Store\\Cart::$lines": "$items", "Acme\\Store\\Cart::recount": "recalculate", "Acme\\Store\\Cart::LIMIT": "MaxItems"}}}
+
+namespace Acme\Store;
+
+// the code of the class itself is its implementation, which the data do not speak of
+class Cart
+{
+	/** @deprecated use MaxItems */
+	public const LIMIT = 10;
+	public const MaxItems = 10;
+
+	/** @deprecated use $items */
+	public array $lines = [];
+
+	public array $items = [];
+
+
+	/** @deprecated use recalculate() */
+	public function recount(): void
+	{
+		$this->recalculate();
+	}
+
+
+	public function recalculate(): void
+	{
+	}
+
+
+	public function merge(self $other): void
+	{
+		$this->lines = $other->lines + $this->lines;
+		$this->recount();
+		$limit = self::LIMIT;
+		$callback = [$this, 'recount'];
+	}
+}
+
+
+// a child uses the class as anyone else does
+class GiftCart extends Cart
+{
+	public function describe(): int
+	{
+		$this->recalculate();
+		return count($this->items) + self::MaxItems;
+	}
+}
+
+
+function test(Cart $cart): void
+{
+	$a = $cart->items;
+	$cart->recalculate();
+	$b = Cart::MaxItems;
+}

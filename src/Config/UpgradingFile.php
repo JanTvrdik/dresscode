@@ -205,8 +205,8 @@ final readonly class UpgradingFile
 
 
 	/**
-	 * The forbidden map an entry of the map is reported by where it cannot be rewritten, and its key there; null for the
-	 * maps of plugins, which forbid nothing by themselves.
+	 * The forbidden map an entry of the map is reported by where it cannot be rewritten, and its key there; null for a
+	 * member, which has no forbidden map, and for the maps of plugins, which forbid nothing by themselves.
 	 * @return ?array{string, string}
 	 */
 	private static function findForbidden(string $map, string $key): ?array

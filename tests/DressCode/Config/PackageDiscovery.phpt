@@ -60,6 +60,8 @@ test('the upgrading data a package ships applies up to the lowest version requir
 					replacedClasses:
 						Acme\Lib\Old: Acme\Lib\Renamed
 						Acme\Lib\Older: Acme\Lib\Renamed
+					replacedMembers:
+						Acme\Lib\Renamed::old: renamed
 
 				since 3.2:
 					replacedClasses:
@@ -92,6 +94,7 @@ test('the upgrading data a package ships applies up to the lowest version requir
 	Assert::same(
 		[
 			'replacedClasses' => ['Acme\Lib\Old' => 'Acme\Lib\RenamedAgain', 'Acme\Lib\Older' => 'Acme\Lib\Renamed'],
+			'replacedMembers' => ['Acme\Lib\Renamed::old' => 'renamed'],
 			'forbiddenClasses' => ['Acme\Lib\Newest' => 'replaced by `Acme\Lib\Future`'],
 		],
 		$packages->upgradingData[1]->maps,

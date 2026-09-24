@@ -1,0 +1,6 @@
+46: Method `Acme\Store\Cart::recount()` is replaced by `Cart::recalculate()`.
+47: Property `Acme\Store\Cart::$lines` is replaced by `Cart::$items`.
+47: Constant `Acme\Store\Cart::LIMIT` is replaced by `Cart::MaxItems`.
+54: Property `Acme\Store\Cart::$lines` is replaced by `Cart::$items`.
+55: Method `Acme\Store\Cart::recount()` is replaced by `Cart::recalculate()`.
+56: Constant `Acme\Store\Cart::LIMIT` is replaced by `Cart::MaxItems`.

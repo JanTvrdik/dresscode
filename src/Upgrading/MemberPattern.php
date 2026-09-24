@@ -9,6 +9,9 @@ namespace DressCode\Upgrading;
 
 use DressCode\Analyses\{MemberAccess, MemberKind, Types};
 use DressCode\{Tristate, Violation};
+use PhpSyntax\Node;
+use PhpSyntax\Nodes\Expression\StaticMethodCallNode;
+use PhpSyntax\Nodes\NameNode;
 
 
 /**
@@ -83,6 +86,60 @@ final readonly class MemberPattern
 
 
 	/**
+	 * The key as a lookup reads it, so that two keys of one member give the same: the class, and the name of a method,
+	 * in lower case and without the leading backslash, and the whitespace between the tokens of the arguments written
+	 * one way, a literal and a comment staying byte for byte; a key that is no member stays as it is.
+	 */
+	public static function canonicalizeKey(string $key): string
+	{
+		try {
+			$pattern = self::fromKey($key);
+		} catch (\InvalidArgumentException) {
+			return $key;
+		}
+
+		$arguments = preg_match('~\((.*)\)$~Ds', trim($key), $m)
+			? '(' . self::canonicalizeArguments($m[1]) . ')'
+			: '';
+		return strtolower($pattern->class) . ($pattern->nonStatic ? '->' : '::') . match ($pattern->kind) {
+			MemberPatternKind::Property => '$' . $pattern->name . ($pattern->hook === null ? '' : "::$pattern->hook"),
+			MemberPatternKind::Method, MemberPatternKind::Constructor => strtolower($pattern->name) . $arguments,
+			MemberPatternKind::ConstantOrMethod => $pattern->name,
+		};
+	}
+
+
+	/**
+	 * The text of the arguments with a single space wherever whitespace parted two tokens, `, ` after a comma and none
+	 * before it, after an opening parenthesis or before a closing one.
+	 */
+	private static function canonicalizeArguments(string $text): string
+	{
+		$res = '';
+		$previous = null;
+		$spaced = false;
+		foreach (array_slice(\PhpToken::tokenize('<?php ' . $text), 1) as $token) {
+			if ($token->is(T_WHITESPACE)) {
+				$spaced = true;
+				continue;
+			}
+
+			$res .= match (true) {
+				$previous === null => '',
+				$previous->is(T_COMMENT) && !str_starts_with($previous->text, '/*') => "\n",
+				$token->text === ',', $token->text === ')', $previous->text === '(' => '',
+				$previous->text === ',', $spaced => ' ',
+				default => '',
+			} . $token->text;
+			$previous = $token;
+			$spaced = false;
+		}
+
+		return $res;
+	}
+
+
+	/**
 	 * Whether the access is one of this member: the kind fits, the name agrees, a method whatever its letter case,
 	 * and every class of the receiver is the class or its subtype; a constructor only where the class itself declares
 	 * the one that runs, which it does for a child declaring none and for `parent::__construct()`, a child with
@@ -130,6 +187,19 @@ final readonly class MemberPattern
 
 
 	/**
+	 * Whether a method declared in the class overrides this member, or did before the library removed it: the key can
+	 * be of a method, the name agrees and the class is a subtype of the class of the member other than that class itself.
+	 */
+	public function matchesMethodDeclaration(string $declaringClass, string $method, Types $types): bool
+	{
+		return $this->canBeMethod()
+			&& strcasecmp($method, $this->name) === 0
+			&& strcasecmp($declaringClass, $this->class) !== 0
+			&& $types->isSubtype($declaringClass, $this->class) === Tristate::Yes;
+	}
+
+
+	/**
 	 * Whether the key can be of a method: it is written as one, or it is a bare name with a lower-case letter, a name
 	 * without one being a constant, which a method of that name in another case is not.
 	 */
@@ -140,9 +210,41 @@ final readonly class MemberPattern
 	}
 
 
+	/** Whether a call of the member is of the key whatever its arguments, so that the key replaces the method as a whole. */
+	public function takesAnyArguments(): bool
+	{
+		return $this->arguments === null || $this->arguments->takesAnyArguments();
+	}
+
+
 	public function getArgumentPattern(): ArgumentPattern
 	{
 		return $this->arguments ?? ArgumentPattern::any();
+	}
+
+
+	/** The member as a message names it, of the kind the code reaches it by: ``Constant `Acme\Order::STATUS_PAID` ``. */
+	public function describe(MemberKind $kind): string
+	{
+		return $kind->describe($this->class, $this->name);
+	}
+
+
+	/**
+	 * The member as a message names it for the access the node makes, of the kind of the access, but a method for
+	 * `self::name()`, `static::name()` and `parent::name()`, which are written as static calls and say nothing of the
+	 * method being one.
+	 */
+	public function describeAccess(MemberAccess $access, Node $node): string
+	{
+		return $this->describe(
+			$access->kind === MemberKind::StaticMethod
+			&& $node instanceof StaticMethodCallNode
+			&& $node->class instanceof NameNode
+			&& $node->class->isSpecialClass()
+				? MemberKind::Method
+				: $access->kind,
+		);
 	}
 
 

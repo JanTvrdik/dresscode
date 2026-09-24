@@ -2,6 +2,7 @@
 
 use DressCode\{ConfigurationException, Decision, DecisionKind, Domain};
 use DressCode\Domains\{Count, Flag, Map, Names, Shapes, Text, Words};
+use DressCode\Upgrading\MemberPattern;
 use Tester\Assert;
 
 require __DIR__ . '/../bootstrap.php';
@@ -416,4 +417,43 @@ test('a requirement takes keep, a parameter does not', function () {
 	);
 	Assert::exception(fn() => new Decision('calls.is-null', Domain::state(), ''), InvalidArgumentException::class);
 	Assert::noError(fn() => new Decision('mistakes.staticSetState', Domain::state(), ''));
+});
+
+
+test('a map of members finds a key in any writing the lookup reads as the same', function () {
+	$map = new Map(new Text, wildcards: false, canonicalize: MemberPattern::canonicalizeKey(...));
+	$below = $map->accept(['Acme\Mail\Mailer::send()' => 'sendMessage()'], 'x.y');
+	$above = $map->accept(['\acme\mail\mailer::SEND( )' => 'keep'], 'x.y');
+	Assert::same(['\acme\mail\mailer::SEND( )'], array_keys($map->merge($below, $above)->getEntries()));
+	Assert::same('acme\mail\mailer::send($a, true)', MemberPattern::canonicalizeKey('\Acme\Mail\Mailer::Send( $a ,true )'));
+	Assert::same('acme\a::$B', MemberPattern::canonicalizeKey('Acme\A::$B'));
+	Assert::exception(
+		fn() => $map->accept(['Acme\A::$b' => 'x', '\acme\a::$b' => 'y'], 'x.y'),
+		ConfigurationException::class,
+		'Key `x.y` names %a% which are one name; keep one of them.',
+	);
+});
+
+
+test('a map of members tells keys apart by what their literals hold', function () {
+	Assert::same("acme\\a::run('a  b')", MemberPattern::canonicalizeKey("Acme\\A::run('a  b')"));
+	Assert::same("acme\\a::run('a,b', \"x\\\" ,y\")", MemberPattern::canonicalizeKey("Acme\\A::run( 'a,b' ,\"x\\\" ,y\" )"));
+	Assert::same("acme\\a::run(['a,b' => [1, 'c d']], \$x)", MemberPattern::canonicalizeKey("Acme\\A::run(['a,b' => [1,'c d']],\$x)"));
+	Assert::same('acme\a::run($x, $y)', MemberPattern::canonicalizeKey('Acme\A::run( $x ,$y)'));
+
+	$map = new Map(new Text, wildcards: false, canonicalize: MemberPattern::canonicalizeKey(...));
+	$pairs = [["Acme\\A::run('a  b')", "Acme\\A::run('a b')"], ["Acme\\A::run('a,b')", "Acme\\A::run('a, b')"]];
+	foreach ($pairs as [$first, $second]) {
+		$value = $map->accept([$first => 'x()', $second => 'y()'], 'x.y');
+		Assert::same([$first, $second], array_keys($value->getEntries()));
+
+		$merged = $map->merge($map->accept([$first => 'x()'], 'x.y'), $map->accept([$second => 'y()'], 'x.y'));
+		Assert::same([$first, $second], array_keys($merged->getEntries()));
+	}
+
+	Assert::exception(
+		fn() => $map->accept(['Acme\A::run( $x ,$y)' => 'x()', 'Acme\A::run($x, $y)' => 'y()'], 'x.y'),
+		ConfigurationException::class,
+		'Key `x.y` names %a% which are one name; keep one of them.',
+	);
 });

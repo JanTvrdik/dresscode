@@ -8,8 +8,9 @@
 namespace DressCode\Rules\Upgrading;
 
 use DressCode\Analyses\{Deprecation, Member, MemberKind, PhpDoc, Types};
-use DressCode\{CodeWriter, Decision, Domain, NodeRule, QualifiedNames, Risk, RuleContext, RuleInfo, Stage};
+use DressCode\{CodeWriter, Decision, Domain, NodeRule, QualifiedNames, Risk, RuleContext, RuleInfo, Stage, Values};
 use DressCode\Rules\NodeHelpers;
+use DressCode\Upgrading\{MemberMap, MemberMapGrammar};
 use PhpSyntax\Analyses\NameResolver;
 use PhpSyntax\{Node, Token};
 use PhpSyntax\Nodes\{ArgumentNode, NameNode};
@@ -24,12 +25,21 @@ use PhpSyntax\Nodes\Expression\{ClassConstantFetchNode, MethodCallNode, Property
  * a method every call of the deprecated one, and so is a static call whose replacement is a public static method of
  * another class, `Text::check($s)` becoming `Encoding::isValid($s)`, written with its class; the fix is risky, the
  * deprecation naming what to use and not saying it behaves alike. Any other is reported with what the deprecation says.
- * A use inside a declaration deprecated itself goes together with it and is not reported.
+ * A member the map of replacedMembers has is not reported, nor a use inside a declaration deprecated itself, which
+ * goes together with it.
  */
-#[RuleInfo(Stage::Structure, typesRequired: true, analyses: [Types::class, PhpDoc::class, NameResolver::class])]
+#[RuleInfo(
+	Stage::Structure,
+	typesRequired: true,
+	analyses: [Types::class, PhpDoc::class, NameResolver::class],
+	reads: [MemberMapGrammar::ReplacedMembers],
+)]
 final class NoDeprecatedMembersRule extends NodeRule
 {
 	private const Because = 'the deprecation names the replacement, not that it behaves alike';
+
+	/** @var MemberMap<mixed>  the map of replacedMembers */
+	private MemberMap $mapped;
 
 
 	public static function getDecisions(): array
@@ -39,6 +49,12 @@ final class NoDeprecatedMembersRule extends NodeRule
 			Domain::state(),
 			'A constant, method or property whose declaration is `@deprecated`, replaced by the member the deprecation names, reported where it names none',
 		)];
+	}
+
+
+	public function configure(Values $values): void
+	{
+		$this->mapped = MemberMap::fromValues($values, MemberMapGrammar::ReplacedMembers);
 	}
 
 
@@ -73,7 +89,12 @@ final class NoDeprecatedMembersRule extends NodeRule
 		}
 
 		$deprecation = $types->findDeprecation($member);
-		if ($deprecation === null || NodeHelpers::isInDeprecatedDeclaration($node, $context)) {
+		$access = $deprecation === null ? null : $types->findMemberAccess($node);
+		if (
+			$deprecation === null
+			|| ($access !== null && $this->mapped->has($access, $types))
+			|| NodeHelpers::isInDeprecatedDeclaration($node, $context)
+		) {
 			return;
 		}
 

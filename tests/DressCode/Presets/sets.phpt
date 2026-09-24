@@ -74,6 +74,7 @@ test('a decision is made by a set or a standard, or written by the project on pu
 		// the maps: a set lets the upgrading files of the packages in, a project writes its own
 		'upgrading.api.forbiddenClasses', 'upgrading.api.forbiddenConstants', 'upgrading.api.forbiddenFunctions',
 		'upgrading.api.replacedClasses', 'upgrading.api.replacedFunctions',
+		'upgrading.api.replacedMembers',
 	];
 
 	$made = array_flip(array_merge(...array_values($written)));

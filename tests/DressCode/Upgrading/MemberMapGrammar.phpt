@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-use DressCode\Upgrading\MemberMapGrammar;
+use DressCode\Upgrading\{MemberMap, MemberMapEntry, MemberMapGrammar, MemberPattern, MemberPatternKind};
 use Nette\Neon\Neon;
 use Nette\Schema\{Expect, Processor, ValidationException};
 use Tester\Assert;
@@ -77,6 +77,22 @@ test('a key that does not read as a member is an error that names it', function 
 	Assert::type(ValidationException::class, $e);
 	Assert::same(['dresscode.memberMap', 'dresscode.memberMap'], array_column($e->getMessageObjects(), 'code'));
 	Assert::exception(fn() => process('A::b: [1]'), ValidationException::class);
+});
+
+
+test('the entries are found by the name of the member in any letter case', function () {
+	$options = process("'A::old()': renamed\nA::\$old: \$new\nB::Old: other");
+	$map = MemberMap::fromEntries($options, fn(string $value, MemberPattern $pattern) => "$pattern->class: $value");
+	Assert::same(
+		[
+			[MemberPatternKind::Method, 'A: renamed'],
+			[MemberPatternKind::Property, 'A: $new'],
+			[MemberPatternKind::ConstantOrMethod, 'B: other'],
+		],
+		array_map(fn(MemberMapEntry $entry) => [$entry->pattern->kind, $entry->value], $map->getEntries('old')),
+	);
+	Assert::same($map->getEntries('old'), $map->getEntries('OLD'));
+	Assert::same([], $map->getEntries('new'));
 });
 
 
