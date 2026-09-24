@@ -1,0 +1,8 @@
+6: Class `Acme\Mail\ITransport` is deprecated: use Acme\Mail\Transport.
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike
+8: Class `Acme\Mail\IMessageRenderer` is deprecated: use MessageRenderer.
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike
+12: Class `Acme\Mail\ITransport` is deprecated: use Acme\Mail\Transport.
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike
+12: Class `Acme\Mail\IMessageRenderer` is deprecated: use MessageRenderer.
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike

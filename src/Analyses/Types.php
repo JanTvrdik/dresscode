@@ -848,6 +848,16 @@ final class Types implements PassAnalysis
 	}
 
 
+	/**
+	 * Whether the class only stands for the other one: it extends or implements it and declares nothing of its own, as
+	 * the declaration of an old name kept for a `class_alias()` does.
+	 */
+	public function isAlias(string $class, string $of): bool
+	{
+		return $this->declarations->isAlias($class, $of);
+	}
+
+
 	/** Whether PHP reads the class as an attribute, `#[\Attribute]` standing on it; maybe for a class nothing declares. */
 	public function isAttributeClass(string $class): Tristate
 	{

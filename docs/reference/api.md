@@ -184,6 +184,7 @@ final class Types implements DressCode\Analyses\PassAnalysis
 	public function canNameClass(string $name): bool
 	public function findFunctionName(string $name): ?string
 	public function isSubtype(string $class, string $ancestor): DressCode\Tristate
+	public function isAlias(string $class, string $of): bool
 	public function isAttributeClass(string $class): DressCode\Tristate
 	public function isInterface(string $class): DressCode\Tristate
 	public function isFinalClass(string $class): DressCode\Tristate
@@ -1127,6 +1128,7 @@ final readonly class Violation
 - `DressCode\Rules\Types\TypeDeclarationSpacingRule`
 - `DressCode\Rules\Types\TypeNotationRule`
 - `DressCode\Rules\Upgrading\ForbiddenSymbolsRule`
+- `DressCode\Rules\Upgrading\NoDeprecatedClassesRule`
 - `DressCode\Rules\Upgrading\NoDeprecatedMembersRule`
 - `DressCode\Rules\Upgrading\NoDeprecatedPhpArgumentsRule`
 - `DressCode\Rules\Upgrading\ReplacedClassesRule`

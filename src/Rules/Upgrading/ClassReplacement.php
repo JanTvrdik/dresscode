@@ -8,7 +8,7 @@
 namespace DressCode\Rules\Upgrading;
 
 use DressCode\Analyses\{PhpDoc, Types};
-use DressCode\{CodeWriter, QualifiedNames, RuleContext, Tristate};
+use DressCode\{CodeWriter, QualifiedNames, Risk, RuleContext, Tristate};
 use DressCode\Rules\Namespaces\NameReferences;
 use DressCode\Rules\NodeHelpers;
 use PHPStan\PhpDocParser\Lexer\Lexer;
@@ -22,7 +22,7 @@ use function count, strlen;
 
 
 /**
- * The rewrite replacedClasses makes: every reference of a class, interface or enum in a scope of
+ * What noDeprecatedClasses and replacedClasses share: every reference of a class, interface or enum in a scope of
  * imports rewritten to the name that replaces it, wherever the name stands, an import, a type, an instantiation,
  * a static access, an attribute. An import of the old name is rewritten in place where its alias or its short name goes on
  * naming the class, and the fully qualified references of the new class in the scope are then written by that name;
@@ -40,15 +40,21 @@ final class ClassReplacement
 	/**
 	 * Reports every reference of a class the closure has something to say about, and rewrites the ones it names
 	 * a replacement for and the report allows.
-	 * @param  \Closure(string): ?array{string, ?string}  $find  given a fully qualified class, the message and the class
-	 *   written instead, null for none; null for a class that is left alone
-	 * @param  \Closure(string): ?array{string, ?string}  $findInDocs  the same as `$find` for a class a doc comment names
+	 * @param  \Closure(string): ?array{0: string, 1: ?string, 2?: ?string}  $find  given a fully qualified class, the message,
+	 *   the class written instead, null for none, and why writing it may change what the code does, which makes the fix
+	 *   risky; null for a class that is left alone
+	 * @param  \Closure(string, Token, list<string>): (array{0: string, 1: ?string, 2?: ?string}|false|null)  $findInDocs
+	 *   the same as `$find` for a class a doc comment names, with the token holding the comment and the lowercased
+	 *   classes beside it in a union type, false for one that goes on naming the class and keeps its import
+	 * @param  ?\Closure(NameNode): bool  $keeps  whether the reference goes on naming the class, which nothing is said
+	 *   about and whose import stays with it
 	 */
 	public static function rewriteReferences(
 		FileNode|NamespaceNode $scope,
 		RuleContext $context,
 		\Closure $find,
 		\Closure $findInDocs,
+		?\Closure $keeps = null,
 	): void
 	{
 		// everything is found before anything is rewritten: a rewritten import changes what the names below it resolve to
@@ -58,9 +64,17 @@ final class ClassReplacement
 		foreach (self::findDocReferences($scope, $context) as [$token, $trivia, $tokens, $names]) {
 			$found = [];
 			foreach ($names as [$index, $class, $union]) {
-				$result = $findInDocs($class);
-				if ($result !== null) {
-					$found[] = [$index, ...$result, $result[1] !== null && in_array(strtolower($result[1]), $union, true)];
+				$result = $findInDocs($class, $token, $union);
+				if ($result === false) {
+					$kept[strtolower($class)] = true;
+				} elseif ($result !== null) {
+					$found[] = [
+						$index,
+						$result[0],
+						$result[1],
+						$result[2] ?? null,
+						$result[1] !== null && in_array(strtolower($result[1]), $union, true),
+					];
 				}
 			}
 
@@ -74,7 +88,7 @@ final class ClassReplacement
 			if ($item instanceof UseItemNode) {
 				$found = $item->symbolKind === SymbolKind::ClassLike ? $find($item->fullName) : null;
 				if ($found !== null) {
-					$imports[] = [$item, $item->fullName, ...$found];
+					$imports[] = [$item, $item->fullName, $found[0], $found[1], $found[2] ?? null];
 				}
 
 			} elseif ($name->symbolKind === SymbolKind::ClassLike && $name->isReference()) {
@@ -88,10 +102,10 @@ final class ClassReplacement
 				$refusal = $found === null || $found[1] === null ? null : self::findRefusal($name, $found[1], $types);
 				if ($found === null) {
 					continue;
-				} elseif (self::keepsAlive($name, $found[1], $resolver)) {
+				} elseif (($keeps !== null && $keeps($name)) || self::keepsAlive($name, $found[1], $resolver)) {
 					$kept[strtolower($class)] = true;
 				} else {
-					$references[] = [$name, ...$found, $refusal];
+					$references[] = [$name, $found[0], $found[1], $found[2] ?? null, $refusal];
 					if ($refusal !== null) {
 						$kept[strtolower($class)] = true; // the reference left as it is needs its import
 					}
@@ -99,10 +113,10 @@ final class ClassReplacement
 			}
 		}
 
-		foreach ($imports as [$item, $class, $message, $new]) {
+		foreach ($imports as [$item, $class, $message, $new, $because]) {
 			if (isset($kept[strtolower($class)])) {
 				continue; // the short name below goes on naming the class the import brings
-			} elseif (self::report($context, $item->name, $message, $new) && $new !== null) {
+			} elseif (self::report($context, $item->name, $message, $new, $because) && $new !== null) {
 				$local = self::replaceImport($item, $new, $context);
 				if ($local !== null) {
 					self::shortenFullyQualified($scope, $new, $local);
@@ -110,14 +124,14 @@ final class ClassReplacement
 			}
 		}
 
-		foreach ($references as [$name, $message, $new, $refusal]) {
+		foreach ($references as [$name, $message, $new, $because, $refusal]) {
 			$inList = self::findList($name);
 			$list = $inList[0] ?? null;
 			$named = $list === null || $new === null ? null : $lists[spl_object_id($list)] ?? [];
 			if ($refusal !== null) {
 				$context->report($name, $message . $refusal . '.', fixable: false);
 
-			} elseif (!self::report($context, $name, $message, $new) || $new === null) {
+			} elseif (!self::report($context, $name, $message, $new, $because) || $new === null) {
 				continue;
 
 			} elseif ($inList !== null && isset($named[strtolower($new)])) {
@@ -183,17 +197,17 @@ final class ClassReplacement
 	 * Reports every name of a doc comment, and writes the class that replaces it where the report allows, token by
 	 * token, so that the rest of the comment stays as it is written.
 	 * @param  list<array{string, int, int}>  $tokens
-	 * @param  list<array{int, string, ?string, bool}>  $found  per name the index of its token, the message, the class
-	 *   written instead and whether the union type it stands in names that class already
+	 * @param  list<array{int, string, ?string, ?string, bool}>  $found  per name the index of its token, the message, the class
+	 *   written instead, why writing it is risky and whether the union type it stands in names that class already
 	 */
 	private static function replaceInDocComment(Token $token, Trivia $trivia, array $tokens, array $found, RuleContext $context): void
 	{
 		$changed = false;
 		$unfixable = [];
-		foreach ($found as [$index, $message, $new, $named]) {
+		foreach ($found as [$index, $message, $new, $because, $named]) {
 			if ($new === null || $token->parent === null) {
 				$unfixable[] = $message; // reported once the comment is written, nothing changing after them
-			} elseif (!self::report($context, $token, $message, $new, $trivia)) {
+			} elseif (!self::report($context, $token, $message, $new, $because, $trivia)) {
 				continue;
 			} elseif ($named) {
 				foreach (self::findDocUnionSpan($tokens, $index) as $i) {
@@ -221,10 +235,24 @@ final class ClassReplacement
 	}
 
 
-	/** Reports the name, which the class written instead fixes. */
-	private static function report(RuleContext $context, Node|Token $at, string $message, ?string $new, ?Trivia $trivia = null): bool
+	/** Reports the name, which the class written instead fixes, risky where there is a reason it may change what the code does. */
+	private static function report(
+		RuleContext $context,
+		Node|Token $at,
+		string $message,
+		?string $new,
+		?string $because,
+		?Trivia $trivia = null,
+	): bool
 	{
-		return $context->report($at, $message . '.', trivia: $trivia, fixable: $new !== null);
+		return $context->report(
+			$at,
+			$message . '.',
+			trivia: $trivia,
+			risk: $because === null ? null : Risk::BehaviorChanges,
+			fixable: $new !== null,
+			because: $because,
+		);
 	}
 
 

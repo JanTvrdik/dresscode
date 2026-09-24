@@ -424,6 +424,7 @@ test('a class the process made an alias of at run time is deprecated by its own 
 	$types = new Analyses\Types($file, $path, new Analyses\PhpStan($root, ["$root/src", $path], "$dir/cache"));
 
 	Assert::equal(new Deprecation('use Current', 'Acme\Alias\Current'), $types->findClassDeprecation('Acme\Alias\Old'));
+	Assert::true($types->isAlias('Acme\Alias\Old', 'Acme\Alias\Current'));
 });
 
 

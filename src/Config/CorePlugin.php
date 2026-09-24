@@ -236,6 +236,7 @@ final class CorePlugin implements Plugin
 				Rules\Upgrading\ReplacedFunctionsRule::class,
 				Rules\Upgrading\ReplacedMembersRule::class,
 				Rules\Upgrading\ForbiddenSymbolsRule::class,
+				Rules\Upgrading\NoDeprecatedClassesRule::class,
 				Rules\Upgrading\NoDeprecatedMembersRule::class,
 				Rules\Upgrading\NoDeprecatedPhpArgumentsRule::class,
 				Rules\Variables\NoGlobalStatementsRule::class,

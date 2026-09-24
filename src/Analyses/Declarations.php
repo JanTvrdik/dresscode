@@ -293,6 +293,22 @@ final class Declarations
 	}
 
 
+	public function isAlias(string $class, string $of): bool
+	{
+		$reflection = $this->phpstan->findClass($class);
+		if ($reflection !== null && strcasecmp($reflection->getName(), $class) !== 0) {
+			return strcasecmp($reflection->getName(), $of) === 0; // an alias the process made at run time
+		}
+
+		$native = $reflection?->getNativeReflection()->getBetterReflection();
+		return $native !== null
+			&& $this->isSubtype($class, $of) === Tristate::Yes
+			&& $native->getImmediateMethods() === []
+			&& $native->getImmediateProperties() === []
+			&& $native->getImmediateConstants() === [];
+	}
+
+
 	public function isAttributeClass(string $class): Tristate
 	{
 		return self::toTristate($this->phpstan->findClass($class)?->isAttributeClass());
