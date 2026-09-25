@@ -376,6 +376,33 @@ final class Declarations
 	}
 
 
+	public function findFunctionDeprecation(string $function): ?Deprecation
+	{
+		$reflection = $this->phpstan->findFunction($function);
+		if (
+			$reflection === null
+			|| !$reflection->isDeprecated()->yes()
+			|| $this->phpstan->isAheadOfSupport($reflection->getFileName())
+		) {
+			return null;
+		}
+
+		$description = $reflection->getDeprecatedDescription() ?? '';
+		if (
+			$this->phpstan->isUnbounded($reflection->getFileName())
+			|| !preg_match('~^\\\\?(\w+(?:\\\\\w+)*)\(\)$~D', Deprecation::findReplacementCode($description) ?? '', $m)
+		) {
+			return new Deprecation($description);
+		}
+
+		$beside = ltrim(QualifiedNames::extractNamespace($reflection->getName()) . '\\' . $m[1], '\\');
+		$replacement = str_contains($m[1], '\\')
+			? $this->findFunctionName($m[1]) ?? $this->findFunctionName($beside)
+			: $this->findFunctionName($beside) ?? $this->findFunctionName($m[1]);
+		return new Deprecation($description, replacementName: $replacement, replacementIsCall: $replacement !== null);
+	}
+
+
 	public function findClassDeprecation(string $class): ?Deprecation
 	{
 		$reflection = $this->phpstan->findClass($class);

@@ -1,0 +1,2 @@
+7: Function `Acme\Text\format_old()` is deprecated: use format().
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike

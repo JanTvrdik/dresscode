@@ -1,0 +1,7 @@
+<?php
+// risky
+namespace App;
+
+use function Acme\Text\format_old;
+
+$a = \Acme\Text\format('x');

@@ -957,6 +957,17 @@ final class Types implements PassAnalysis
 
 
 	/**
+	 * What the declaration of the function, fully qualified in any letter case, says about its deprecation, as
+	 * `findClassDeprecation()` says it of a class; the replacement is the function its description names as a call,
+	 * `use format()`, fully qualified in its declared spelling.
+	 */
+	public function findFunctionDeprecation(string $function): ?Deprecation
+	{
+		return $this->declarations->findFunctionDeprecation($function);
+	}
+
+
+	/**
 	 * What the syntax of a member access says and the types add: the kind, the type of the receiver, the name as
 	 * written and the scope; null for a node that is no access, whose name is an expression or whose receiver is no object.
 	 * @return ?array{MemberKind, Type, string, Scope}

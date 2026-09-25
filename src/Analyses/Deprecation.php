@@ -23,7 +23,10 @@ final readonly class Deprecation
 		 * replacement then being a member of the same class; of a class, the class replacing it in its declared spelling
 		 */
 		public ?string $replacementClass = null,
-		/** name of the replacement member, without the parentheses of a method */
+		/**
+		 * name of the replacement member, without the parentheses of a method; of a function, the function replacing it,
+		 * fully qualified in its declared spelling
+		 */
 		public ?string $replacementName = null,
 		/** the replacement is written as a call */
 		public bool $replacementIsCall = false,

@@ -1,0 +1,18 @@
+<?php
+// risky
+namespace Acme\Text;
+
+$a = format('x');
+$b = \Acme\Text\format('x');
+$c = detect('x');
+$d = \Acme\Html\escape('x');
+$e = format('x');
+$f = format(...);
+$g = \strlen('x');
+
+
+/** @deprecated use something else */
+function wrap(string $s): string
+{
+	return format_old($s);
+}

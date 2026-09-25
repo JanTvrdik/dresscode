@@ -1,0 +1,9 @@
+5: Function `Acme\Text\format_old()` is deprecated: use format().
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike
+6: Function `Acme\Text\format_old()` is deprecated: use format().
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike
+7: Function `Acme\Text\detect()` is deprecated: the encoding is detected.
+8: Function `Acme\Text\escape_old()` is deprecated: use Acme\Html\escape().
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike
+10: Function `Acme\Text\format_old()` is deprecated: use format().
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike

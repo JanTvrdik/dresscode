@@ -12,6 +12,7 @@ upgrading:
 	declarations:
 		deprecatedClass: forbidden            # by what `@deprecated` names
 		deprecatedMember: forbidden
+		deprecatedFunction: forbidden
 	php:
 		nullArrayKey: forbidden               # `['' => 1]`, not `[null => 1]`, PHP 8.5
 		caseSemicolon: forbidden              # `case 1:`, not `case 1;`, PHP 8.5

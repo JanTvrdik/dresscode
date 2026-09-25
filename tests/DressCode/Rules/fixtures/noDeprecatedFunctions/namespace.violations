@@ -1,0 +1,3 @@
+6: Function `Acme\Text\format_old()` is deprecated: use format().
+	risky BehaviorChanges: the deprecation names the replacement, not that it behaves alike
+7: Function `App\strlen()` is deprecated: use run().

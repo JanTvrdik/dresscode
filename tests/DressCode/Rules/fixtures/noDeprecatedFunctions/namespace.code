@@ -1,0 +1,7 @@
+<?php
+namespace App;
+
+use function Acme\Text\format_old;
+
+$a = format_old('x');
+$b = strlen('x');

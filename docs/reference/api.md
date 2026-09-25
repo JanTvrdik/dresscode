@@ -193,6 +193,7 @@ final class Types implements DressCode\Analyses\PassAnalysis
 	public function isPlainProperty(PhpSyntax\Nodes\ExpressionNode $access): DressCode\Tristate
 	public function isStaticMethod(string $class, string $method): DressCode\Tristate
 	public function findClassDeprecation(string $class): ?DressCode\Analyses\Deprecation
+	public function findFunctionDeprecation(string $function): ?DressCode\Analyses\Deprecation
 ```
 
 ## `DressCode\Analyses\TypesUnavailableException`
@@ -1129,6 +1130,7 @@ final readonly class Violation
 - `DressCode\Rules\Types\TypeNotationRule`
 - `DressCode\Rules\Upgrading\ForbiddenSymbolsRule`
 - `DressCode\Rules\Upgrading\NoDeprecatedClassesRule`
+- `DressCode\Rules\Upgrading\NoDeprecatedFunctionsRule`
 - `DressCode\Rules\Upgrading\NoDeprecatedMembersRule`
 - `DressCode\Rules\Upgrading\NoDeprecatedPhpArgumentsRule`
 - `DressCode\Rules\Upgrading\ReplacedClassesRule`
