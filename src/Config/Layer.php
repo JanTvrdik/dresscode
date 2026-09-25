@@ -32,7 +32,10 @@ final readonly class Layer
 			LayerKind::Caller => 'the caller',
 			LayerKind::Override => "the override for $this->name",
 			LayerKind::Preset => (string) $this->name,
-			LayerKind::Package => "$this->name of $this->package",
+			LayerKind::Package => match (true) {
+				$this->package === null => (string) $this->name,
+				default => "$this->name of $this->package",
+			},
 		};
 	}
 
@@ -43,7 +46,9 @@ final readonly class Layer
 		return match ($this->kind) {
 			LayerKind::Override => 'the override for `' . str_replace(', ', '`, `', (string) $this->name) . '`',
 			LayerKind::Preset => "preset `$this->name`",
-			LayerKind::Package => "`$this->name` of `$this->package`",
+			LayerKind::Package => $this->name !== null && $this->package !== null
+				? "`$this->name` of `$this->package`"
+				: '`' . $this->describe() . '`',
 			default => $this->describe(),
 		};
 	}

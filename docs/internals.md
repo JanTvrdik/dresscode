@@ -18,10 +18,10 @@ Public:
 - `Upgrading\*`: the patterns of members and arguments the upgrading data are written in
 - `Stage`, `Severity`, `Tristate`, `Risk`, `DecisionKind`: the enums
 - `exceptions.php`, `Testing\exceptions.php`: the exceptions
-- `FileResult`: the result of a file
+- `FileResult`: the result of a file, which `Testing\UpgradingTester::runSample()` gives
 - `Console\Application`: a program embedding a run goes through it
 - `Analyses\*`, `Rules\*`: the analyses and the rules
-- `Testing\RuleTester`: the tester
+- `Testing\RuleTester`, `Testing\UpgradingTester`: the testers
 
 Internal:
 

@@ -105,6 +105,27 @@ final readonly class UpgradingFile
 
 
 	/**
+	 * Every section as it is written, the oldest first: its maps, the entries without the version `from` says their fix
+	 * is right from, and the requirements it turns on.
+	 * @return array<string, array{array<string, array<string, mixed>>, array<string, string>}>  version => maps, requirements
+	 */
+	public function getSections(): array
+	{
+		$versions = array_unique(array_map(strval(...), [...array_keys($this->sections), ...array_keys($this->requirements)]));
+		usort($versions, fn(string $a, string $b) => version_compare($a, $b));
+		$sections = [];
+		foreach ($versions as $version) {
+			$sections[$version] = [
+				array_map(fn(array $entries) => array_map(self::removeFrom(...), $entries), $this->sections[$version] ?? []),
+				$this->requirements[$version] ?? [],
+			];
+		}
+
+		return $sections;
+	}
+
+
+	/**
 	 * The data for code that must work with the versions of the constraint, null where any version does. An entry is
 	 * rewritten where the lowest version reaches its section, or the version `from` says its fix is right from, a later
 	 * section having the last word on it: every entry where any version does, none where there is no lower bound.

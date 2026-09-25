@@ -24,7 +24,7 @@ use function array_key_exists, is_array, is_string;
 final readonly class PackageDiscovery
 {
 	/** the keys of `extra.dresscode` a package may use */
-	private const Keys = ['upgrading-dir', 'plugin'];
+	public const Keys = ['upgrading-dir', 'plugin'];
 
 
 	private function __construct(
@@ -94,7 +94,7 @@ final readonly class PackageDiscovery
 	 * @return list<string>
 	 * @throws ConfigurationException  for a directory that is not there
 	 */
-	private static function findUpgradingFiles(string $path, array $extra, string $package): array
+	public static function findUpgradingFiles(string $path, array $extra, string $package): array
 	{
 		$dir = $extra['upgrading-dir'] ?? null;
 		if ($dir === null) {
