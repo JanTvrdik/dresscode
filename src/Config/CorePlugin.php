@@ -237,6 +237,7 @@ final class CorePlugin implements Plugin
 				Rules\Upgrading\ReplacedMembersRule::class,
 				Rules\Upgrading\ReplacedCallsRule::class,
 				Rules\Upgrading\ForbiddenSymbolsRule::class,
+				Rules\Upgrading\ForbiddenMembersRule::class,
 				Rules\Upgrading\NoDeprecatedClassesRule::class,
 				Rules\Upgrading\NoDeprecatedMembersRule::class,
 				Rules\Upgrading\NoDeprecatedFunctionsRule::class,
@@ -409,6 +410,16 @@ final class CorePlugin implements Plugin
 					new Map(new GrammarEntry, grammar: self::createForbiddenConstantsGrammar()),
 					'A global constant that may not be used, with what to do instead (`E_STRICT: "it no longer does anything"`)',
 				),
+				new Decision(
+					MemberMapGrammar::ForbiddenMembers,
+					new Map(
+						new GrammarEntry,
+						wildcards: false,
+						grammar: self::createForbiddenMembersGrammar(),
+						canonicalize: MemberPattern::canonicalizeKey(...),
+					),
+					'A constant, a method or a property that may not be used, with what to do instead',
+				),
 
 				// the newer constructs, decided once for every rule writing them
 				new Decision(
@@ -552,5 +563,14 @@ final class CorePlugin implements Plugin
 	{
 		return Expect::arrayOf(Expect::string()->nullable())
 			->description('The forbidden constant or a pattern with `*`, in its letter case, a name without a backslash meaning the global constant → what to do instead, as the end of the message, or null for none');
+	}
+
+
+	private static function createForbiddenMembersGrammar(): Schema
+	{
+		return MemberMapGrammar::createMapSchema(
+			Expect::string()->nullable(),
+			'The forbidden member, `Class::name` (a constant or a method), `Class::name(...$args)` (a method), `Class::$name` (a property), `Class::$name::get` or `::set` (a read or a write of it), `Class::__construct(...$args)`, or a call with the shape of its arguments, `Class::name()` being one without any → what to do instead, as the end of the message, or null for none',
+		);
 	}
 }

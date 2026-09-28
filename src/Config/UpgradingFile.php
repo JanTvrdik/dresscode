@@ -8,7 +8,7 @@
 namespace DressCode\Config;
 
 use DressCode\{ConfigurationException, Profile};
-use DressCode\Upgrading\MemberMapGrammar;
+use DressCode\Upgrading\{MemberMapGrammar, MemberPattern};
 use Nette\Neon\{Exception as NeonException, Neon};
 use function array_key_exists, is_array, is_string;
 
@@ -22,7 +22,7 @@ use function array_key_exists, is_array, is_string;
 final readonly class UpgradingFile
 {
 	/** the maps of what the code must not have, by which what a version above the lowest one retires is reported */
-	private const ForbiddenMaps = ['forbiddenClasses', 'forbiddenFunctions', 'forbiddenConstants'];
+	private const ForbiddenMaps = ['forbiddenClasses', 'forbiddenFunctions', 'forbiddenConstants', 'forbiddenMembers'];
 
 	private const SectionPattern = '~^since (\d+(?:\.\d+)*)$~D';
 	private const PackagePattern = '~^[a-z0-9_.-]+/[a-z0-9_.-]+$~D';
@@ -158,8 +158,8 @@ final readonly class UpgradingFile
 			}
 
 			if ($left !== [] && $constraint !== null && !Versions::isSubset($constraint, "<$since")) {
-				foreach (self::retire($left) as [$map, $key, $sentence]) {
-					$retired[$map][$key] = [$sentence, $since];
+				foreach (self::retire($left) as [$map, $key, $sentence, $version]) {
+					$retired[$map][$key] = [$sentence, $version ?? $since];
 				}
 			}
 		}
@@ -169,14 +169,14 @@ final readonly class UpgradingFile
 			foreach (array_keys($entries) as $key) {
 				$target = self::findForbidden($map, (string) $key);
 				if ($target !== null) {
-					$written[$target[0]][self::identify($target[1])] = true;
+					$written[$target[0]][self::identify(...$target)] = true;
 				}
 			}
 		}
 
 		foreach ($retired as $map => $entries) {
 			foreach ($entries as $key => [$sentence, $version]) {
-				if (!isset($written[$map][self::identify($key)])) {
+				if (!isset($written[$map][self::identify($map, $key)])) {
 					$maps[$map][$key] = $sentence;
 					$retirements[$map][$key] = $version;
 				}
@@ -197,16 +197,16 @@ final readonly class UpgradingFile
 	/**
 	 * What entries left above the lowest version say the code still meets on a version it may run on, as entries of the
 	 * forbidden maps (`findForbidden()`), since what they write instead is not there in the lowest one: what they forbid,
-	 * and what they replace, each with its sentence.
+	 * and what they replace, each with its sentence and the version it says, where that is not the one of its section.
 	 * @param  array<string, array<string, mixed>>  $section  map => its entries
-	 * @return list<array{string, string, ?string}>  forbidden map, key, sentence
+	 * @return list<array{string, string, ?string, ?string}>  forbidden map, key, sentence, version
 	 */
 	private static function retire(array $section): array
 	{
 		$retired = [];
 		foreach ($section as $map => $entries) {
 			foreach ($entries as $key => $value) {
-				$write = is_array($value) ? $value['write'] ?? null : $value;
+				[$write, $from] = is_array($value) ? [$value['write'] ?? null, $value['from'] ?? null] : [$value, null];
 				$target = self::findForbidden($map, (string) $key);
 				if ($target === null || $write === MemberMapGrammar::Keep) {
 					continue;
@@ -214,9 +214,10 @@ final readonly class UpgradingFile
 
 				[$forbidden, $name] = $target;
 				$retired[] = match (true) {
-					$map === $forbidden => [$forbidden, $name, $write],
-					is_string($write) => [$forbidden, $name, 'replaced by `' . ltrim($write, '\\') . '`'],
-					default => [$forbidden, $name, 'replaced'],
+					$map === $forbidden => [$forbidden, $name, $write, null],
+					$write === MemberMapGrammar::Removed => [$forbidden, $name, 'does nothing', $from],
+					is_string($write) => [$forbidden, $name, 'replaced by `' . ltrim($write, '\\') . '`', null],
+					default => [$forbidden, $name, 'replaced', null],
 				};
 			}
 		}
@@ -226,8 +227,9 @@ final readonly class UpgradingFile
 
 
 	/**
-	 * The forbidden map an entry of the map is reported by where it cannot be rewritten, and its key there; null for a
-	 * member, which has no forbidden map, and for the maps of plugins, which forbid nothing by themselves.
+	 * The forbidden map an entry of the map is reported by where it cannot be rewritten, and its key there: a call of
+	 * a member by the shape of its arguments as `forbiddenMembers` reads it; null for the maps of plugins, which forbid
+	 * nothing by themselves.
 	 * @return ?array{string, string}
 	 */
 	private static function findForbidden(string $map, string $key): ?array
@@ -236,6 +238,7 @@ final readonly class UpgradingFile
 			in_array($map, self::ForbiddenMaps, true) => [$map, $key],
 			$map === 'replacedClasses' => ['forbiddenClasses', $key],
 			$map === 'replacedFunctions' => ['forbiddenFunctions', $key],
+			$map === 'replacedMembers', $map === 'replacedCalls' => ['forbiddenMembers', $key],
 			default => null,
 		};
 	}
@@ -243,11 +246,17 @@ final readonly class UpgradingFile
 
 	/**
 	 * What the key of a forbidden map names whatever way it is written, so that one rewritten and one forbidden meet: a
-	 * class, a function and a constant by its name.
+	 * member by its class and name, a class, a function and a constant by its name.
 	 */
-	private static function identify(string $key): string
+	private static function identify(string $forbidden, string $key): string
 	{
-		return strtolower(ltrim($key, '\\'));
+		try {
+			$member = $forbidden === 'forbiddenMembers' ? MemberPattern::fromKey($key) : null;
+		} catch (\InvalidArgumentException) {
+			$member = null;
+		}
+
+		return strtolower($member === null ? ltrim($key, '\\') : "$member->class::$member->name");
 	}
 
 

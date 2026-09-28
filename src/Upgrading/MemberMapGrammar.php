@@ -33,6 +33,7 @@ final class MemberMapGrammar
 	public const ForbiddenClasses = 'upgrading.api.forbiddenClasses';
 	public const ForbiddenFunctions = 'upgrading.api.forbiddenFunctions';
 	public const ForbiddenConstants = 'upgrading.api.forbiddenConstants';
+	public const ForbiddenMembers = 'upgrading.api.forbiddenMembers';
 
 
 	/**

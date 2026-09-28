@@ -112,6 +112,7 @@ test('the upgrading data a package ships applies up to the lowest version requir
 				'Acme\Lib\Older' => 'replaced by `Acme\Lib\Renamed`',
 				'Acme\Lib\Newest' => 'replaced by `Acme\Lib\Future`',
 			],
+			'forbiddenMembers' => ['Acme\Lib\Renamed::old' => 'replaced by `renamed`'],
 		],
 		$data->maps,
 	);
@@ -122,6 +123,7 @@ test('the upgrading data a package ships applies up to the lowest version requir
 				'Acme\Lib\Older' => '3.0',
 				'Acme\Lib\Newest' => '3.5',
 			],
+			'forbiddenMembers' => ['Acme\Lib\Renamed::old' => '3.0'],
 		],
 		$data->retirements,
 	);
@@ -148,6 +150,9 @@ test('a section above the lowest version is reported where the constraint reache
 						Acme\Lib\helper: keep
 					replacedFunctions:
 						Acme\Lib\old_helper: {write: Acme\Lib\helper, from: '3.0'}
+					replacedCalls:
+						'Acme\Lib\Order::pay(true)': payNow()
+						'Acme\Lib\Order::flush()': {write: removed, from: '3.5'}
 
 				since 5.0:
 					replacedClasses:
@@ -157,24 +162,30 @@ test('a section above the lowest version is reported where the constraint reache
 		['require' => ['acme/lib' => '^3.2 || ^4.0']],
 	);
 
-	// what 3.0 rewrites is not reported again, an entry right from a version the code reaches is rewritten, and 5.0 lies
-	// above the constraint
+	// what 3.0 rewrites is not reported again, an entry right from a version the code reaches is rewritten, a call keeps
+	// the shape of its arguments, and 5.0 lies above the constraint
 	[$data] = PackageDiscovery::discover(ProjectPackages::read($root))->upgradingData;
 	Assert::same(
 		[
 			'replacedClasses' => ['Acme\Lib\Old' => 'Acme\Lib\Renamed'],
 			'replacedFunctions' => ['Acme\Lib\old_helper' => 'Acme\Lib\helper'],
 			'forbiddenClasses' => ['Acme\Lib\Gone' => null],
+			'forbiddenMembers' => ['Acme\Lib\Order::pay(true)' => 'replaced', 'Acme\Lib\Order::flush()' => 'does nothing'],
 		],
 		$data->maps,
 	);
 
-	// the sentence ends with the version that retired the entry, where the data are laid
+	// the sentence ends with the version that retired the entry, where the data are laid; one that does nothing since
+	// a version earlier than its section says that one
 	Assert::same(
 		[
 			'replacedClasses' => ['Acme\Lib\Old' => 'Acme\Lib\Renamed'],
 			'replacedFunctions' => ['Acme\Lib\old_helper' => 'Acme\Lib\helper'],
 			'forbiddenClasses' => ['Acme\Lib\Gone' => 'since acme/lib 4.0'],
+			'forbiddenMembers' => [
+				'Acme\Lib\Order::pay(true)' => 'replaced, since acme/lib 4.0',
+				'Acme\Lib\Order::flush()' => 'does nothing, since acme/lib 3.5',
+			],
 		],
 		$data->buildDecisions(fn(string $map) => $map),
 	);

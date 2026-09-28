@@ -895,6 +895,20 @@ final class Types implements PassAnalysis
 	}
 
 
+	/** Whether the class still has the member in any form, declared or magic as PHPStan sees it; a constructor where it has the class. */
+	public function knowsMember(string $class, MemberKind $kind, string $name): bool
+	{
+		$reflection = $this->phpstan->findClass($class);
+		return $reflection !== null && match ($kind) {
+			MemberKind::Constant => $reflection->hasConstant($name),
+			MemberKind::Method, MemberKind::StaticMethod => $reflection->hasMethod($name),
+			MemberKind::Property => $reflection->hasInstanceProperty($name),
+			MemberKind::StaticProperty => $reflection->hasStaticProperty($name),
+			MemberKind::Constructor => true,
+		};
+	}
+
+
 	/** Whether the project, its packages or PHP declare the global or namespaced constant, given its fully qualified name. */
 	public function knowsConstant(string $name): bool
 	{

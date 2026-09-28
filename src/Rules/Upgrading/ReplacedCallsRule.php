@@ -79,7 +79,7 @@ use function count;
 	Stage::Structure,
 	typesRequired: true,
 	decisions: ['upgrading.packages', 'upgrading.api.replacedCalls'],
-	reads: [MemberMapGrammar::ReplacedMembers],
+	reads: [MemberMapGrammar::ReplacedMembers, MemberMapGrammar::ForbiddenMembers],
 	analyses: [Types::class, NameResolver::class],
 )]
 final class ReplacedCallsRule extends NodeRule
@@ -92,11 +92,15 @@ final class ReplacedCallsRule extends NodeRule
 	/** @var MemberMap<mixed>  which renames a member a callable reaches, its arguments being no shape to bind */
 	private MemberMap $replacedMembers;
 
+	/** @var MemberMap<mixed>  whose property is not what a magic method stands for */
+	private MemberMap $forbiddenMembers;
+
 
 	public function configure(Values $values): void
 	{
 		$this->map = MemberMap::fromValues($values, self::Map, CallTemplate::fromEntry(...));
 		$this->replacedMembers = MemberMap::fromValues($values, MemberMapGrammar::ReplacedMembers);
+		$this->forbiddenMembers = MemberMap::fromValues($values, MemberMapGrammar::ForbiddenMembers);
 	}
 
 
@@ -570,6 +574,10 @@ final class ReplacedCallsRule extends NodeRule
 					new ArgumentBindings($bound === null ? [] : ['value' => $bound]),
 					$arguments,
 				];
+			}
+
+			if ($this->forbiddenMembers->has($access, $types)) {
+				return null; // a property forbiddenMembers names is not what a magic method stands for
 			}
 		}
 

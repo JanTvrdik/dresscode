@@ -94,7 +94,7 @@ final class NoDeprecatedClassesRule extends NodeRule
 			$node,
 			$context,
 			$find,
-			fn(string $class, Token $token, array $union) => match (true) {
+			fn(string $class, ?array $member, Token $token, array $union) => match (true) {
 				($found = $find($class)) === null || $found[1] === null => null,
 				NodeHelpers::isInDeprecatedDeclaration($token, $context),
 				in_array(strtolower($found[1]), $union, true) => false,

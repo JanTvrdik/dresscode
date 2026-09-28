@@ -65,7 +65,7 @@ test('what the maps refuse is said with the map, in whatever section it stands',
 		check("package: acme/lib\n\nsince 9.0:\n\treplacedMembers:\n\t\tAcme\\Lib\\Form::\$legacy: items\n")[0],
 	);
 	Assert::same(
-		['`since 3.0`: Unknown map `replacedThings`; an upgrading file holds `replacedClasses`, `replacedFunctions`, `replacedMembers`, `replacedCalls`, `forbiddenClasses`, `forbiddenFunctions`, `forbiddenConstants` and the maps of the rules of its package by the paths of their decisions.'],
+		['`since 3.0`: Unknown map `replacedThings`; an upgrading file holds `replacedClasses`, `replacedFunctions`, `replacedMembers`, `replacedCalls`, `forbiddenClasses`, `forbiddenFunctions`, `forbiddenConstants`, `forbiddenMembers` and the maps of the rules of its package by the paths of their decisions.'],
 		check("package: acme/lib\n\nsince 3.0:\n\treplacedThings:\n\t\tA: B\n"),
 	);
 	Assert::same(
@@ -232,6 +232,8 @@ test('a forbidden map of a package must give every entry a sentence', function (
 			forbiddenClasses:
 				Acme\Lib\IOldest:
 				Acme\Lib\IControl: there is no replacement
+			forbiddenMembers:
+				Acme\Lib\Form::$legacy:
 			forbiddenFunctions:
 				acme_old:
 				acme_make: 'use `Acme\Lib\Helpers::create()`'
@@ -241,10 +243,14 @@ test('a forbidden map of a package must give every entry a sentence', function (
 		$problems,
 	);
 	Assert::contains(
+		'`since 3.0`: `forbiddenMembers`: The entry `Acme\Lib\Form::$legacy` must give a sentence saying what to write instead.',
+		$problems,
+	);
+	Assert::contains(
 		'`since 3.0`: `forbiddenFunctions`: The entry `acme_old` must give a sentence saying what to write instead.',
 		$problems,
 	);
-	Assert::count(2, array_filter($problems, fn(string $problem) => str_contains($problem, 'must give a sentence')));
+	Assert::count(3, array_filter($problems, fn(string $problem) => str_contains($problem, 'must give a sentence')));
 });
 
 
@@ -261,6 +267,9 @@ test('what the data of a package forbid is deprecated where the installed code s
 		package: acme/lib
 
 		since 3.0:
+			forbiddenMembers:
+				Acme\Lib\Form::redraw: there is no replacement
+				Acme\Lib\Form::refresh: there is no replacement
 			forbiddenClasses:
 				Acme\Lib\Gone: there is no replacement
 			forbiddenFunctions:
@@ -271,12 +280,19 @@ test('what the data of a package forbid is deprecated where the installed code s
 		<?php
 
 		namespace Acme\Lib {
+			class Form
+			{
+				public function redraw(): void {}
+			}
+
 			function acme_kept(): void {}
 		}
 
 		namespace App {
-			function run(): void
+			function run(\Acme\Lib\Form $form): void
 			{
+				$form->redraw();
+				$form->refresh();
 				new \Acme\Lib\Gone;
 				\Acme\Lib\acme_kept();
 				acme_gone();
@@ -290,6 +306,8 @@ test('what the data of a package forbid is deprecated where the installed code s
 	$messages = array_map(fn($violation) => $violation->message, UpgradingTester::runSample($code, $root, $decisions)->violations);
 	Assert::same(
 		[
+			'Method `Acme\Lib\Form::redraw()` is deprecated: there is no replacement, since acme/lib 3.0.',
+			'Method `Acme\Lib\Form::refresh()` is removed: there is no replacement, since acme/lib 3.0.',
 			'Class `Acme\Lib\Gone` is removed: there is no replacement, since acme/lib 3.0.',
 			'Function `Acme\Lib\acme_kept()` is deprecated: there is no replacement, since acme/lib 3.0.',
 			'Function `acme_gone()` is removed: there is no replacement, since acme/lib 3.0.',
@@ -297,4 +315,58 @@ test('what the data of a package forbid is deprecated where the installed code s
 		],
 		$messages,
 	);
+});
+
+
+test('a sample reads its classes from its own code, not from those of a sample run before, and leaves no file', function () {
+	$root = createTempDir('upgrading-sample');
+	FileSystem::write(
+		"$root/composer.json",
+		'{"name": "acme/rules", "require-dev": {"acme/lib": "^3.0"}, "extra": {"dresscode": {"upgrading-dir": "upgrading"}}}',
+	);
+	FileSystem::write("$root/vendor/composer/installed.json", json_encode(['packages' => [
+		['name' => 'acme/lib', 'version' => 'v3.2.0', 'version_normalized' => '3.2.0.0', 'install-path' => '../acme/lib'],
+	]], JSON_THROW_ON_ERROR));
+	FileSystem::write("$root/upgrading/lib.neon", <<<'XX'
+		package: acme/lib
+
+		since 3.0:
+			forbiddenMembers:
+				Acme\Lib\Control::$limit: there is no replacement
+		XX);
+	$implementing = <<<'XX'
+		<?php
+
+		namespace Acme\Lib {
+			interface Control {}
+		}
+
+		namespace App {
+			class Job implements \Acme\Lib\Control {}
+		}
+		XX;
+	$own = <<<'XX'
+		<?php
+
+		namespace Acme\Lib {
+			interface Control {}
+		}
+
+		namespace App {
+			class Job {}
+
+			function run(Job $job): mixed
+			{
+				return $job->limit;
+			}
+		}
+		XX;
+	$run = fn(string $code, string $name) => UpgradingTester::runSample($code, $root, name: $name)->violations;
+
+	// the class of the sample implements nothing, whichever sample ran before
+	$run($implementing, 'a');
+	Assert::same([], $run($own, 'b'));
+	$run($implementing, 'c');
+	Assert::same([], $run($own, 'b'));
+	Assert::same([], glob("$root/temp/*"));
 });

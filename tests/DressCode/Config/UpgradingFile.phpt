@@ -20,19 +20,28 @@ test('what a section reached rewrites is not reported again, however its key is 
 		package: acme/lib
 
 		since 3.0:
-			replacedFunctions:
-				acme_close: acme_shut
+			replacedMembers:
+				'Acme\Lib\Order::pay()': settle
 
 		since 4.0:
+			forbiddenMembers:
+				Acme\Lib\Order::pay: gone
+				Acme\Lib\Order::refund: gone
 			forbiddenFunctions:
-				\Acme_Close: gone
 				\Acme_Open: gone
 		XX);
 
 	$data = $upgrading->selectFor('^3.2 || ^4.0', new Layer(LayerKind::Package, 'upgrading.neon', 'acme/lib'));
 	Assert::same(
-		['replacedFunctions' => ['acme_close' => 'acme_shut'], 'forbiddenFunctions' => ['\Acme_Open' => 'gone']],
+		[
+			'replacedMembers' => ['Acme\Lib\Order::pay()' => 'settle'],
+			'forbiddenMembers' => ['Acme\Lib\Order::refund' => 'gone'],
+			'forbiddenFunctions' => ['\Acme_Open' => 'gone'],
+		],
 		$data->maps,
 	);
-	Assert::same(['forbiddenFunctions' => ['\Acme_Open' => '4.0']], $data->retirements);
+	Assert::same(
+		['forbiddenMembers' => ['Acme\Lib\Order::refund' => '4.0'], 'forbiddenFunctions' => ['\Acme_Open' => '4.0']],
+		$data->retirements,
+	);
 });

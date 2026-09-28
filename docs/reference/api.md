@@ -189,6 +189,7 @@ final class Types implements DressCode\Analyses\PassAnalysis
 	public function isInterface(string $class): DressCode\Tristate
 	public function isFinalClass(string $class): DressCode\Tristate
 	public function hasMember(string $class, DressCode\Analyses\MemberKind $kind, string $name): bool
+	public function knowsMember(string $class, DressCode\Analyses\MemberKind $kind, string $name): bool
 	public function knowsConstant(string $name): bool
 	public function isPlainProperty(PhpSyntax\Nodes\ExpressionNode $access): DressCode\Tristate
 	public function isStaticMethod(string $class, string $method): DressCode\Tristate
@@ -816,9 +817,9 @@ final readonly class ArgumentPatternItem
 /** @template T */
 final readonly class MemberMap
 	/** @template V */
-	public static function fromValues(DressCode\Values $values, string $path, ?Closure(mixed, DressCode\Upgrading\MemberPattern): V $convert = null): ($convert is null ? DressCode\Upgrading\MemberMap<mixed> : DressCode\Upgrading\MemberMap<V>)
+	public static function fromValues(DressCode\Values $values, string $path, ?Closure(mixed, DressCode\Upgrading\MemberPattern, string): V $convert = null): ($convert is null ? DressCode\Upgrading\MemberMap<mixed> : DressCode\Upgrading\MemberMap<V>)
 	/** @template V */
-	public static function fromEntries(array<string, mixed> $entries, Closure(mixed, DressCode\Upgrading\MemberPattern): V $convert): DressCode\Upgrading\MemberMap<V>
+	public static function fromEntries(array<string, mixed> $entries, Closure(mixed, DressCode\Upgrading\MemberPattern, string): V $convert): DressCode\Upgrading\MemberMap<V>
 	public function getEntries(string $name): list<DressCode\Upgrading\MemberMapEntry<T>>
 	public function has(DressCode\Analyses\MemberAccess $access, DressCode\Analyses\Types $types): bool
 	public function findAccess(DressCode\Analyses\MemberAccess $access, DressCode\Analyses\Types $types, ?PhpSyntax\Nodes\ArgumentListNode $arguments = null, ?list<DressCode\Analyses\Parameter> $parameters = null): ?DressCode\Upgrading\MemberMapMatch<T>
@@ -850,6 +851,7 @@ final class MemberMapGrammar
 	public const ForbiddenClasses = 'upgrading.api.forbiddenClasses'
 	public const ForbiddenFunctions = 'upgrading.api.forbiddenFunctions'
 	public const ForbiddenConstants = 'upgrading.api.forbiddenConstants'
+	public const ForbiddenMembers = 'upgrading.api.forbiddenMembers'
 	public static function createMapSchema(Nette\Schema\Schema $value, string $description, ?Closure(mixed, DressCode\Upgrading\MemberPattern): mixed $convert = null): Nette\Schema\Elements\Type
 	public static function createCodeSchema(): Nette\Schema\Elements\AnyOf
 ```
@@ -879,7 +881,9 @@ final readonly class MemberPattern
 	public static function forMethod(string $class, string $name, ?DressCode\Upgrading\ArgumentPattern $arguments = null): DressCode\Upgrading\MemberPattern
 	public function matches(DressCode\Analyses\MemberAccess $access, DressCode\Analyses\Types $types): bool
 	public function bind(DressCode\Analyses\MemberAccess $access, PhpSyntax\Nodes\ArgumentListNode $arguments, ?list<DressCode\Analyses\Parameter> $parameters, DressCode\Analyses\Types $types): ?DressCode\Upgrading\ArgumentBindings
+	public function matchesHook('get'|'set'|'isset'|'unset' $use): bool
 	public function matchesMethodDeclaration(string $declaringClass, string $method, DressCode\Analyses\Types $types): bool
+	public function matchesPropertyDeclaration(string $declaringClass, string $property, DressCode\Analyses\Types $types): bool
 	public function takesAnyArguments(): bool
 	public function compareSpecificity(DressCode\Upgrading\MemberPattern $other): int
 	public function getArgumentPattern(): DressCode\Upgrading\ArgumentPattern
@@ -1146,6 +1150,7 @@ final readonly class Violation
 - `DressCode\Rules\Types\NullableTypeForDefaultNullRule`
 - `DressCode\Rules\Types\TypeDeclarationSpacingRule`
 - `DressCode\Rules\Types\TypeNotationRule`
+- `DressCode\Rules\Upgrading\ForbiddenMembersRule`
 - `DressCode\Rules\Upgrading\ForbiddenSymbolsRule`
 - `DressCode\Rules\Upgrading\NoDeprecatedClassesRule`
 - `DressCode\Rules\Upgrading\NoDeprecatedFunctionsRule`

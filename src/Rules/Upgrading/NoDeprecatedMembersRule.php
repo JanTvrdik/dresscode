@@ -25,13 +25,13 @@ use PhpSyntax\Nodes\Expression\{ClassConstantFetchNode, MethodCallNode, Property
  * a method every call of the deprecated one, and so is a static call whose replacement is a public static method of
  * another class, `Text::check($s)` becoming `Encoding::isValid($s)`, written with its class; the fix is risky, the
  * deprecation naming what to use and not saying it behaves alike. Any other is reported with what the deprecation says.
- * A member the maps of replacedMembers or replacedCalls have is not reported, nor a use inside a declaration deprecated
- * itself, which goes together with it.
+ * A member the maps of replacedMembers, replacedCalls or forbiddenMembers have is not reported, nor a use inside
+ * a declaration deprecated itself, which goes together with it.
  */
 #[RuleInfo(Stage::Structure, typesRequired: true, analyses: [Types::class, PhpDoc::class, NameResolver::class], reads: self::Maps)]
 final class NoDeprecatedMembersRule extends NodeRule
 {
-	private const Maps = [MemberMapGrammar::ReplacedMembers, MemberMapGrammar::ReplacedCalls];
+	private const Maps = [MemberMapGrammar::ReplacedMembers, MemberMapGrammar::ReplacedCalls, MemberMapGrammar::ForbiddenMembers];
 	private const Because = 'the deprecation names the replacement, not that it behaves alike';
 
 	/** @var list<MemberMap<mixed>>  every map of members */

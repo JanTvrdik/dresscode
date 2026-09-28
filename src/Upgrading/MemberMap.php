@@ -35,7 +35,7 @@ final readonly class MemberMap
 	 * The map of the decision as the project resolved it, with what the rule keeps of each value; without `$convert` the
 	 * value as the grammar reads it.
 	 * @template V
-	 * @param  ?\Closure(mixed, MemberPattern): V  $convert
+	 * @param  ?\Closure(mixed, MemberPattern, string): V  $convert  given the value, the pattern and the key as written
 	 * @return ($convert is null ? self<mixed> : self<V>)
 	 */
 	public static function fromValues(Values $values, string $path, ?\Closure $convert = null): self
@@ -47,7 +47,7 @@ final readonly class MemberMap
 	/**
 	 * @template V
 	 * @param  array<string, mixed>  $entries  as `Values::readMap()` gives them
-	 * @param  \Closure(mixed, MemberPattern): V  $convert  what the rule keeps of a value
+	 * @param  \Closure(mixed, MemberPattern, string): V  $convert  what the rule keeps of a value, given also the key as written
 	 * @return self<V>
 	 */
 	public static function fromEntries(array $entries, \Closure $convert): self
@@ -55,7 +55,7 @@ final readonly class MemberMap
 		$byName = [];
 		foreach ($entries as $key => $value) {
 			$pattern = MemberPattern::fromKey((string) $key);
-			$byName[$pattern->getLookupName()][] = new MemberMapEntry($pattern, $convert($value, $pattern));
+			$byName[$pattern->getLookupName()][] = new MemberMapEntry($pattern, $convert($value, $pattern, (string) $key));
 		}
 
 		return new self($byName);
