@@ -1,0 +1,34 @@
+<?php
+// {"api": {"replacedCalls": {"Acme\\Pool::close()": "removed", "Acme\\Pool::flush($all)": {"write": "clear()", "because": "an old build keeps what it flushes"}}}}
+// risky
+
+namespace App;
+
+use Acme\Pool;
+
+function test(Pool $pool, bool $on): void
+{
+	// a call standing as a statement goes with it
+	$pool->close();
+	$pool->close();
+
+	// what it is made on would no longer be evaluated
+	create()->close();
+
+	// its value is used
+	$closed = $pool->close();
+
+	// the body of a construct without braces has no list to leave
+	if ($on) $pool->close();
+
+	$pool->close(/* now */);
+
+	// what may go wrong is said by the map
+	$pool->flush(true);
+}
+
+
+function create(): Pool
+{
+	return new Pool;
+}

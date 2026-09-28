@@ -194,3 +194,21 @@ class KernelCase
 		return new \stdClass;
 	}
 }
+
+
+class Pool
+{
+	public function close(): void
+	{
+	}
+
+
+	public function flush(bool $all): void
+	{
+	}
+
+
+	public function clear(): void
+	{
+	}
+}

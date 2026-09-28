@@ -1,0 +1,8 @@
+12: Method `Acme\Pool::close()` does nothing.
+13: Method `Acme\Pool::close()` does nothing.
+16: Method `Acme\Pool::close()` does nothing, but what it evaluates may do something.
+19: Method `Acme\Pool::close()` does nothing, but its value is used.
+22: Method `Acme\Pool::close()` does nothing, but it is the body of a construct without braces.
+24: Method `Acme\Pool::close()` does nothing, but a comment stands in it.
+27: Method `Acme\Pool::flush()` is replaced by `clear()`.
+	risky BehaviorChanges: an old build keeps what it flushes

@@ -522,9 +522,13 @@ final class CorePlugin implements Plugin
 
 	private static function createReplacedCallsGrammar(): Schema
 	{
+		$write = Expect::anyOf(MemberMapGrammar::Removed, MemberMapGrammar::createCodeSchema());
 		return MemberMapGrammar::createMapSchema(
-			MemberMapGrammar::createCodeSchema(),
-			'The replaced use, `Class::name($a, true)`, `Class::name(...$args)` with any arguments, `Class::name()` without any, `Class::__construct($a)`, `Class::$name::get`, `Class::$name::set` or a magic method for the syntax PHP calls it by → the expression written instead, with the placeholders of the key, `$value` what is assigned',
+			Expect::anyOf(
+				$write,
+				Expect::structure(['write' => (clone $write)->required(), 'because' => Expect::string()])->castTo('array'),
+			),
+			'The replaced use, `Class::name($a, true)`, `Class::name(...$args)` with any arguments, `Class::name()` without any, `Class::__construct($a)`, `Class::$name::get`, `Class::$name::set` or a magic method for the syntax PHP calls it by → the expression written instead, with the placeholders of the key, `$value` what is assigned, or `removed` for a call of a method that does nothing; `{write: …, because: …}` where the rewrite may change what the code does',
 			CallTemplate::fromEntry(...),
 		)->transform(CallTemplate::checkCycles(...));
 	}

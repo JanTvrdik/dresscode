@@ -22,6 +22,9 @@ final class MemberMapGrammar
 	/** The value by which a later layer of the configuration withdraws an entry of an earlier one. */
 	public const Keep = 'keep';
 
+	/** The value of replacedCalls by which a call that does nothing is taken away with its statement. */
+	public const Removed = 'removed';
+
 	/** the paths of the maps of `upgrading.api` */
 	public const ReplacedClasses = 'upgrading.api.replacedClasses';
 	public const ReplacedFunctions = 'upgrading.api.replacedFunctions';

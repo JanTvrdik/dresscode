@@ -842,6 +842,7 @@ final readonly class MemberMapEntry
 ```php
 final class MemberMapGrammar
 	public const Keep = 'keep'
+	public const Removed = 'removed'
 	public const ReplacedClasses = 'upgrading.api.replacedClasses'
 	public const ReplacedFunctions = 'upgrading.api.replacedFunctions'
 	public const ReplacedMembers = 'upgrading.api.replacedMembers'

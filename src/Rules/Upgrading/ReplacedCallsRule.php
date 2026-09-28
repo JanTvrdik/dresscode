@@ -68,7 +68,12 @@ use function count;
  * evaluates one only sometimes, not at all, or two of them in another order, the use is risky unless evaluating
  * the argument does nothing; where it would evaluate one twice, the use is reported and left as it is. A method
  * a child declares under the name of a key that takes any arguments is reported too: the method is replaced as
- * a whole there, and a declaration is nothing an expression could stand for.
+ * a whole there, and a declaration is nothing an expression could stand for. A value written `{write: …, because: …}`
+ * makes the rewrite risky for the reason the map gives.
+ *
+ * The value `removed` takes a call of a method that does nothing away with its statement, where neither what it is
+ * made on nor its arguments would do anything when evaluated; a call whose value is used, one that is the body of
+ * a construct without braces and one holding a comment are only reported.
  */
 #[RuleInfo(
 	Stage::Structure,
@@ -98,6 +103,7 @@ final class ReplacedCallsRule extends NodeRule
 	public function getVisitedNodes(): array
 	{
 		return [
+			ExpressionStatementNode::class,
 			MethodCallNode::class,
 			StaticMethodCallNode::class,
 			NewNode::class,
@@ -116,6 +122,13 @@ final class ReplacedCallsRule extends NodeRule
 
 	public function enter(Node|Token $node, RuleContext $context): void
 	{
+		// an expression standing as a statement is taken with the statement, which removing a call takes out
+		if ($node->parent instanceof ExpressionStatementNode) {
+			return;
+		} elseif ($node instanceof ExpressionStatementNode) {
+			$node = $node->expression;
+		}
+
 		match (true) {
 			$node instanceof MethodCallNode, $node instanceof StaticMethodCallNode, $node instanceof NewNode => $this->enterCall(
 				$node,
@@ -152,6 +165,12 @@ final class ReplacedCallsRule extends NodeRule
 		[$pattern, $template] = [$found->entry->pattern, $found->entry->value];
 		[$bindings, $access] = [$found->bindings, $found->access];
 		assert($bindings !== null);
+		if ($template->removesCall()) {
+			assert(!$node instanceof NewNode); // only a method is removed
+			$template->removeCall($node, $pattern->describeAccess($access, $node), $context);
+			return;
+		}
+
 		$types = $context->getAnalysis(Types::class);
 		$arguments = $node->arguments ?? (new Builder)->arguments([]);
 		$rewrite = match (true) {

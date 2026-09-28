@@ -55,6 +55,11 @@ test('an expression that cannot stand for a call of its key is an error of the c
 			'The code `isPaid(...)` writes `...`, which the key `A\\Order::paid` does not take.',
 		],
 		['A\Order::add::get', 'addLine()', 'The member `A\\Order::add::get` names a hook, which only a property has, %a%'],
+		[
+			'A\Order::__construct($a)',
+			'removed',
+			'The use of `A\\Order::__construct` cannot be removed: only a call of a method can, which does nothing.',
+		],
 	];
 	foreach ($errors as [$key, $code, $message]) {
 		$e = Assert::exception(
