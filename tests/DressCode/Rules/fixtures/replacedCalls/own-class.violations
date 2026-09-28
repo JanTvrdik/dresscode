@@ -1,0 +1,7 @@
+83: Property `App\Container::$parameters` is replaced by `getParameters()`.
+83: Method `App\Container::getService()` is replaced by `get($name)`.
+90: Property `App\Container::$parameters` is replaced by `getParameters()`.
+91: Property `App\Container::$parameters` is replaced by `setParameters($value)`.
+92: Method `App\Container::getService()` is replaced by `get($name)`.
+93: Method `App\Container::old()` is replaced by `newer(...$args)`, but no expression stands for a callable value.
+94: Method `App\Bag::__get()` is replaced by `get($name)`.

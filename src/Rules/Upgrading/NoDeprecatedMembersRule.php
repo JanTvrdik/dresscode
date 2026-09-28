@@ -25,21 +25,17 @@ use PhpSyntax\Nodes\Expression\{ClassConstantFetchNode, MethodCallNode, Property
  * a method every call of the deprecated one, and so is a static call whose replacement is a public static method of
  * another class, `Text::check($s)` becoming `Encoding::isValid($s)`, written with its class; the fix is risky, the
  * deprecation naming what to use and not saying it behaves alike. Any other is reported with what the deprecation says.
- * A member the map of replacedMembers has is not reported, nor a use inside a declaration deprecated itself, which
- * goes together with it.
+ * A member the maps of replacedMembers or replacedCalls have is not reported, nor a use inside a declaration deprecated
+ * itself, which goes together with it.
  */
-#[RuleInfo(
-	Stage::Structure,
-	typesRequired: true,
-	analyses: [Types::class, PhpDoc::class, NameResolver::class],
-	reads: [MemberMapGrammar::ReplacedMembers],
-)]
+#[RuleInfo(Stage::Structure, typesRequired: true, analyses: [Types::class, PhpDoc::class, NameResolver::class], reads: self::Maps)]
 final class NoDeprecatedMembersRule extends NodeRule
 {
+	private const Maps = [MemberMapGrammar::ReplacedMembers, MemberMapGrammar::ReplacedCalls];
 	private const Because = 'the deprecation names the replacement, not that it behaves alike';
 
-	/** @var MemberMap<mixed>  the map of replacedMembers */
-	private MemberMap $mapped;
+	/** @var list<MemberMap<mixed>>  every map of members */
+	private array $mapped;
 
 
 	public static function getDecisions(): array
@@ -54,7 +50,7 @@ final class NoDeprecatedMembersRule extends NodeRule
 
 	public function configure(Values $values): void
 	{
-		$this->mapped = MemberMap::fromValues($values, MemberMapGrammar::ReplacedMembers);
+		$this->mapped = array_map(fn(string $path) => MemberMap::fromValues($values, $path), self::Maps);
 	}
 
 
@@ -92,7 +88,7 @@ final class NoDeprecatedMembersRule extends NodeRule
 		$access = $deprecation === null ? null : $types->findMemberAccess($node);
 		if (
 			$deprecation === null
-			|| ($access !== null && $this->mapped->has($access, $types))
+			|| ($access !== null && array_any($this->mapped, fn(MemberMap $map) => $map->has($access, $types)))
 			|| NodeHelpers::isInDeprecatedDeclaration($node, $context)
 		) {
 			return;

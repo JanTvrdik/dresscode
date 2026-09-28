@@ -10,7 +10,7 @@ namespace DressCode\Config;
 use DressCode\Analyses\IndentationPlan;
 use DressCode\{Decision, DecisionKind, Domain, Plugin, PluginManifest, Rules};
 use DressCode\Domains\{Count, Flag, GrammarEntry, Map, Names, Shapes, Words};
-use DressCode\Rules\Upgrading\MemberTarget;
+use DressCode\Rules\Upgrading\{CallTemplate, MemberTarget};
 use DressCode\Upgrading\{MemberMapGrammar, MemberPattern};
 use Nette\Schema\{Context, Expect, Schema};
 use function dirname;
@@ -235,6 +235,7 @@ final class CorePlugin implements Plugin
 				Rules\Upgrading\ReplacedClassesRule::class,
 				Rules\Upgrading\ReplacedFunctionsRule::class,
 				Rules\Upgrading\ReplacedMembersRule::class,
+				Rules\Upgrading\ReplacedCallsRule::class,
 				Rules\Upgrading\ForbiddenSymbolsRule::class,
 				Rules\Upgrading\NoDeprecatedClassesRule::class,
 				Rules\Upgrading\NoDeprecatedMembersRule::class,
@@ -384,6 +385,16 @@ final class CorePlugin implements Plugin
 					'A constant, a method or a property written instead of another one of the class (`Acme\\Mail\\Mailer::send(): sendMessage()`)',
 				),
 				new Decision(
+					MemberMapGrammar::ReplacedCalls,
+					new Map(
+						new GrammarEntry,
+						wildcards: false,
+						grammar: self::createReplacedCallsGrammar(),
+						canonicalize: MemberPattern::canonicalizeKey(...),
+					),
+					'A call written as the template says (`Acme\\Mail\\Mailer::send($to, $body): send(new Message($to, $body))`)',
+				),
+				new Decision(
 					MemberMapGrammar::ForbiddenClasses,
 					new Map(new GrammarEntry, wildcards: false, grammar: self::createForbiddenClassesGrammar(), caseInsensitive: true),
 					'A class that may not be used, with what to do instead (`Acme\\Legacy\\Db: "use the repository"`)',
@@ -506,6 +517,16 @@ final class CorePlugin implements Plugin
 			'The replaced member, `Class::name` (a constant or a method), `Class::name()` (a method) or `Class::$name` (a property) → the member written instead: its name alone in the same class, `Other::name` in another one, or `\function` for the global function a method becomes',
 			MemberTarget::fromCode(...),
 		);
+	}
+
+
+	private static function createReplacedCallsGrammar(): Schema
+	{
+		return MemberMapGrammar::createMapSchema(
+			MemberMapGrammar::createCodeSchema(),
+			'The replaced use, `Class::name($a, true)`, `Class::name(...$args)` with any arguments, `Class::name()` without any, `Class::__construct($a)`, `Class::$name::get`, `Class::$name::set` or a magic method for the syntax PHP calls it by → the expression written instead, with the placeholders of the key, `$value` what is assigned',
+			CallTemplate::fromEntry(...),
+		)->transform(CallTemplate::checkCycles(...));
 	}
 
 

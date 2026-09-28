@@ -1,0 +1,115 @@
+<?php
+// {"api": {"replacedCalls": {"App\\Request::$post::get": "getPost()", "App\\Request::$post::set": "setPost($value)", "App\\Request::$files::get": "getFiles()", "App\\Request::$name::get": "getName()", "App\\Request::$default::get": "getDefault()", "App\\Bag::__get($name)": "get($name)"}}}
+
+namespace App;
+
+// a property the class declares private is its own where the class sees it, the magic one everywhere else
+class Request
+{
+	use Files;
+
+	private static ?self $default = null;
+
+	private array $post = [];
+
+
+	public function __construct(
+		private string $name,
+	) {
+	}
+
+
+	public function __get(string $name): mixed
+	{
+		return $this->{'get' . ucfirst($name)}();
+	}
+
+
+	public function __set(string $name, mixed $value): void
+	{
+		$this->{'set' . ucfirst($name)}($value);
+	}
+
+
+	public function getPost(): array
+	{
+		return $this->post;
+	}
+
+
+	public function setPost(array $post): static
+	{
+		$this->post = $post;
+		return $this;
+	}
+
+
+	public function getName(): string
+	{
+		return $this->name;
+	}
+
+
+	public static function getDefault(): ?self
+	{
+		return self::$default;
+	}
+
+
+	public function merge(self $other): void
+	{
+		// another instance is seen by the class too, and so is the property in a closure the class declares
+		$this->post = $other->post + $this->post;
+		$count = fn() => count($this->post);
+	}
+}
+
+
+trait Files
+{
+	private array $files = [];
+
+
+	public function getFiles(): array
+	{
+		return $this->files;
+	}
+}
+
+
+class Bag
+{
+	private array $data = [];
+
+
+	public function __get(string $name): mixed
+	{
+		return null;
+	}
+
+
+	public function get(string $name): mixed
+	{
+		return null;
+	}
+}
+
+
+// a private property of the parent is not seen by a child, which reaches the magic one
+class FormRequest extends Request
+{
+	public function describe(): string
+	{
+		return $this->getName() . count($this->getPost());
+	}
+}
+
+
+function test(Request $request, Bag $bag): void
+{
+	$a = $request->getPost();
+	$request->setPost([]);
+	$b = $request->getFiles();
+	$c = $request->getName();
+	$d = $bag->get('data');
+}

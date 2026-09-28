@@ -158,7 +158,7 @@ final readonly class Placement
 ```php
 final class Types implements DressCode\Analyses\PassAnalysis
 	public private(set) ?string $failure
-	public function isOfType(PhpSyntax\Nodes\ExpressionNode $expression, string $type): DressCode\Tristate
+	public function isOfType(PhpSyntax\Nodes\ExpressionNode $expression, string $type, ?PhpSyntax\Nodes\ExpressionNode $at = null): DressCode\Tristate
 	public function isComparedAlike(list<PhpSyntax\Nodes\ExpressionNode> $expressions): DressCode\Tristate
 	public function findClasses(PhpSyntax\Nodes\ExpressionNode $expression): list<string>
 	public function findMember(PhpSyntax\Nodes\ExpressionNode $node): ?DressCode\Analyses\Member
@@ -794,8 +794,10 @@ final readonly class ArgumentPattern
 	public readonly list<DressCode\Upgrading\ArgumentPatternItem> $items
 	public static function any(): DressCode\Upgrading\ArgumentPattern
 	public static function parse(string $arguments): DressCode\Upgrading\ArgumentPattern
-	public function bind(PhpSyntax\Nodes\ArgumentListNode $arguments): ?DressCode\Upgrading\ArgumentBindings
+	public function bind(PhpSyntax\Nodes\ArgumentListNode $arguments, ?list<DressCode\Analyses\Parameter> $parameters, ?DressCode\Analyses\Types $types = null): ?DressCode\Upgrading\ArgumentBindings
+	public function takesRest(): bool
 	public function takesAnyArguments(): bool
+	public function compareSpecificity(DressCode\Upgrading\ArgumentPattern $other): int
 ```
 
 ## `DressCode\Upgrading\ArgumentPatternItem`
@@ -819,8 +821,10 @@ final readonly class MemberMap
 	public static function fromEntries(array<string, mixed> $entries, Closure(mixed, DressCode\Upgrading\MemberPattern): V $convert): DressCode\Upgrading\MemberMap<V>
 	public function getEntries(string $name): list<DressCode\Upgrading\MemberMapEntry<T>>
 	public function has(DressCode\Analyses\MemberAccess $access, DressCode\Analyses\Types $types): bool
-	public function findAccess(DressCode\Analyses\MemberAccess $access, DressCode\Analyses\Types $types): ?DressCode\Upgrading\MemberMapMatch<T>
-	public function findDeclaration(PhpSyntax\Nodes\Member\MethodNode $declaration, DressCode\Analyses\Types $types): ?DressCode\Upgrading\MemberMapEntry<T>
+	public function findAccess(DressCode\Analyses\MemberAccess $access, DressCode\Analyses\Types $types, ?PhpSyntax\Nodes\ArgumentListNode $arguments = null, ?list<DressCode\Analyses\Parameter> $parameters = null): ?DressCode\Upgrading\MemberMapMatch<T>
+	public function findCall(PhpSyntax\Nodes\Expression\MethodCallNode|PhpSyntax\Nodes\Expression\StaticMethodCallNode|PhpSyntax\Nodes\Expression\NewNode $node, DressCode\RuleContext $context): ?DressCode\Upgrading\MemberMapMatch<T>
+	public function findDeclaration(PhpSyntax\Nodes\Member\MethodNode $declaration, DressCode\Analyses\Types $types, bool $anyArguments = false, bool $specificFirst = false): ?DressCode\Upgrading\MemberMapEntry<T>
+	public function findDecidingEntry(string $name, DressCode\Analyses\Types $types, Closure(DressCode\Upgrading\MemberMapEntry<T>): bool $accepts, bool $specificFirst = false): ?DressCode\Upgrading\MemberMapEntry<T>
 	public static function findLookupName(PhpSyntax\Nodes\Expression\ClassConstantFetchNode|PhpSyntax\Nodes\Expression\MethodCallNode|PhpSyntax\Nodes\Expression\StaticMethodCallNode|PhpSyntax\Nodes\Expression\PropertyFetchNode|PhpSyntax\Nodes\Expression\StaticPropertyFetchNode|PhpSyntax\Nodes\Expression\NewNode $node): ?string
 ```
 
@@ -841,6 +845,7 @@ final class MemberMapGrammar
 	public const ReplacedClasses = 'upgrading.api.replacedClasses'
 	public const ReplacedFunctions = 'upgrading.api.replacedFunctions'
 	public const ReplacedMembers = 'upgrading.api.replacedMembers'
+	public const ReplacedCalls = 'upgrading.api.replacedCalls'
 	public const ForbiddenClasses = 'upgrading.api.forbiddenClasses'
 	public const ForbiddenFunctions = 'upgrading.api.forbiddenFunctions'
 	public const ForbiddenConstants = 'upgrading.api.forbiddenConstants'
@@ -855,6 +860,7 @@ final class MemberMapGrammar
 final readonly class MemberMapMatch
 	public readonly DressCode\Upgrading\MemberMapEntry<T> $entry
 	public readonly DressCode\Analyses\MemberAccess $access
+	public readonly ?DressCode\Upgrading\ArgumentBindings $bindings
 ```
 
 ## `DressCode\Upgrading\MemberPattern`
@@ -869,9 +875,12 @@ final readonly class MemberPattern
 	public readonly ?string $hook
 	public static function fromKey(string $key): DressCode\Upgrading\MemberPattern
 	public static function canonicalizeKey(string $key): string
+	public static function forMethod(string $class, string $name, ?DressCode\Upgrading\ArgumentPattern $arguments = null): DressCode\Upgrading\MemberPattern
 	public function matches(DressCode\Analyses\MemberAccess $access, DressCode\Analyses\Types $types): bool
+	public function bind(DressCode\Analyses\MemberAccess $access, PhpSyntax\Nodes\ArgumentListNode $arguments, ?list<DressCode\Analyses\Parameter> $parameters, DressCode\Analyses\Types $types): ?DressCode\Upgrading\ArgumentBindings
 	public function matchesMethodDeclaration(string $declaringClass, string $method, DressCode\Analyses\Types $types): bool
 	public function takesAnyArguments(): bool
+	public function compareSpecificity(DressCode\Upgrading\MemberPattern $other): int
 	public function getArgumentPattern(): DressCode\Upgrading\ArgumentPattern
 	public function describe(DressCode\Analyses\MemberKind $kind): string
 	public function describeAccess(DressCode\Analyses\MemberAccess $access, PhpSyntax\Node $node): string
@@ -1141,6 +1150,7 @@ final readonly class Violation
 - `DressCode\Rules\Upgrading\NoDeprecatedFunctionsRule`
 - `DressCode\Rules\Upgrading\NoDeprecatedMembersRule`
 - `DressCode\Rules\Upgrading\NoDeprecatedPhpArgumentsRule`
+- `DressCode\Rules\Upgrading\ReplacedCallsRule`
 - `DressCode\Rules\Upgrading\ReplacedClassesRule`
 - `DressCode\Rules\Upgrading\ReplacedFunctionsRule`
 - `DressCode\Rules\Upgrading\ReplacedMembersRule`

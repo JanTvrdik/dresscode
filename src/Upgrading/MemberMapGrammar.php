@@ -26,6 +26,7 @@ final class MemberMapGrammar
 	public const ReplacedClasses = 'upgrading.api.replacedClasses';
 	public const ReplacedFunctions = 'upgrading.api.replacedFunctions';
 	public const ReplacedMembers = 'upgrading.api.replacedMembers';
+	public const ReplacedCalls = 'upgrading.api.replacedCalls';
 	public const ForbiddenClasses = 'upgrading.api.forbiddenClasses';
 	public const ForbiddenFunctions = 'upgrading.api.forbiddenFunctions';
 	public const ForbiddenConstants = 'upgrading.api.forbiddenConstants';

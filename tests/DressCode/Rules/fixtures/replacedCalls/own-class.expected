@@ -1,0 +1,95 @@
+<?php
+// {"api": {"replacedCalls": {"App\\Container::$parameters::get": "getParameters()", "App\\Container::$parameters::set": "setParameters($value)", "App\\Container::getService($name)": "get($name)", "App\\Bag::__get($name)": "get($name)", "App\\Container::old(...$args)": "newer(...$args)"}}}
+
+namespace App;
+
+// the code of the class itself is its implementation, which the data do not speak of
+class Container
+{
+	/** @deprecated use getParameters() */
+	public array $parameters = [];
+
+
+	public function getParameters(): array
+	{
+		return $this->parameters;
+	}
+
+
+	public function setParameters(array $parameters): static
+	{
+		$this->parameters = $parameters;
+		return $this;
+	}
+
+
+	/** @deprecated use get() */
+	public function getService(string $name): object
+	{
+		return $this->get($name);
+	}
+
+
+	public function old(): void
+	{
+	}
+
+
+	public function newer(): void
+	{
+	}
+
+
+	public function get(string $name): object
+	{
+		return new \stdClass;
+	}
+
+
+	public function merge(self $other): void
+	{
+		$this->parameters = $other->parameters + $this->getService('defaults')->parameters;
+		$service = [$this, 'old'];
+	}
+}
+
+
+class Bag
+{
+	public function __get(string $name): mixed
+	{
+		return null;
+	}
+
+
+	public function get(string $name): mixed
+	{
+		return null;
+	}
+
+
+	public function describe(): mixed
+	{
+		return $this->label;
+	}
+}
+
+
+// a child uses the class as anyone else does
+class AppContainer extends Container
+{
+	public function describe(): string
+	{
+		return count($this->getParameters()) . get_class($this->get('app'));
+	}
+}
+
+
+function test(Container $container, Bag $bag): void
+{
+	$a = $container->getParameters();
+	$container->setParameters([]);
+	$b = $container->get('db');
+	$c = [$container, 'old'];
+	$d = $bag->get('label');
+}

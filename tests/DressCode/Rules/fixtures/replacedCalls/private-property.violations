@@ -1,0 +1,7 @@
+103: Property `App\Request::$name` is replaced by `getName()`.
+103: Property `App\Request::$post` is replaced by `getPost()`.
+110: Property `App\Request::$post` is replaced by `getPost()`.
+111: Property `App\Request::$post` is replaced by `setPost($value)`.
+112: Property `App\Request::$files` is replaced by `getFiles()`.
+113: Property `App\Request::$name` is replaced by `getName()`.
+114: Method `App\Bag::__get()` is replaced by `get($name)`.

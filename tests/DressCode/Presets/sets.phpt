@@ -73,7 +73,7 @@ test('a decision is made by a set or a standard, or written by the project on pu
 		'upgrading.classes.SensitiveParameter', // what is sensitive the project knows best
 		// the maps: a set lets the upgrading files of the packages in, a project writes its own
 		'upgrading.api.forbiddenClasses', 'upgrading.api.forbiddenConstants', 'upgrading.api.forbiddenFunctions',
-		'upgrading.api.replacedClasses', 'upgrading.api.replacedFunctions',
+		'upgrading.api.replacedCalls', 'upgrading.api.replacedClasses', 'upgrading.api.replacedFunctions',
 		'upgrading.api.replacedMembers',
 	];
 
