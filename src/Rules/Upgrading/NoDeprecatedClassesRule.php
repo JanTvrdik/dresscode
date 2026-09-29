@@ -13,7 +13,7 @@ use DressCode\Rules\NodeHelpers;
 use DressCode\Upgrading\MemberMapGrammar;
 use PhpSyntax\Analyses\NameResolver;
 use PhpSyntax\{Node, Token};
-use PhpSyntax\Nodes\{FileNode, NameNode};
+use PhpSyntax\Nodes\{AttributeNode, FileNode, NameNode};
 use PhpSyntax\Nodes\Statement\NamespaceNode;
 use PhpSyntax\Nodes\Type\{NamedTypeNode, UnionTypeNode};
 
@@ -27,13 +27,17 @@ use PhpSyntax\Nodes\Type\{NamedTypeNode, UnionTypeNode};
  * the deprecation names a replacement for is rewritten, one without it being left as it is. A reference inside
  * a declaration deprecated itself goes together with it and is left, and so is one in a union type that names the
  * replacement too, which takes both on purpose. A class the map of replacedClasses or of forbiddenClasses has is not
- * reported.
+ * reported, nor an attribute attributeForAnnotation writes another one instead of.
  */
 #[RuleInfo(
 	Stage::Structure,
 	typesRequired: true,
 	modifiesComments: true,
-	reads: [MemberMapGrammar::ReplacedClasses, MemberMapGrammar::ForbiddenClasses],
+	reads: [
+		MemberMapGrammar::ReplacedClasses,
+		MemberMapGrammar::ForbiddenClasses,
+		MemberMapGrammar::AttributeForAnnotation,
+	],
 	analyses: [PhpDoc::class, Types::class, NameResolver::class],
 )]
 final class NoDeprecatedClassesRule extends NodeRule
@@ -42,6 +46,8 @@ final class NoDeprecatedClassesRule extends NodeRule
 
 	/** @var array<string, true>  lowercased class, fully qualified, that a map of the libraries has */
 	private array $mapped = [];
+
+	private AnnotationMap $annotations;
 
 
 	public static function getDecisions(): array
@@ -63,6 +69,8 @@ final class NoDeprecatedClassesRule extends NodeRule
 		] as $class) {
 			$this->mapped[strtolower(ltrim((string) $class, '\\'))] = true;
 		}
+
+		$this->annotations = AnnotationMap::fromValues($values);
 	}
 
 
@@ -101,7 +109,11 @@ final class NoDeprecatedClassesRule extends NodeRule
 				default => $found,
 			},
 			fn(NameNode $name) => NodeHelpers::isInDeprecatedDeclaration($name, $context)
-				|| self::isBesideReplacement($name, $find($resolver->resolveClass($name))[1] ?? null, $resolver),
+				|| self::isBesideReplacement($name, $find($resolver->resolveClass($name))[1] ?? null, $resolver)
+				// an attribute the map writes another one instead of is the map's
+				|| ($name->parent instanceof AttributeNode
+					&& $this->annotations->findReplacedAttribute($resolver->resolveClass($name)) !== null),
+			$this->annotations,
 		);
 	}
 

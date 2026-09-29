@@ -852,6 +852,7 @@ final class MemberMapGrammar
 	public const ForbiddenFunctions = 'upgrading.api.forbiddenFunctions'
 	public const ForbiddenConstants = 'upgrading.api.forbiddenConstants'
 	public const ForbiddenMembers = 'upgrading.api.forbiddenMembers'
+	public const AttributeForAnnotation = 'upgrading.api.attributeForAnnotation'
 	public static function createMapSchema(Nette\Schema\Schema $value, string $description, ?Closure(mixed, DressCode\Upgrading\MemberPattern): mixed $convert = null): Nette\Schema\Elements\Type
 	public static function createCodeSchema(): Nette\Schema\Elements\AnyOf
 ```
@@ -1150,6 +1151,7 @@ final readonly class Violation
 - `DressCode\Rules\Types\NullableTypeForDefaultNullRule`
 - `DressCode\Rules\Types\TypeDeclarationSpacingRule`
 - `DressCode\Rules\Types\TypeNotationRule`
+- `DressCode\Rules\Upgrading\AttributeForAnnotationRule`
 - `DressCode\Rules\Upgrading\ForbiddenMembersRule`
 - `DressCode\Rules\Upgrading\ForbiddenSymbolsRule`
 - `DressCode\Rules\Upgrading\NoDeprecatedClassesRule`

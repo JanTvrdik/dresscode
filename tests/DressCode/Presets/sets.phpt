@@ -72,6 +72,7 @@ test('a decision is made by a set or a standard, or written by the project on pu
 		'upgrading.phpdoc.readonly', // an annotation may promise what the code does not keep, which only the project knows
 		'upgrading.classes.SensitiveParameter', // what is sensitive the project knows best
 		// the maps: a set lets the upgrading files of the packages in, a project writes its own
+		'upgrading.api.attributeForAnnotation',
 		'upgrading.api.forbiddenClasses', 'upgrading.api.forbiddenConstants', 'upgrading.api.forbiddenFunctions',
 		'upgrading.api.forbiddenMembers',
 		'upgrading.api.replacedCalls', 'upgrading.api.replacedClasses', 'upgrading.api.replacedFunctions',
