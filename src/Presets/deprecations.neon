@@ -4,6 +4,11 @@
 # upgrading files of the installed packages list as retired. A deprecation is reported whatever the target, the code
 # meeting it wherever it runs on the version that made it.
 
+classes:
+	overridingMethod:
+		signature: required                   # a child matching a parent changed by an upgrade
+		parameterName: required
+
 expressions:
 	cast: canonical                           # `(int)`, not `(integer)`, PHP 8.5
 

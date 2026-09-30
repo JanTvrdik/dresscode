@@ -1,0 +1,4 @@
+classes:
+	overridingMethod:
+		signature: required
+		parameterName: required
