@@ -795,7 +795,7 @@ final readonly class ArgumentPattern
 	public readonly list<DressCode\Upgrading\ArgumentPatternItem> $items
 	public static function any(): DressCode\Upgrading\ArgumentPattern
 	public static function parse(string $arguments): DressCode\Upgrading\ArgumentPattern
-	public function bind(PhpSyntax\Nodes\ArgumentListNode $arguments, ?list<DressCode\Analyses\Parameter> $parameters, ?DressCode\Analyses\Types $types = null): ?DressCode\Upgrading\ArgumentBindings
+	public function bind(PhpSyntax\Nodes\ArgumentListNode $arguments, ?list<DressCode\Analyses\Parameter> $parameters, ?DressCode\Analyses\Types $types = null, bool $acceptUncertainTypes = false): ?DressCode\Upgrading\ArgumentBindings
 	public function takesRest(): bool
 	public function takesAnyArguments(): bool
 	public function compareSpecificity(DressCode\Upgrading\ArgumentPattern $other): int
@@ -809,6 +809,7 @@ final readonly class ArgumentPatternItem
 	public readonly ?array{mixed} $literal
 	public readonly ?string $parameterName
 	public readonly bool $rest
+	public readonly ?string $type
 ```
 
 ## `DressCode\Upgrading\MemberMap`

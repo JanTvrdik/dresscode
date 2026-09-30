@@ -60,6 +60,11 @@ test('an expression that cannot stand for a call of its key is an error of the c
 			'removed',
 			'The use of `A\\Order::__construct` cannot be removed: only a call of a method can, which does nothing.',
 		],
+		[
+			'A\Token::is(int ...)',
+			'is([])',
+			'The member `A\\Token::is(int ...)` cannot be read: the type `int` stands in front of `...`, which has no placeholder to take it, `int ...$args`.',
+		],
 	];
 	foreach ($errors as [$key, $code, $message]) {
 		$e = Assert::exception(
@@ -88,6 +93,10 @@ test('a key whose code a key of its class takes again, itself or through another
 	$cycles = [
 		['A\Token::is(...$kinds)' => 'is([...$kinds])'],
 		['A\Token::has($kind)' => '$this->is($kind)', 'A\Token::is($kind)' => 'has($kind)'],
+		// a type the code written instead may have, an array literal being an array
+		['A\Token::is(array ...$kinds)' => 'is([...$kinds])'],
+		['A\Token::is(mixed ...$kinds)' => 'is([...$kinds])'],
+		['A\Token::is(?int $kind)' => 'is($kind ?? 0)'],
 	];
 	foreach ($cycles as $options) {
 		$e = Assert::exception(
@@ -103,8 +112,9 @@ test('a key whose code a key of its class takes again, itself or through another
 		Assert::same($expected, array_column($e->getMessageObjects(), 'message'));
 	}
 
-	// a code the keys take once more, or a key of another class does, ends
+	// a code the keys take once more, or a key of another class does, or one of a type the code is not of, ends
 	$options = [
+		'A\Token::has(int|string ...$kinds)' => 'has([...$kinds])',
 		'A\Token::is($a, $b)' => 'is([$a, $b])',
 		'A\Token::is($a)' => 'isKind($a)',
 		'A\Token::isKind($a)' => '\B\Kinds::is($this, $a)',
