@@ -784,7 +784,7 @@ enum Tristate
 
 ```php
 final readonly class ArgumentBindings
-	public readonly array<string, PhpSyntax\Nodes\ArgumentNode|list<PhpSyntax\Nodes\ArgumentNode>> $arguments
+	public readonly array<string, PhpSyntax\Nodes\ArgumentNode|list<PhpSyntax\Nodes\ArgumentNode>|list<PhpSyntax\Nodes\ArrayItemNode>> $arguments
 	public readonly list<PhpSyntax\Nodes\ArgumentNode> $rest
 ```
 
@@ -810,6 +810,8 @@ final readonly class ArgumentPatternItem
 	public readonly ?string $parameterName
 	public readonly bool $rest
 	public readonly ?string $type
+	public readonly ?array<string, string> $keys
+	public readonly ?string $otherItems
 ```
 
 ## `DressCode\Upgrading\MemberMap`

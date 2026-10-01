@@ -204,6 +204,14 @@ class KernelCase
 }
 
 
+class Copier
+{
+	public function mirror(string $from, string $to, ?\Traversable $iterator = null, array $options = []): void
+	{
+	}
+}
+
+
 class Pool
 {
 	public function close(): void

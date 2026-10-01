@@ -7,7 +7,8 @@
 
 namespace DressCode\Upgrading;
 
-use PhpSyntax\Nodes\ArgumentNode;
+use PhpSyntax\Nodes\{ArgumentNode, ArrayItemNode, ExpressionNode};
+use PhpSyntax\Nodes\Expression\ArrayNode;
 
 
 /**
@@ -17,7 +18,11 @@ final readonly class ArgumentBindings
 {
 	/** @internal made by binding the arguments of a call */
 	public function __construct(
-		/** @var array<string, ArgumentNode|list<ArgumentNode>>  placeholder => its argument, those of a variadic one in a list */
+		/**
+		 * placeholder => its argument, those of a variadic one in a list; the value of a key of an array literal as an
+		 * argument of its own, and the other items of it in a list
+		 * @var array<string, ArgumentNode|list<ArgumentNode>|list<ArrayItemNode>>
+		 */
 		public array $arguments,
 		/** @var list<ArgumentNode>  what `...` stands for, in the order of the call, the named ones among them */
 		public array $rest = [],
@@ -26,6 +31,13 @@ final readonly class ArgumentBindings
 		 * @var list<string>  the placeholders bound to an expression whose keys are not seen, being neither an array literal nor a list
 		 */
 		public array $unseenKeys = [],
+		/**
+		 * argument taken apart, by its object id => its array literal, the placeholder of its other items, and the
+		 * placeholder and the value of each of its items in their order
+		 * @internal
+		 * @var array<int, array{ArrayNode, ?string, list<array{string, ExpressionNode}>}>
+		 */
+		public array $takenApart = [],
 	) {
 	}
 }
