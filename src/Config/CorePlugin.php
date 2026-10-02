@@ -64,6 +64,7 @@ final class CorePlugin implements Plugin
 				Rules\Classes\MultilineImplementsRule::class,
 				Rules\Classes\NameCasingRule::class,
 				Rules\Classes\NoConstructorReturnValuesRule::class,
+				Rules\Classes\NoFinalParentRule::class,
 				Rules\Classes\NoGroupedDeclarationsRule::class,
 				Rules\Classes\NoNullDebugInfoRule::class,
 				Rules\Classes\NoSleepAndWakeupRule::class,

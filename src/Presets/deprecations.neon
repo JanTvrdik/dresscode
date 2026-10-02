@@ -12,6 +12,10 @@ classes:
 expressions:
 	cast: canonical                           # `(int)`, not `(integer)`, PHP 8.5
 
+# what a library or PHP breaks in a major version, reported
+mistakes:
+	finalParent: forbidden                    # a class extending a final one
+
 upgrading:
 	packages: yes                             # as the upgrading files of the packages say
 	declarations:
