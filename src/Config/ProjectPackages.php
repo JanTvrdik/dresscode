@@ -20,8 +20,10 @@ use function is_array, is_string;
  * constraint without a lower bound allows every version; for a package that only comes with another, which the project
  * promises nothing about, it is every version too; for a development branch the project requires it is the newest of
  * the line its alias names; and any version does for the project itself and for a branch without an alias, whose
- * version says nothing. The installed version never answers, being only what happens to be in the vendor directory. The
- * `targets` of the configuration say the one version of an installed package outright (`withTargets()`).
+ * version says nothing. The installed version never answers, being only what happens to be in the vendor directory. A
+ * package an installed one replaces with its own version, a part of a monorepo installed as the whole, is had in the
+ * versions of the one replacing it. The `targets` of the configuration say the one version of an installed package
+ * outright (`withTargets()`).
  * @internal
  */
 final readonly class ProjectPackages
@@ -42,6 +44,8 @@ final readonly class ProjectPackages
 		public array $installed = [],
 		/** @var array<string, string>  package => the version the configuration says the code is written for */
 		private array $targets = [],
+		/** @var array<string, string>  package => the installed one that replaces it with its own version */
+		private array $replaced = [],
 	) {
 	}
 
@@ -67,7 +71,7 @@ final readonly class ProjectPackages
 			}
 		}
 
-		$installed = [];
+		$installed = $replaced = [];
 		$data = ComposerJson::read("$vendor/composer/installed.json") ?? [];
 		foreach (is_array($data['packages'] ?? null) ? $data['packages'] : $data as $package) {
 			if (!is_array($package) || !is_string($package['name'] ?? null)) {
@@ -83,6 +87,11 @@ final readonly class ProjectPackages
 					: null,
 				'extra' => is_array($package['extra'] ?? null) ? $package['extra'] : [],
 			];
+			foreach (is_array($package['replace'] ?? null) ? $package['replace'] : [] as $name => $constraint) {
+				if ($constraint === 'self.version') {
+					$replaced[(string) $name] = $package['name'];
+				}
+			}
 		}
 
 		return new self(
@@ -91,6 +100,7 @@ final readonly class ProjectPackages
 			is_array($composer['extra'] ?? null) ? $composer['extra'] : [],
 			$required,
 			$installed,
+			replaced: array_diff_key($replaced, $installed),
 		);
 	}
 
@@ -109,15 +119,17 @@ final readonly class ProjectPackages
 			$this->required,
 			$this->installed,
 			$versions,
+			$this->replaced,
 		);
 	}
 
 
-	/** Whether the project has the package: it is the project itself, or it is installed. */
+	/** Whether the project has the package: it is the project itself, it is installed, or an installed one replaces it. */
 	public function has(string $package): bool
 	{
 		return $package === $this->rootName
-			|| isset($this->installed[$package]);
+			|| isset($this->installed[$package])
+			|| isset($this->replaced[$package]);
 	}
 
 
@@ -130,7 +142,9 @@ final readonly class ProjectPackages
 	public function findConstraint(string $package): ?string
 	{
 		$required = $this->required[$package] ?? null;
-		if ($package === $this->rootName || !isset($this->installed[$package])) {
+		if (isset($this->replaced[$package])) {
+			return $this->targets[$package] ?? $required ?? $this->findConstraint($this->replaced[$package]);
+		} elseif ($package === $this->rootName || !isset($this->installed[$package])) {
 			return null;
 		}
 
