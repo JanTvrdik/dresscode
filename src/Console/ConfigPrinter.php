@@ -7,7 +7,7 @@
 
 namespace DressCode\Console;
 
-use DressCode\Config\{Catalogue, PluginRegistry, ResolvedConfig, ResolvedDecision};
+use DressCode\Config\{Catalogue, PluginRegistry, ResolvedConfig, ResolvedDecision, UpgradingData, Versions};
 use DressCode\DecisionKind;
 use DressCode\Engine\Helpers;
 use Nette\CommandLine\{Ansi, Console};
@@ -28,6 +28,11 @@ final readonly class ConfigPrinter
 
 	public function __construct(
 		private ResolvedConfig $config,
+		/**
+		 * @var list<array{UpgradingData, ?string}>  the upgrading data of the packages, each with the version of its
+		 * package the code must work with
+		 */
+		private array $packages = [],
 	) {
 	}
 
@@ -56,6 +61,23 @@ final readonly class ConfigPrinter
 					. $console->color('gray', implode(', ', array_map(PluginRegistry::abbreviate(...), $names)))
 					. ($example === null ? '' : $console->color('gray', ", as `$example`"))
 					. "\n";
+			}
+		}
+
+		if ($this->packages !== []) {
+			$out .= $console->color('gray', 'Packages   ') . count($this->packages) . ' with upgrading data' . "\n";
+			// what the version of the package has not reached yet is what an upgrade still offers
+			foreach ($this->packages as [$data, $version]) {
+				$further = array_map(
+					fn(string $since) => in_array($since, $data->reported, true) ? "$since (reported)" : $since,
+					$data->unreached,
+				);
+				$out .= '      ' . self::pad($data->package . ($version === null ? '' : ' ' . Versions::formatVersion($version)), 32)
+					. $console->color(
+						'gray',
+						$data->layer->describe()
+						. ($further === [] ? '' : ', upgrading further to ' . implode(', ', $further)),
+					) . "\n";
 			}
 		}
 
@@ -171,6 +193,13 @@ final readonly class ConfigPrinter
 			)
 				?: new \stdClass,
 			'suppressionExamples' => $this->config->suppressionExamples ?: new \stdClass,
+			'upgradingData' => array_map(fn(array $package) => [
+				'source' => $package[0]->layer->describe(),
+				'package' => $package[0]->package,
+				'version' => $package[1],
+				'unreached' => $package[0]->unreached,
+				'reported' => $package[0]->reported,
+			], $this->packages),
 			'rules' => $rules,
 			'decisions' => array_map(fn(ResolvedDecision $decision) => [
 				'value' => $decision->value->toData(),

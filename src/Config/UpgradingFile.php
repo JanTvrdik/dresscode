@@ -137,7 +137,7 @@ final readonly class UpgradingFile
 	{
 		$lowest = $constraint === null ? null : Versions::findLowestVersion($constraint);
 		$reaches = fn(string $version) => $constraint === null || ($lowest !== null && version_compare($lowest, $version, '>='));
-		$maps = $retirements = $retired = [];
+		$maps = $retirements = $retired = $unreached = $reported = [];
 		foreach ($this->sections as $since => $section) {
 			$since = (string) $since;
 			$left = [];
@@ -157,7 +157,13 @@ final readonly class UpgradingFile
 				}
 			}
 
-			if ($left !== [] && $constraint !== null && !Versions::isSubset($constraint, "<$since")) {
+			if ($left === [] || $constraint === null) {
+				continue;
+			}
+
+			$unreached[] = $since;
+			if (!Versions::isSubset($constraint, "<$since")) {
+				$reported[] = $since;
 				foreach (self::retire($left) as [$map, $key, $sentence, $version]) {
 					$retired[$map][$key] = [$sentence, $version ?? $since];
 				}
@@ -190,7 +196,7 @@ final readonly class UpgradingFile
 			}
 		}
 
-		return new UpgradingData($layer, $this->package, $this->namespaces, $maps, $retirements, requirements: $requirements);
+		return new UpgradingData($layer, $this->package, $this->namespaces, $maps, $retirements, $unreached, $reported, $requirements);
 	}
 
 

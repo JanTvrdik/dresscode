@@ -30,6 +30,13 @@ final readonly class UpgradingData
 		public array $maps,
 		/** @var array<string, array<string, string>>  forbidden map => the key of an entry => the version that retired it */
 		public array $retirements = [],
+		/** @var list<string>  the versions of the sections holding what is not rewritten yet, ascending */
+		public array $unreached = [],
+		/**
+		 * @var list<string>  the versions of those sections a version the code may run on reaches, what they retire being
+		 * reported, ascending
+		 */
+		public array $reported = [],
 		/** @var array<string, string>  the requirements of the rules of the plugin of the package it turns on => their values */
 		public array $requirements = [],
 	) {
