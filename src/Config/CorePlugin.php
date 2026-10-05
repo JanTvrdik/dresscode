@@ -79,6 +79,7 @@ final class CorePlugin implements Plugin
 				Rules\Classes\ReadonlyForAnnotationRule::class,
 				Rules\Classes\ReadonlyForUnwrittenPropertyRule::class,
 				Rules\Classes\SelfForCurrentClassRule::class,
+				Rules\Classes\SerializeMethodsRequiredRule::class,
 				Rules\Classes\StaticForMethodWithoutThisRule::class,
 				Rules\Classes\StaticSetStateRequiredRule::class,
 				Rules\Classes\StringableRequiredRule::class,
