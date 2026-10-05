@@ -365,6 +365,31 @@ final class Declarations
 	}
 
 
+	/** @return list<Member> */
+	public function findUnimplementedMethods(string $class): array
+	{
+		$reflection = $this->phpstan->findClass($class);
+		if ($reflection === null || $reflection->isAbstract() || $reflection->isInterface() || $reflection->isTrait()) {
+			return [];
+		}
+
+		$methods = [];
+		foreach ($reflection->getNativeReflection()->getMethods() as $method) {
+			if ($method->isAbstract()) {
+				$native = $reflection->getNativeMethod($method->getName());
+				$declaring = ($native instanceof PhpMethodReflection ? $native->getDeclaringTrait() : null) ?? $native->getDeclaringClass();
+				$methods[] = new Member(
+					$method->isStatic() ? MemberKind::StaticMethod : MemberKind::Method,
+					$method->getName(),
+					$declaring->getName(),
+				);
+			}
+		}
+
+		return $methods;
+	}
+
+
 	public function hasMember(string $class, MemberKind $kind, string $name): bool
 	{
 		$reflection = $this->phpstan->findClass($class);
