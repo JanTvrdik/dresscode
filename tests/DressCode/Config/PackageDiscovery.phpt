@@ -160,6 +160,7 @@ test('a section above the lowest version is reported where the constraint reache
 					replacedCalls:
 						'Acme\Lib\Order::pay(true)': payNow()
 						'Acme\Lib\Order::flush()': {write: removed, from: '3.5'}
+						'Acme\Lib\format($value, true)': 'Acme\Lib\render($value)'
 
 				since 5.0:
 					replacedClasses:
@@ -178,6 +179,7 @@ test('a section above the lowest version is reported where the constraint reache
 			'replacedFunctions' => ['Acme\Lib\old_helper' => 'Acme\Lib\helper'],
 			'forbiddenClasses' => ['Acme\Lib\Gone' => null],
 			'forbiddenMembers' => ['Acme\Lib\Order::pay(true)' => 'replaced', 'Acme\Lib\Order::flush()' => 'does nothing'],
+			'forbiddenFunctions' => ['Acme\Lib\format' => 'replaced by `Acme\Lib\render($value)`'],
 		],
 		$data->maps,
 	);
@@ -195,6 +197,7 @@ test('a section above the lowest version is reported where the constraint reache
 				'Acme\Lib\Order::pay(true)' => 'replaced, since acme/lib 4.0',
 				'Acme\Lib\Order::flush()' => 'does nothing, since acme/lib 3.5',
 			],
+			'forbiddenFunctions' => ['Acme\Lib\format' => 'replaced by `Acme\Lib\render($value)`, since acme/lib 4.0'],
 		],
 		$data->buildDecisions(fn(string $map) => $map),
 	);

@@ -1,0 +1,13 @@
+<?php
+// {"api": {"replacedCalls": {"acme_pad($text, $length)": "str_pad($text, $length, ' ', STR_PAD_LEFT)", "acme_close($handle)": "removed"}}}
+// risky
+
+namespace App;
+
+// the namespace may declare a function of the name, so the call may reach another one
+$a = acme_pad($text, 3);
+acme_close($handle);
+
+// a name with the leading backslash reaches the global function for certain
+$b = \acme_pad($text, 3);
+\acme_close($handle);

@@ -9,6 +9,7 @@ namespace DressCode\Rules\Upgrading;
 
 use DressCode\Analyses\{Parameter, PhpSignatures, PhpSymbols};
 use DressCode\{CodeWriter, GlobalCalls, NodeRule, QualifiedNames, Risk, RuleContext, RuleInfo, Stage, Values};
+use DressCode\Rules\NodeHelpers;
 use DressCode\Upgrading\MemberMapGrammar;
 use PhpSyntax\Analyses\NameResolver;
 use PhpSyntax\{Builder, Node, SymbolKind, Token};
@@ -48,8 +49,8 @@ final class ReplacedFunctionsRule extends NodeRule
 	public const Map = MemberMapGrammar::ReplacedFunctions;
 
 	/**
-	 * @var array<string, array{string, string}>  lowercased replaced name => the replaced and the replacing name as the
-	 * project spells them
+	 * @var array<lowercase-string, array{string, string}>  lowercased replaced name => the replaced and the replacing name
+	 * as the project spells them
 	 */
 	private array $functions = [];
 
@@ -73,26 +74,16 @@ final class ReplacedFunctionsRule extends NodeRule
 
 	public function enter(Node|Token $node, RuleContext $context): void
 	{
-		if ($this->functions === [] || !$node instanceof FunctionCallNode || !$node->name instanceof NameNode || $node->name->isKeyword()) {
+		$key = $this->functions === [] || !$node instanceof FunctionCallNode
+			? null
+			: NodeHelpers::findMappedFunction($node, $this->functions, $context);
+		if ($key === null || !$node->name instanceof NameNode) {
 			return;
 		}
 
+		[$old, $new] = $this->functions[$key];
 		$resolver = $context->getAnalysis(NameResolver::class);
-
-		// the function the name reaches, which an import may call by another name; an unqualified name inside
-		// a namespace and imported by none reaches the function of that namespace where the map names one, the global
-		// one otherwise
 		$namespace = $resolver->getNamespace($node);
-		$local = $namespace !== '' && !str_contains($node->name->text, '\\')
-			&& !isset($resolver->getImports(SymbolKind::Function, $node)[strtolower($node->name->text)])
-			? $this->functions[strtolower("$namespace\\{$node->name->text}")] ?? null
-			: null;
-		$replacement = $local ?? $this->functions[strtolower($resolver->resolveFunction($node->name))] ?? null;
-		if ($replacement === null) {
-			return;
-		}
-
-		[$old, $new] = $replacement;
 
 		$refusal = self::findRefusal($old, $new, $node, $context);
 		$uncertainty = $refusal === null && !str_contains($old, '\\') ? GlobalCalls::findUncertainty($node, $context) : null;

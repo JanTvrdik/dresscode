@@ -815,6 +815,18 @@ final readonly class ArgumentPatternItem
 	public readonly ?string $otherItems
 ```
 
+## `DressCode\Upgrading\FunctionPattern`
+
+```php
+final readonly class FunctionPattern
+	public readonly string $name
+	public readonly ?DressCode\Upgrading\ArgumentPattern $arguments
+	public static function fromKey(string $key): DressCode\Upgrading\FunctionPattern
+	public function getLookupName(): lowercase-string
+	public function getArgumentPattern(): DressCode\Upgrading\ArgumentPattern
+	public function bind(PhpSyntax\Nodes\ArgumentListNode $arguments): ?DressCode\Upgrading\ArgumentBindings
+```
+
 ## `DressCode\Upgrading\MemberMap`
 
 ```php
@@ -858,7 +870,8 @@ final class MemberMapGrammar
 	public const ForbiddenMembers = 'upgrading.api.forbiddenMembers'
 	public const AttributeForAnnotation = 'upgrading.api.attributeForAnnotation'
 	public const AttributeForMember = 'upgrading.api.attributeForMember'
-	public static function createMapSchema(Nette\Schema\Schema $value, string $description, ?Closure(mixed, DressCode\Upgrading\MemberPattern): mixed $convert = null): Nette\Schema\Elements\Type
+	public static function createMapSchema(Nette\Schema\Schema $value, string $description, ?Closure(mixed, DressCode\Upgrading\MemberPattern): mixed $convert = null, ?Closure(mixed, DressCode\Upgrading\FunctionPattern): mixed $convertFunction = null): Nette\Schema\Elements\Type
+	public static function isFunctionKey(string $key): bool
 	public static function createCodeSchema(): Nette\Schema\Elements\AnyOf
 ```
 
@@ -1170,6 +1183,7 @@ final readonly class Violation
 - `DressCode\Rules\Upgrading\NoDeprecatedPhpArgumentsRule`
 - `DressCode\Rules\Upgrading\ReplacedCallsRule`
 - `DressCode\Rules\Upgrading\ReplacedClassesRule`
+- `DressCode\Rules\Upgrading\ReplacedFunctionCallsRule`
 - `DressCode\Rules\Upgrading\ReplacedFunctionsRule`
 - `DressCode\Rules\Upgrading\ReplacedMembersRule`
 - `DressCode\Rules\Variables\NoGlobalStatementsRule`

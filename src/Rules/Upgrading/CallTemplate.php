@@ -7,10 +7,10 @@
 
 namespace DressCode\Rules\Upgrading;
 
-use DressCode\{Risk, RuleContext, Violation};
+use DressCode\{RuleContext, Violation};
 use DressCode\Rules\NodeHelpers;
 use DressCode\Upgrading\{
-	ArgumentBindings, ArgumentPattern, ArgumentPatternItem, MemberMapGrammar, MemberPattern, MemberPatternKind,
+	ArgumentBindings, ArgumentPattern, ArgumentPatternItem, FunctionPattern, MemberMapGrammar, MemberPattern, MemberPatternKind,
 };
 use Nette\Schema\Context;
 use PhpSyntax\{Builder, NameForm, Node, ParseException, SymbolKind, Token};
@@ -78,9 +78,15 @@ final readonly class CallTemplate
 	}
 
 
-	/** @throws \InvalidArgumentException  saying why the code cannot stand for a call of the key */
-	public static function fromCode(string $code, MemberPattern $key, ?string $because = null): self
+	/**
+	 * The template of a call of a member or of a function; in that of a function, a call of a bare name is a call of
+	 * a global function, and there is nothing a call was made on.
+	 * @throws \InvalidArgumentException  saying why the code cannot stand for a call of the key
+	 */
+	public static function fromCode(string $code, MemberPattern|FunctionPattern $key, ?string $because = null): self
 	{
+		$function = $key instanceof FunctionPattern;
+		$subject = $function ? "$key->name()" : "$key->class::$key->name";
 		try {
 			$builder = new Builder;
 			$holder = $builder->parenthesize($builder->expression($code));
@@ -88,12 +94,14 @@ final readonly class CallTemplate
 			throw new \InvalidArgumentException(
 				'The code '
 				. Violation::formatCode($code)
-				. " written instead of `$key->class::$key->name` does not read as an expression: {$e->getMessage()}",
+				. " written instead of `$subject` does not read as an expression: {$e->getMessage()}",
 				previous: $e,
 			);
 		}
 
-		foreach ($holder->find(NameNode::class, self::isMeantFullyQualified(...)) as $name) {
+		$qualified = fn(NameNode $name) => self::isMeantFullyQualified($name)
+			|| ($function && $name->parent instanceof FunctionCallNode && self::isBareCall($name->parent));
+		foreach ($holder->find(NameNode::class, $qualified) as $name) {
 			$name->text = '\\' . $name->text;
 		}
 
@@ -101,7 +109,9 @@ final readonly class CallTemplate
 		$uses = $lazy = $unpackedItems = [];
 		$writesThis = false;
 		foreach ($holder->find(VariableNode::class) as $variable) {
-			if ($variable->isThis()) {
+			if ($variable->isThis() && $function) {
+				throw new \InvalidArgumentException('The code ' . Violation::formatCode($code) . " writes `\$this`, but `$subject` is a function, called on nothing.");
+			} elseif ($variable->isThis()) {
 				$writesThis = true;
 				$uses[self::Receiver] = ($uses[self::Receiver] ?? 0) + 1;
 				if (self::isLazy($variable)) {
@@ -119,7 +129,7 @@ final readonly class CallTemplate
 				&& $variable->parent->ellipsis !== null;
 			$others = $item !== null && $item->otherItems === $name;
 			if ($item === null) {
-				throw new \InvalidArgumentException('The code ' . Violation::formatCode($code) . " uses `\$$name`, which the key `$key->class::$key->name` does not name.");
+				throw new \InvalidArgumentException('The code ' . Violation::formatCode($code) . " uses `\$$name`, which the key `$subject` does not name.");
 			} elseif ($item->rest && !$unpacked) {
 				throw new \InvalidArgumentException('The code ' . Violation::formatCode($code) . " must write `\$$name` as the arguments it stands for, `...\$$name`.");
 			} elseif ($others && !($unpacked && $variable->parent instanceof ArrayItemNode)) {
@@ -167,7 +177,7 @@ final readonly class CallTemplate
 
 		$uses = array_replace($order, $uses);
 		if ($rests !== [] && !$key->getArgumentPattern()->takesRest()) {
-			throw new \InvalidArgumentException('The code ' . Violation::formatCode($code) . " writes `...`, which the key `$key->class::$key->name` does not take.");
+			throw new \InvalidArgumentException('The code ' . Violation::formatCode($code) . " writes `...`, which the key `$subject` does not take.");
 		}
 
 		$chainsReceiver = ($uses[self::Receiver] ?? 0) === 1 && self::findChainBase($holder->expression) !== null;
@@ -177,14 +187,19 @@ final readonly class CallTemplate
 
 	/**
 	 * The template the map of replacedCalls gives its key, the code alone, `removed`, or both with what may go wrong,
-	 * `{write: …, because: …}`: of a method or an instantiation as it is, of a property by its hook, the read as a call
-	 * taking nothing and the assignment as one taking `$value`; only a call of a method can be removed.
+	 * `{write: …, because: …}`: of a function, a method or an instantiation as it is, of a property by its hook, the
+	 * read as a call taking nothing and the assignment as one taking `$value`; only a call of a function or of a method
+	 * can be removed.
 	 * @param  string|array{write: string, because?: ?string}  $value
 	 * @throws \InvalidArgumentException  saying why the code cannot stand for a use of the key
 	 */
-	public static function fromEntry(string|array $value, MemberPattern $key): self
+	public static function fromEntry(string|array $value, MemberPattern|FunctionPattern $key): self
 	{
 		[$code, $because] = is_string($value) ? [$value, null] : [$value['write'], $value['because'] ?? null];
+		if ($key instanceof FunctionPattern) {
+			return $code === MemberMapGrammar::Removed ? self::removal($because) : self::fromCode($code, $key, $because);
+		}
+
 		$member = "$key->class::" . ($key->kind === MemberPatternKind::Property ? '$' : '') . $key->name;
 		return match (true) {
 			$code === MemberMapGrammar::Removed && $key->kind === MemberPatternKind::Method => self::removal($because),
@@ -293,12 +308,22 @@ final readonly class CallTemplate
 	/**
 	 * Takes the call doing nothing away with its statement, where neither what it is made on nor its arguments would do
 	 * anything when evaluated; a call whose value is used, one that is the body of a construct without braces and one
-	 * holding a comment are only reported. The subject is the called member as the message names it.
+	 * holding a comment are only reported. The subject is the called function or member as the message names it, and
+	 * the uncertainty why the name of a function may call another one (`GlobalCalls::findUncertainty()`).
 	 */
-	public function removeCall(MethodCallNode|StaticMethodCallNode $call, string $subject, RuleContext $context): void
+	public function removeCall(
+		FunctionCallNode|MethodCallNode|StaticMethodCallNode $call,
+		string $subject,
+		RuleContext $context,
+		?string $uncertainty = null,
+	): void
 	{
 		$statement = $call->parent;
-		$receiver = $call instanceof MethodCallNode ? $call->object : $call->class;
+		$receiver = match (true) {
+			$call instanceof MethodCallNode => $call->object,
+			$call instanceof StaticMethodCallNode => $call->class,
+			default => null,
+		};
 		$refusal = match (true) {
 			!$statement instanceof ExpressionStatementNode => ', but its value is used',
 			!$statement->parent instanceof PlainNodeList => ', but it is the body of a construct without braces',
@@ -307,13 +332,14 @@ final readonly class CallTemplate
 				=> ', but what it evaluates may do something',
 			default => null,
 		};
+		[$behaviorChange, $uncertainty] = $refusal === null ? [$this->because, $uncertainty] : [null, null];
 		if (
 			$context->report(
 				$call->name,
 				$this->describe($subject) . "$refusal.",
 				fixable: $refusal === null,
-				risk: $refusal === null && $this->because !== null ? Risk::BehaviorChanges : null,
-				because: $refusal === null ? $this->because : null,
+				risk: NodeHelpers::findRisk($behaviorChange, $uncertainty),
+				because: $behaviorChange ?? $uncertainty,
 			)
 			&& $statement instanceof ExpressionStatementNode
 			&& $refusal === null
@@ -472,12 +498,12 @@ final readonly class CallTemplate
 			}
 		}
 
-		[$expression, $classes] = $this->build($bindings, $receiver, $static, $nullsafe);
-		return new Rewrite($expression, because: $risk ?? $this->because, classes: $classes);
+		[$expression, $classes, $functions] = $this->build($bindings, $receiver, $static, $nullsafe);
+		return new Rewrite($expression, because: $risk ?? $this->because, classes: $classes, functions: $functions);
 	}
 
 
-	/** @return array{ExpressionNode, list<NameNode>} */
+	/** @return array{ExpressionNode, list<NameNode>, list<NameNode>}  the expression, the classes and the functions it names */
 	private function build(
 		ArgumentBindings $bindings,
 		NameNode|ExpressionNode|null $receiver,
@@ -500,6 +526,9 @@ final readonly class CallTemplate
 				|| $name->parent instanceof ClassConstantFetchNode
 				|| $name->parent instanceof StaticPropertyFetchNode)
 			&& $name->parent->class === $name);
+		$functions = $holder->find(NameNode::class, fn(NameNode $name) => $name->form === NameForm::FullyQualified
+			&& $name->parent instanceof FunctionCallNode
+			&& $name->parent->name === $name);
 		$base = self::findChainBase($holder->expression);
 		if ($nullsafe && $base instanceof VariableNode) {
 			$link = $base->parent;
@@ -550,7 +579,7 @@ final readonly class CallTemplate
 				: $builder->methodCall($on, $call->name->text, $arguments, $nullsafe));
 		}
 
-		return [$holder->expression, $classes]; // the holder has no file, so a write takes the expression out of it
+		return [$holder->expression, $classes, $functions]; // the holder has no file, so a write takes the expression out of it
 	}
 
 

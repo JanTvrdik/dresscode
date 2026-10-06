@@ -54,6 +54,10 @@ final readonly class MemberMap
 	{
 		$byName = [];
 		foreach ($entries as $key => $value) {
+			if (MemberMapGrammar::isFunctionKey((string) $key)) {
+				continue; // a function, which replacedCalls has keys of too, is no member
+			}
+
 			$pattern = MemberPattern::fromKey((string) $key);
 			$byName[$pattern->getLookupName()][] = new MemberMapEntry($pattern, $convert($value, $pattern, (string) $key));
 		}

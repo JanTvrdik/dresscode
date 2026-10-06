@@ -1046,6 +1046,36 @@ final class NodeHelpers
 	}
 
 
+	/**
+	 * The function of a map keyed by lowercased names that the call reaches, as its key: the one of its namespace where
+	 * the map names one and the name is unqualified and imported by none, else the one the name resolves to, an import
+	 * calling it by another name; null where the map has none of them.
+	 * @param  array<lowercase-string, mixed>  $functions
+	 * @return ?lowercase-string
+	 */
+	public static function findMappedFunction(Expression\FunctionCallNode $call, array $functions, RuleContext $context): ?string
+	{
+		if (!$call->name instanceof NameNode || $call->name->isKeyword()) {
+			return null;
+		}
+
+		$resolver = $context->getAnalysis(NameResolver::class);
+		$namespace = $resolver->getNamespace($call);
+		$local = strtolower("$namespace\\{$call->name->text}");
+		if (
+			$namespace !== ''
+			&& !str_contains($call->name->text, '\\')
+			&& !isset($resolver->getImports(SymbolKind::Function, $call)[strtolower($call->name->text)])
+			&& isset($functions[$local])
+		) {
+			return $local;
+		}
+
+		$resolved = strtolower($resolver->resolveFunction($call->name));
+		return isset($functions[$resolved]) ? $resolved : null;
+	}
+
+
 	public static function isInteger(ExpressionNode $expression, int $value): bool
 	{
 		return $expression instanceof Scalar\IntegerNode && $expression->toValue() === $value;

@@ -1,0 +1,7 @@
+6: Function `utf8_encode()` is replaced by `mb_convert_encoding($string, 'UTF-8', 'ISO-8859-1')`.
+	risky BehaviorChanges: a build without mbstring answers the call with an error
+9: Function `acme_close()` does nothing.
+10: Function `acme_close()` does nothing, but its value is used.
+13: Function `acme_pad()` is replaced by `str_pad($text, $length, ' ', STR_PAD_LEFT)`.
+14: Function `acme_pad()` is replaced by `str_pad($text, $length)`.
+17: Function `Acme\Text\slug()` is replaced by `Acme\Text\slugify($text, '-')`.

@@ -22,12 +22,15 @@ test('what a section reached rewrites is not reported again, however its key is 
 		since 3.0:
 			replacedMembers:
 				'Acme\Lib\Order::pay()': settle
+			replacedCalls:
+				'acme_close($handle)': removed
 
 		since 4.0:
 			forbiddenMembers:
 				Acme\Lib\Order::pay: gone
 				Acme\Lib\Order::refund: gone
 			forbiddenFunctions:
+				acme_close: gone
 				\Acme_Open: gone
 		XX);
 
@@ -35,6 +38,7 @@ test('what a section reached rewrites is not reported again, however its key is 
 	Assert::same(
 		[
 			'replacedMembers' => ['Acme\Lib\Order::pay()' => 'settle'],
+			'replacedCalls' => ['acme_close($handle)' => 'removed'],
 			'forbiddenMembers' => ['Acme\Lib\Order::refund' => 'gone'],
 			'forbiddenFunctions' => ['\Acme_Open' => 'gone'],
 		],

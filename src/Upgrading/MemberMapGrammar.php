@@ -39,18 +39,34 @@ final class MemberMapGrammar
 
 
 	/**
-	 * A map of members, `Class::name`, `Class::name()`, `Class::$name` or `Class::name($argument, ...)`, to values of
-	 * the given schema; a key that does not read as a member is an error of the configuration, and so is a value
-	 * `$convert` throws for, the same closure `MemberMap::fromValues()` is given.
+	 * A map of members, `Class::name`, `Class::name()`, `Class::$name` or `Class::name($argument, ...)`, and where
+	 * `$convertFunction` is given of functions too, `name($argument, ...)`, to values of the given schema; a key that
+	 * does not read as one is an error of the configuration, and so is a value a convert closure throws for, the same
+	 * closure the rule converts it with.
 	 * @param  ?\Closure(mixed, MemberPattern): mixed  $convert
+	 * @param  ?\Closure(mixed, FunctionPattern): mixed  $convertFunction
 	 */
-	public static function createMapSchema(Schema $value, string $description, ?\Closure $convert = null): Type
+	public static function createMapSchema(
+		Schema $value,
+		string $description,
+		?\Closure $convert = null,
+		?\Closure $convertFunction = null,
+	): Type
 	{
 		return Expect::arrayOf(Expect::anyOf(self::Keep, $value), Expect::string())
 			->description($description)
-			->transform(function (array $map, Context $context) use ($convert): array {
+			->transform(function (array $map, Context $context) use ($convert, $convertFunction): array {
 				foreach ($map as $key => $item) {
 					try {
+						if ($convertFunction !== null && self::isFunctionKey((string) $key)) {
+							$pattern = FunctionPattern::fromKey((string) $key);
+							if ($item !== self::Keep) {
+								$convertFunction($item, $pattern);
+							}
+
+							continue;
+						}
+
 						$pattern = MemberPattern::fromKey((string) $key);
 						if ($convert !== null && $item !== self::Keep) {
 							$convert($item, $pattern);
@@ -62,6 +78,13 @@ final class MemberMapGrammar
 
 				return $map;
 			});
+	}
+
+
+	/** Whether a key of a map names a function, `name($argument, ...)`, and not a member of a class. */
+	public static function isFunctionKey(string $key): bool
+	{
+		return !preg_match('~::|->~', $key);
 	}
 
 

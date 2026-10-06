@@ -55,6 +55,12 @@ test('an expression that cannot stand for a call of its key is an error of the c
 			'The code `isPaid(...)` writes `...`, which the key `A\\Order::paid` does not take.',
 		],
 		['A\Order::add::get', 'addLine()', 'The member `A\\Order::add::get` names a hook, which only a property has, %a%'],
+		['acme_pad($text)', 'str_pad($label)', 'The code `str_pad($label)` uses `$label`, which the key `acme_pad()` does not name.'],
+		[
+			'acme_pad($text)',
+			'$this->pad($text)',
+			'The code `$this->pad($text)` writes `$this`, but `acme_pad()` is a function, called on nothing.',
+		],
 		[
 			'A\Order::__construct($a)',
 			'removed',

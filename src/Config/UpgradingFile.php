@@ -8,7 +8,7 @@
 namespace DressCode\Config;
 
 use DressCode\{ConfigurationException, Profile};
-use DressCode\Upgrading\{MemberMapGrammar, MemberPattern};
+use DressCode\Upgrading\{FunctionPattern, MemberMapGrammar, MemberPattern};
 use Nette\Neon\{Exception as NeonException, Neon};
 use function array_key_exists, is_array, is_string;
 
@@ -234,19 +234,26 @@ final readonly class UpgradingFile
 
 	/**
 	 * The forbidden map an entry of the map is reported by where it cannot be rewritten, and its key there: a call of
-	 * a member by the shape of its arguments as `forbiddenMembers` reads it; null for a map that forbids nothing by
-	 * itself, an annotation and the maps of plugins.
+	 * a function as the function, a call of a member by the shape of its arguments as `forbiddenMembers` reads it; null
+	 * for a map that forbids nothing by itself, an annotation and the maps of plugins, and for a key that is no name.
 	 * @return ?array{string, string}
 	 */
 	private static function findForbidden(string $map, string $key): ?array
 	{
-		return match (true) {
-			in_array($map, self::ForbiddenMaps, true) => [$map, $key],
-			$map === 'replacedClasses' => ['forbiddenClasses', $key],
-			$map === 'replacedFunctions' => ['forbiddenFunctions', $key],
-			$map === 'replacedMembers', $map === 'replacedCalls' => ['forbiddenMembers', $key],
-			default => null,
-		};
+		try {
+			return match (true) {
+				in_array($map, self::ForbiddenMaps, true) => [$map, $key],
+				$map === 'replacedClasses' => ['forbiddenClasses', $key],
+				$map === 'replacedFunctions' => ['forbiddenFunctions', $key],
+				$map === 'replacedMembers' => ['forbiddenMembers', $key],
+				$map === 'replacedCalls' && MemberMapGrammar::isFunctionKey($key)
+					=> ['forbiddenFunctions', FunctionPattern::fromKey($key)->name],
+				$map === 'replacedCalls' => ['forbiddenMembers', $key],
+				default => null,
+			};
+		} catch (\InvalidArgumentException) {
+			return null; // the grammar of the map says what is wrong with the key
+		}
 	}
 
 

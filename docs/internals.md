@@ -15,7 +15,7 @@ Public:
 - `Decision`, `Domain`, `Domains\*`, `Value`, `Values`, `Config\Layer`, `Config\LayerKind`, `Config\Catalogue`: the decisions a rule declares, the values they take, the values decided for a file with the layer that said each, and the catalogue of them all
 - `Rule`, `NodeRule`, `GapRule`, `RuleInfo`, `RuleContext`, `Claim`, `Space`, `Line`, `Gap`, `Style`, `ImportStyle`, `LineSplits`, `Violation`: the API of a rule
 - `CodeWriter`, `GlobalCalls`, `QualifiedNames`: the helpers a rule of a package writes and reads names with, as one of the core does
-- `Upgrading\*`: the patterns of members and arguments the upgrading data are written in
+- `Upgrading\*`: the patterns of members, functions and arguments the upgrading data are written in
 - `Stage`, `Severity`, `Tristate`, `Risk`, `DecisionKind`: the enums
 - `exceptions.php`, `Testing\exceptions.php`: the exceptions
 - `FileResult`: the result of a file, which `Testing\UpgradingTester::runSample()` gives

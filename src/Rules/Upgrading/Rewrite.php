@@ -11,7 +11,7 @@ use DressCode\{CodeWriter, Risk, RuleContext};
 use PhpSyntax\Analyses\NameResolver;
 use PhpSyntax\{Node, SymbolKind, Token};
 use PhpSyntax\Nodes\{ArgumentListNode, ArgumentNode, ExpressionNode, NameNode};
-use PhpSyntax\Nodes\Expression\{ArrayAccessNode, MethodCallNode, NewNode, PropertyFetchNode, StaticMethodCallNode};
+use PhpSyntax\Nodes\Expression\{ArrayAccessNode, FunctionCallNode, MethodCallNode, NewNode, PropertyFetchNode, StaticMethodCallNode};
 use function count;
 
 
@@ -31,6 +31,8 @@ final readonly class Rewrite
 		public ?string $because = null,
 		/** @var list<NameNode>  the classes the template names fully qualified, to be spelled the way the code reaches them */
 		public array $classes = [],
+		/** @var list<NameNode>  the functions the template calls fully qualified, a global one to be spelled as the code reaches it */
+		public array $functions = [],
 	) {
 	}
 
@@ -38,7 +40,7 @@ final readonly class Rewrite
 	/** The rewrite risky for the reason, unless it is risky for another one already. */
 	public function withRisk(string $because): self
 	{
-		return new self($this->expression, $this->refusal, $this->because ?? $because, $this->classes);
+		return new self($this->expression, $this->refusal, $this->because ?? $because, $this->classes, $this->functions);
 	}
 
 
@@ -118,12 +120,23 @@ final readonly class Rewrite
 	}
 
 
-	/** The expression written in place of the node, the classes of the template spelled the way the code there reaches them. */
+	/**
+	 * The expression written in place of the node, the classes and the global functions of the template spelled the way
+	 * the code there reaches them, a function bare only in place of a call of a bare name.
+	 */
 	public function write(Node $node, RuleContext $context): ExpressionNode
 	{
 		assert($this->expression !== null);
 		foreach ($this->classes as $class) {
 			$class->text = CodeWriter::writeClass(ltrim($class->text, '\\'), $node, $context);
+		}
+
+		$replaced = $node instanceof FunctionCallNode ? $node->name : $node;
+		foreach ($this->functions as $function) {
+			$name = ltrim($function->text, '\\');
+			if (!str_contains($name, '\\') && ($replaced instanceof NameNode || $replaced instanceof ExpressionNode)) {
+				$function->text = CodeWriter::spellFunction($name, $replaced, $context);
+			}
 		}
 
 		// an access on what the replaced call was made on keeps a chain broken before its operator

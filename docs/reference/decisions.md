@@ -3775,9 +3775,9 @@ A call written as the template says (`Acme\Mail\Mailer::send($to, $body): send(n
 - Takes: a map of names to an entry of the grammar of the map, an entry withdrawn with `keep`; `keep`
 - The standards: perCs `keep`, psr12 `keep`, nette `keep`
 - Rule `DressCode\Rules\Upgrading\ReplacedCallsRule`, stage Structure
+- Rule `DressCode\Rules\Upgrading\ReplacedFunctionCallsRule`, stage Structure
 - Read by rule `DressCode\Rules\Upgrading\ReplacedMembersRule`, which this decision does not turn on
 - Read by rule `DressCode\Rules\Upgrading\NoDeprecatedMembersRule`, which this decision does not turn on
-- Needs the types of the code, so it takes effect only with `typeAnalysis: phpstan`
 - May have risky fixes, made once the decision is named in `fixRisky` or with `--fix-risky`
 
 ### upgrading.api.replacedClasses
@@ -3990,6 +3990,7 @@ Whether the code follows the upgrading files of the installed packages, their ma
 - Rule `DressCode\Rules\Upgrading\ReplacedFunctionsRule`, stage Structure
 - Rule `DressCode\Rules\Upgrading\ReplacedMembersRule`, stage Structure
 - Rule `DressCode\Rules\Upgrading\ReplacedCallsRule`, stage Structure
+- Rule `DressCode\Rules\Upgrading\ReplacedFunctionCallsRule`, stage Structure
 - Rule `DressCode\Rules\Upgrading\ForbiddenSymbolsRule`, stage Structure
 - Rule `DressCode\Rules\Upgrading\ForbiddenMembersRule`, stage Structure
 - Rule `DressCode\Rules\Upgrading\AttributeForAnnotationRule`, stage Structure
