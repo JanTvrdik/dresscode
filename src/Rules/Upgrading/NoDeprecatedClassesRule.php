@@ -27,7 +27,8 @@ use PhpSyntax\Nodes\Type\{NamedTypeNode, UnionTypeNode};
  * the deprecation names a replacement for is rewritten, one without it being left as it is. A reference inside
  * a declaration deprecated itself goes together with it and is left, and so is one in a union type that names the
  * replacement too, which takes both on purpose. A class the map of replacedClasses or of forbiddenClasses has is not
- * reported, nor an attribute attributeForAnnotation writes another one instead of.
+ * reported, nor an interface attributeForMember writes an attribute instead of, nor an attribute attributeForAnnotation
+ * writes another one instead of.
  */
 #[RuleInfo(
 	Stage::Structure,
@@ -36,6 +37,7 @@ use PhpSyntax\Nodes\Type\{NamedTypeNode, UnionTypeNode};
 	reads: [
 		MemberMapGrammar::ReplacedClasses,
 		MemberMapGrammar::ForbiddenClasses,
+		MemberMapGrammar::AttributeForMember,
 		MemberMapGrammar::AttributeForAnnotation,
 	],
 	analyses: [PhpDoc::class, Types::class, NameResolver::class],
@@ -68,6 +70,12 @@ final class NoDeprecatedClassesRule extends NodeRule
 			...array_keys($values->readMap(MemberMapGrammar::ForbiddenClasses)),
 		] as $class) {
 			$this->mapped[strtolower(ltrim((string) $class, '\\'))] = true;
+		}
+
+		foreach (AttributeForMemberEntry::fromValues($values) as $entry) {
+			if ($entry->kind === AttributeForMemberKind::Interface) {
+				$this->mapped[strtolower($entry->class)] = true;
+			}
 		}
 
 		$this->annotations = AnnotationMap::fromValues($values);

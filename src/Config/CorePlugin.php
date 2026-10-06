@@ -10,7 +10,7 @@ namespace DressCode\Config;
 use DressCode\Analyses\IndentationPlan;
 use DressCode\{Decision, DecisionKind, Domain, Plugin, PluginManifest, Rules, Violation};
 use DressCode\Domains\{Count, Flag, GrammarEntry, Map, Names, Shapes, Words};
-use DressCode\Rules\Upgrading\{AttributeTarget, CallTemplate, MemberTarget};
+use DressCode\Rules\Upgrading\{AttributeForMemberEntry, AttributeTarget, CallTemplate, MemberTarget};
 use DressCode\Upgrading\{MemberMapGrammar, MemberPattern};
 use Nette\Schema\{Context, Expect, Schema};
 use function dirname;
@@ -243,6 +243,7 @@ final class CorePlugin implements Plugin
 				Rules\Upgrading\ForbiddenSymbolsRule::class,
 				Rules\Upgrading\ForbiddenMembersRule::class,
 				Rules\Upgrading\AttributeForAnnotationRule::class,
+				Rules\Upgrading\AttributeForMemberRule::class,
 				Rules\Upgrading\NoDeprecatedClassesRule::class,
 				Rules\Upgrading\NoDeprecatedMembersRule::class,
 				Rules\Upgrading\NoDeprecatedFunctionsRule::class,
@@ -430,6 +431,16 @@ final class CorePlugin implements Plugin
 					new Map(new GrammarEntry, grammar: self::createAttributeForAnnotationGrammar()),
 					'An attribute written for an annotation (`@ORM\\Entity: ORM\\Entity`)',
 				),
+				new Decision(
+					MemberMapGrammar::AttributeForMember,
+					new Map(
+						new GrammarEntry,
+						wildcards: false,
+						grammar: self::createAttributeForMemberGrammar(),
+						canonicalize: MemberPattern::canonicalizeKey(...),
+					),
+					'An attribute written for a member the class declares by convention',
+				),
 
 				// the newer constructs, decided once for every rule writing them
 				new Decision(
@@ -613,6 +624,26 @@ final class CorePlugin implements Plugin
 							. " written instead of `$old` is not a class with its arguments, `Class` or `Class(arguments)`.",
 							'dresscode.attributeCode',
 						);
+					}
+				}
+
+				return $options;
+			});
+	}
+
+
+	private static function createAttributeForMemberGrammar(): Schema
+	{
+		return Expect::arrayOf(Expect::string(), Expect::string())
+			->description('The member of an ancestor, `Class::$name`, `Class::method()` or `\'Class::$name = literal\'` for that value only, or an interface the class implements → the attribute written instead, `$value` standing for the value of the property or what the method returns')
+			->transform(function (array $options, Context $context): array {
+				foreach ($options as $key => $value) {
+					try {
+						if ($value !== MemberMapGrammar::Keep) {
+							AttributeForMemberEntry::fromEntry((string) $key, $value);
+						}
+					} catch (\InvalidArgumentException $e) {
+						$context->addError($e->getMessage(), 'dresscode.memberMap');
 					}
 				}
 

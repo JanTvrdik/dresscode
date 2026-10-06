@@ -9,6 +9,18 @@ namespace DressCode\Rules\Upgrading;
 
 
 /**
+ * What a class declares by convention for a library to read.
+ * @internal
+ */
+enum AttributeForMemberKind
+{
+	case Property;
+	case Method;
+	case Interface;
+}
+
+
+/**
  * What a forbidden map says of a use: the project forbids it, or the library whose upgrading data hold the entry
  * deprecated it, its installed version still having the symbol, or removed it; forbidden too where the run cannot
  * tell, having no types.
