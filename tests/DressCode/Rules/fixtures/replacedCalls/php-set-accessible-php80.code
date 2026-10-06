@@ -1,0 +1,9 @@
+<?php
+// {"php": {"deprecatedApi": "forbidden"}}
+// php 8.0
+// the call does something before PHP 8.1, so it stays
+function a()
+{
+	$property = new ReflectionProperty(Foo::class, 'bar');
+	$property->setAccessible(true);
+}

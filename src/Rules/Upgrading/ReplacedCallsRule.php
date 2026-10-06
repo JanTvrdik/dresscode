@@ -80,7 +80,7 @@ use function count;
 #[RuleInfo(
 	Stage::Structure,
 	typesRequired: true,
-	decisions: ['upgrading.packages', 'upgrading.api.replacedCalls'],
+	decisions: ['upgrading.packages', 'upgrading.php.deprecatedApi', 'upgrading.api.replacedCalls'],
 	reads: [MemberMapGrammar::ReplacedMembers, MemberMapGrammar::ForbiddenMembers],
 	analyses: [Types::class, NameResolver::class],
 )]
@@ -170,12 +170,12 @@ final class ReplacedCallsRule extends NodeRule
 			return;
 		}
 
-		[$pattern, $template] = [$found->entry->pattern, $found->entry->value];
+		[$pattern, $template, $decision] = [$found->entry->pattern, $found->entry->value, $found->entry->decision];
 		[$bindings, $access] = [$found->bindings, $found->access];
 		assert($bindings !== null);
 		if ($template->removesCall()) {
 			assert(!$node instanceof NewNode); // only a method is removed
-			$template->removeCall($node, $pattern->describeAccess($access, $node), $context);
+			$template->removeCall($node, $pattern->describeAccess($access, $node), $decision, $context);
 			return;
 		}
 
@@ -212,7 +212,7 @@ final class ReplacedCallsRule extends NodeRule
 			return;
 		}
 
-		if ($rewrite->report($node instanceof NewNode ? $node->class : $node->name, $message, $context)) {
+		if ($rewrite->report($node instanceof NewNode ? $node->class : $node->name, $message, $decision, $context)) {
 			$node->replaceWithExpression($rewrite->write($node, $context));
 		}
 	}
@@ -251,7 +251,8 @@ final class ReplacedCallsRule extends NodeRule
 			),
 		};
 
-		if ($rewrite->report($node->name, self::describeCall($node, $access, $pattern, $template), $context)) {
+		$message = self::describeCall($node, $access, $pattern, $template);
+		if ($rewrite->report($node->name, $message, $entry->decision, $context)) {
 			$node->replaceWithExpression((new Builder)->expression('fn() => $value', value: $rewrite->write($node, $context)));
 		}
 	}
@@ -307,6 +308,7 @@ final class ReplacedCallsRule extends NodeRule
 			$context->report(
 				$node instanceof NewNode ? $node->class : $node->name,
 				self::describeCall($node, $access, $entry->pattern, $entry->value) . ", but $reason.",
+				decision: $entry->decision,
 				fixable: false,
 			);
 		}
@@ -344,6 +346,7 @@ final class ReplacedCallsRule extends NodeRule
 				$callable->literal,
 				$entry->value->describe($entry->pattern->describe($access->kind))
 				. ', but no expression stands for a callable value.',
+				decision: $entry->decision,
 				fixable: false,
 			);
 		}
@@ -404,7 +407,7 @@ final class ReplacedCallsRule extends NodeRule
 			return;
 		}
 
-		[$message, $template, $bindings, $arguments] = $found;
+		[$message, $decision, $template, $bindings, $arguments] = $found;
 		$rewrite = match (true) {
 			$use === 'written' => new Rewrite(null, ', but it is written to, which a call cannot be'),
 			$template === null => new Rewrite(null, ', but nothing says what a read of it becomes'),
@@ -421,7 +424,7 @@ final class ReplacedCallsRule extends NodeRule
 		}
 
 		$rewrite = self::fitPlace($node, $rewrite);
-		if ($rewrite->report($node instanceof ArrayAccessNode ? $node->openBracket : $node->name, $message, $context)) {
+		if ($rewrite->report($node instanceof ArrayAccessNode ? $node->openBracket : $node->name, $message, $decision, $context)) {
 			$node->replaceWithExpression($rewrite->write($node, $context));
 		}
 	}
@@ -437,7 +440,7 @@ final class ReplacedCallsRule extends NodeRule
 			return;
 		}
 
-		[$message, $template, $bindings, $arguments] = $found;
+		[$message, $decision, $template, $bindings, $arguments] = $found;
 		$rewrite = match (true) {
 			$template === null => new Rewrite(null, ', but nothing says what an assignment to it becomes'),
 			!$node->parent instanceof ExpressionStatementNode => new Rewrite(null, ', but the value of the assignment is used'),
@@ -448,7 +451,7 @@ final class ReplacedCallsRule extends NodeRule
 				static: $target instanceof StaticPropertyFetchNode,
 			),
 		};
-		if ($rewrite->report($target instanceof ArrayAccessNode ? $target->openBracket : $target->name, $message, $context)) {
+		if ($rewrite->report($target instanceof ArrayAccessNode ? $target->openBracket : $target->name, $message, $decision, $context)) {
 			$node->replaceWithExpression($rewrite->write($node, $context));
 		}
 	}
@@ -464,7 +467,7 @@ final class ReplacedCallsRule extends NodeRule
 				continue;
 			}
 
-			[$message, $template, $bindings, $arguments] = $found;
+			[$message, $decision, $template, $bindings, $arguments] = $found;
 			$receiver = self::getReceiver($variable);
 			$rewrite = match (true) {
 				$template === null => new Rewrite(
@@ -495,7 +498,7 @@ final class ReplacedCallsRule extends NodeRule
 			}
 
 			$at = $variable instanceof PropertyFetchNode ? $variable->name : $variable->openBracket;
-			if (!$rewrite->report($at, $message, $context)) {
+			if (!$rewrite->report($at, $message, $decision, $context)) {
 				continue;
 			} elseif ($node instanceof IssetNode) {
 				$node->replaceWithExpression($rewrite->write($node, $context));
@@ -553,6 +556,7 @@ final class ReplacedCallsRule extends NodeRule
 		if ($rewrite->report(
 			$node->name,
 			$template->describe($found->entry->pattern->describe(MemberKind::Constructor)),
+			$found->entry->decision,
 			$context,
 		)) {
 			assert($new instanceof NewNode);
@@ -573,6 +577,7 @@ final class ReplacedCallsRule extends NodeRule
 				$node->name,
 				$entry->value->describe($entry->pattern->describe($kind))
 				. ', but a declaration is nothing an expression could stand for.',
+				decision: $entry->decision,
 				fixable: false,
 			);
 		}
@@ -581,11 +586,12 @@ final class ReplacedCallsRule extends NodeRule
 
 	/**
 	 * What the map says of a property or an offset used the given way: the property of a key, else the magic method
-	 * PHP calls for it, with the name or the key and the values as its arguments. The message, the template or null
-	 * where the key has none for that use, and what the template is instantiated with; null where the map says nothing.
+	 * PHP calls for it, with the name or the key and the values as its arguments. The message, the decision it is
+	 * reported under, the template or null where the key has none for that use, and what the template is instantiated
+	 * with; null where the map says nothing.
 	 * @param  'get'|'set'|'isset'|'unset'  $use
 	 * @param  list<ExpressionNode>  $values  what the magic method gets besides the name or the key
-	 * @return ?array{string, ?CallTemplate, ArgumentBindings, ArgumentListNode}
+	 * @return ?array{string, string, ?CallTemplate, ArgumentBindings, ArgumentListNode}
 	 */
 	private function findTemplate(
 		PropertyFetchNode|StaticPropertyFetchNode|ArrayAccessNode $node,
@@ -630,6 +636,7 @@ final class ReplacedCallsRule extends NodeRule
 				$bound = $arguments->findArgument(null, 0);
 				return [
 					($template ?? $known->value)->describe($known->pattern->describe($access->kind)),
+					($hooks[$use] ?? $known)->decision,
 					$template,
 					new ArgumentBindings($bound === null ? [] : ['value' => $bound]),
 					$arguments,
@@ -664,6 +671,7 @@ final class ReplacedCallsRule extends NodeRule
 			? null
 			: [
 				$entry->value->describe($entry->pattern->describe(MemberKind::Method)),
+				$entry->decision,
 				$entry->value,
 				$bindings[spl_object_id($entry)],
 				$call->arguments,

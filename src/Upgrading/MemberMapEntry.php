@@ -9,7 +9,8 @@ namespace DressCode\Upgrading;
 
 
 /**
- * An entry of a map of members: its key and what the rule keeps of its value.
+ * An entry of a map of members: its key, what the rule keeps of its value, and the decision a use of it is reported
+ * under, the map itself or the requirement that laid the upgrading data holding it.
  * @template T
  */
 final readonly class MemberMapEntry
@@ -19,6 +20,7 @@ final readonly class MemberMapEntry
 		public MemberPattern $pattern,
 		/** @var T */
 		public mixed $value,
+		public string $decision,
 	) {
 	}
 }

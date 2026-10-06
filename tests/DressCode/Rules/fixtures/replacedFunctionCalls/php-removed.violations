@@ -1,0 +1,8 @@
+5: Function `curl_close()` does nothing.
+6: Function `curl_share_close()` does nothing.
+8: Function `imagedestroy()` does nothing.
+9: Function `xml_parser_free()` does nothing.
+10: Function `curl_close()` does nothing.
+11: Function `curl_close()` does nothing, but its value is used.
+12: Function `curl_close()` does nothing, but what it evaluates may do something.
+14: Function `curl_close()` does nothing.

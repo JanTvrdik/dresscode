@@ -1,0 +1,9 @@
+<?php
+// {"php": {"deprecatedApi": "forbidden"}}
+$a = mb_ereg('a', $s);
+$b = mb_split(',', $s);
+$c = mb_regex_encoding();
+$d = mb_strlen($s);
+$e = is_double($x);
+$f = spl_object_hash($o);
+$g = strcoll($a, $b);

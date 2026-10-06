@@ -308,12 +308,14 @@ final readonly class CallTemplate
 	/**
 	 * Takes the call doing nothing away with its statement, where neither what it is made on nor its arguments would do
 	 * anything when evaluated; a call whose value is used, one that is the body of a construct without braces and one
-	 * holding a comment are only reported. The subject is the called function or member as the message names it, and
-	 * the uncertainty why the name of a function may call another one (`GlobalCalls::findUncertainty()`).
+	 * holding a comment are only reported. The subject is the called function or member as the message names it, the
+	 * decision the one it is reported under, and the uncertainty why the name of a function may call another one
+	 * (`GlobalCalls::findUncertainty()`).
 	 */
 	public function removeCall(
 		FunctionCallNode|MethodCallNode|StaticMethodCallNode $call,
 		string $subject,
+		string $decision,
 		RuleContext $context,
 		?string $uncertainty = null,
 	): void
@@ -337,6 +339,7 @@ final readonly class CallTemplate
 			$context->report(
 				$call->name,
 				$this->describe($subject) . "$refusal.",
+				decision: $decision,
 				fixable: $refusal === null,
 				risk: NodeHelpers::findRisk($behaviorChange, $uncertainty),
 				because: $behaviorChange ?? $uncertainty,

@@ -25,12 +25,12 @@ final readonly class UpgradingFile
 	private const ForbiddenMaps = ['forbiddenClasses', 'forbiddenFunctions', 'forbiddenConstants', 'forbiddenMembers'];
 
 	private const SectionPattern = '~^since (\d+(?:\.\d+)*)$~D';
-	private const PackagePattern = '~^[a-z0-9_.-]+/[a-z0-9_.-]+$~D';
+	private const PackagePattern = '~^(?:php|[a-z0-9_.-]+/[a-z0-9_.-]+)$~D';
 	private const VersionPattern = '~^\d+(?:\.\d+)*$~D';
 
 
 	private function __construct(
-		/** the package the sections are versions of */
+		/** the package the sections are versions of, `php` for PHP itself */
 		public string $package,
 		/** @var array{functions: list<string>, constants: list<string>}  what the package declares in its namespaces, fully qualified */
 		public array $namespaces,
@@ -60,7 +60,7 @@ final readonly class UpgradingFile
 
 		$package = is_array($data) ? $data['package'] ?? null : null;
 		if (!is_string($package) || !preg_match(self::PackagePattern, $package)) {
-			throw new ConfigurationException("Upgrading file $label: The key `package` must name the package the sections are versions of, as `vendor/name`.");
+			throw new ConfigurationException("Upgrading file $label: The key `package` must name the package the sections are versions of, as `vendor/name`, or `php`.");
 		}
 
 		$sections = $requirements = [];

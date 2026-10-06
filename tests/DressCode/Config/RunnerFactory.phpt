@@ -485,6 +485,59 @@ test('types without PHPStan beside DressCode are a warning, and the run goes wit
 });
 
 
+test('what the data of PHP say is reported under the requirement that lays them, without the types too', function () {
+	$root = createTempDir('php-data');
+	$factory = new RunnerFactory(phpstanInstalled: false);
+	$upgrading = ['php' => ['deprecatedApi' => 'forbidden'], 'api' => ['forbiddenFunctions' => ['acme_retired' => 'gone']]];
+	$code = "<?php\nstrftime('%Y');\nacme_retired();\n";
+	$decisions = fn(?string $only) => array_map(
+		fn($violation) => "$violation->line: $violation->decision",
+		$factory->createRunner(
+			$factory->resolve(new Config(decisions: ['upgrading' => $upgrading]), $root, only: $only === null ? null : [$only]),
+			cache: false,
+		)
+			->processCode("$root/Check.php", $code)
+			->violations,
+	);
+
+	Assert::same(['2: upgrading.php.deprecatedApi', '3: upgrading.api.forbiddenFunctions'], $decisions(null));
+	Assert::same(['2: upgrading.php.deprecatedApi'], $decisions('upgrading.php.deprecatedApi'));
+});
+
+
+test('every rule the data of PHP feed reports what they say under the requirement that lays them', function () {
+	$root = createTempDir('php-data-types');
+	$code = <<<'XX'
+		<?php
+
+		function checkPhpData(SplObjectStorage $storage, object $item, ReflectionProperty $property): string
+		{
+			$storage->detach($item);
+			$property->setAccessible(true);
+			return utf8_encode('a');
+		}
+		XX;
+	file_put_contents("$root/Check.php", $code);
+	$factory = new RunnerFactory;
+	$decisions = function (string $php) use ($factory, $root, $code): array {
+		$config = new Config(
+			typeAnalysis: 'phpstan',
+			targets: ['php' => $php],
+			decisions: ['upgrading' => ['php' => ['deprecatedApi' => 'forbidden']]],
+		);
+		return array_map(
+			fn($violation) => "$violation->line: $violation->decision",
+			$factory->createRunner($factory->resolve($config, $root), cache: false)->processCode("$root/Check.php", $code)->violations,
+		);
+	};
+
+	// the call PHP 8.1 made a no-op is forbidden where the target still has 8.0, and removed from 8.1 on
+	$expected = ['5: upgrading.php.deprecatedApi', '6: upgrading.php.deprecatedApi', '7: upgrading.php.deprecatedApi'];
+	Assert::same($expected, $decisions('8.0'));
+	Assert::same($expected, $decisions('8.1'));
+});
+
+
 test('the command line asks for the types without a configuration that sets them, and PHPStan missing refuses the run', function () {
 	$root = createTempDir('types-command');
 	$commandLine = new Config(use: ['deprecations'], typeAnalysis: 'phpstan');
@@ -952,6 +1005,20 @@ test('a helper of the tool the rules stand on is part of the identity by the tim
 	$file = (string) new ReflectionClass(CodeWriter::class)->getFileName();
 	$time = (int) filemtime($file);
 	Assert::false($cached());
+	Assert::true($cached());
+	try {
+		touch($file, $time + 10);
+		clearstatcache();
+		Assert::false($cached());
+	} finally {
+		touch($file, $time);
+		clearstatcache();
+	}
+
+	// so are the data the rules read from the tree, the upgrading data of PHP among them
+	$file = DressCode\Config\PackageDiscovery::PhpFile;
+	$time = (int) filemtime($file);
+	$cached();
 	Assert::true($cached());
 	try {
 		touch($file, $time + 10);

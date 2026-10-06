@@ -108,6 +108,18 @@ final readonly class Values
 	}
 
 
+	/**
+	 * The decision an entry of a map is reported under: the requirement that laid the upgrading data holding it, the
+	 * map itself otherwise.
+	 */
+	public function getEntryDecision(string $path, string $key): string
+	{
+		$value = $this->get($path);
+		$origin = $value->content === null || $value->isKept() ? null : ($value->getEntries()[$key] ?? null)?->origin;
+		return $origin->decision ?? $path;
+	}
+
+
 	/** Whether the requirement is `keep`, or named by no layer. */
 	public function isKept(string $path): bool
 	{

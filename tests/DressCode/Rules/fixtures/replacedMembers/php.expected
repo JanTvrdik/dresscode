@@ -1,0 +1,22 @@
+<?php
+// {"php": {"deprecatedApi": "forbidden"}, "api": {"replacedMembers": {"SplObjectStorage::detach()": "removeAll"}}}
+
+namespace App;
+
+
+function track(\SplObjectStorage $storage, object $item): bool
+{
+	$storage->offsetSet($item);
+	$storage->removeAll($item);
+	$callback = [$storage, 'offsetSet'];
+	return $storage->offsetExists($item);
+}
+
+
+class Tracker extends \SplObjectStorage
+{
+	public function offsetExists(object $object): bool
+	{
+		return false;
+	}
+}

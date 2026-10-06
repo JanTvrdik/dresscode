@@ -1,0 +1,5 @@
+5: Function `curl_close()` does nothing.
+	risky NameUncertain: the namespace may declare `curl_close()`
+6: Function `curl_close()` does nothing.
+7: Function `utf8_encode()` is replaced by `mb_convert_encoding($string, 'UTF-8', 'ISO-8859-1')`.
+	risky BehaviorChanges: a build without mbstring answers the call with an error

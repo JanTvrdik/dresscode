@@ -45,14 +45,15 @@ final readonly class Rewrite
 
 
 	/**
-	 * Reports the use with what the template made of it, and says whether it is to be rewritten.
+	 * Reports the use under the decision with what the template made of it, and says whether it is to be rewritten.
 	 * @phpstan-assert-if-true !null $this->expression
 	 */
-	public function report(Node|Token $at, string $message, RuleContext $context): bool
+	public function report(Node|Token $at, string $message, string $decision, RuleContext $context): bool
 	{
 		return $context->report(
 			$at,
 			$message . $this->refusal . '.',
+			decision: $decision,
 			fixable: $this->expression !== null,
 			risk: $this->because === null ? null : Risk::BehaviorChanges,
 			because: $this->because,

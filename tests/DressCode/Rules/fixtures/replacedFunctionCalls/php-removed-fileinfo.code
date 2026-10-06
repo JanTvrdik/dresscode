@@ -1,0 +1,4 @@
+<?php
+// {"php": {"deprecatedApi": "forbidden"}}
+// php 8.1
+finfo_close($finfo);

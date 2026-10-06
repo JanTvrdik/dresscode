@@ -27,12 +27,15 @@ use PhpSyntax\Nodes\Statement\ExpressionStatementNode;
  */
 #[RuleInfo(
 	Stage::Structure,
-	decisions: ['upgrading.packages', 'upgrading.api.replacedCalls'],
+	decisions: ['upgrading.packages', 'upgrading.php.deprecatedApi', 'upgrading.api.replacedCalls'],
 	analyses: [NameResolver::class],
 )]
 final class ReplacedFunctionCallsRule extends NodeRule
 {
-	/** @var array<lowercase-string, list<array{FunctionPattern, CallTemplate}>>  the function => its keys, the most specific first */
+	/**
+	 * @var array<lowercase-string, list<array{FunctionPattern, CallTemplate, string}>>  the function => its keys with the
+	 * decision each is reported under, the most specific first
+	 */
 	private array $functions = [];
 
 	/** @var array<string, true>  the names of those functions without their namespace, which a call has to end with */
@@ -45,7 +48,11 @@ final class ReplacedFunctionCallsRule extends NodeRule
 		foreach ($values->readMap(MemberMapGrammar::ReplacedCalls) as $key => $value) {
 			if (MemberMapGrammar::isFunctionKey((string) $key)) {
 				$pattern = FunctionPattern::fromKey((string) $key);
-				$this->functions[$pattern->getLookupName()][] = [$pattern, CallTemplate::fromEntry($value, $pattern)];
+				$this->functions[$pattern->getLookupName()][] = [
+					$pattern,
+					CallTemplate::fromEntry($value, $pattern),
+					$values->getEntryDecision(MemberMapGrammar::ReplacedCalls, (string) $key),
+				];
 				$this->shortNames[strtolower(QualifiedNames::stripNamespace($pattern->name))] = true;
 			}
 		}
@@ -83,7 +90,7 @@ final class ReplacedFunctionCallsRule extends NodeRule
 			return;
 		}
 
-		foreach ($this->functions[$function] as [$pattern, $template]) {
+		foreach ($this->functions[$function] as [$pattern, $template, $decision]) {
 			$bindings = $pattern->bind($call->arguments);
 			if ($bindings === null) {
 				continue;
@@ -92,7 +99,7 @@ final class ReplacedFunctionCallsRule extends NodeRule
 			$subject = "Function `$pattern->name()`";
 			$uncertainty = str_contains($function, '\\') ? null : GlobalCalls::findUncertainty($call, $context);
 			if ($template->removesCall()) {
-				$template->removeCall($call, $subject, $context, $uncertainty);
+				$template->removeCall($call, $subject, $decision, $context, $uncertainty);
 				return;
 			}
 
@@ -101,6 +108,7 @@ final class ReplacedFunctionCallsRule extends NodeRule
 				$context->report(
 					$call->name,
 					$template->describe($subject) . "$rewrite->refusal.",
+					decision: $decision,
 					fixable: $rewrite->expression !== null,
 					risk: $rewrite->expression === null ? null : NodeHelpers::findRisk($rewrite->because, $uncertainty),
 					because: $rewrite->expression === null ? null : $rewrite->because ?? $uncertainty,

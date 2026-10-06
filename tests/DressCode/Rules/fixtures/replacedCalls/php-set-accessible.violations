@@ -1,0 +1,7 @@
+7: Method `ReflectionProperty::setAccessible()` does nothing.
+14: Method `ReflectionMethod::setAccessible()` does nothing.
+22: Method `ReflectionProperty::setAccessible()` does nothing.
+39: Method `ReflectionProperty::setAccessible()` does nothing, but what it evaluates may do something.
+45: Method `ReflectionProperty::setAccessible()` does nothing.
+46: Method `ReflectionProperty::setAccessible()` does nothing, but its value is used.
+50: Method `ReflectionProperty::setAccessible()` does nothing.

@@ -273,8 +273,10 @@ final class ConfigResolver
 
 	/**
 	 * The maps of the upgrading files of the installed packages, and the requirements of the rules of their plugins they
-	 * turn on, as layers under every other one, where `upgrading.packages` is `yes`. A run narrowed by `only` gets the
-	 * maps of a package or a library it names, and those of the others only where another of its names covers the map.
+	 * turn on, as layers under every other one, where `upgrading.packages` is `yes`, or where the requirement laying a
+	 * file is not `keep` (`upgrading.php.deprecatedApi` for the data of PHP). A run narrowed by `only` gets the maps of
+	 * a package or a library it names, and those of the others only where another of its names covers the map, or the
+	 * requirement laying them.
 	 * @param  array<string, ResolvedDecision>  $decisions
 	 * @param  ?list<ExpandedName>  $narrowed
 	 * @return list<array{Layer, array<string, mixed>}>
@@ -289,7 +291,8 @@ final class ConfigResolver
 
 		$layers = [];
 		foreach ($this->upgradingData as $package) {
-			$layer = $package->buildDecisions(function (string $map) use ($package, $narrowed, $named, $covered): ?string {
+			$requirement = $package->layer->decision;
+			$layer = $package->buildDecisions(function (string $map) use ($package, $requirement, $narrowed, $named, $covered): ?string {
 				$path = $this->findDataPath($map);
 				if ($path === null && !in_array($package->layer->package, $this->pluginsSkipped, true)) { // the plugin skipped says so
 					$this->warnings[$package->layer->describe() . " $map"] = "Map `$map`, which "
@@ -309,11 +312,15 @@ final class ConfigResolver
 					&& ($narrowed === null
 						|| isset($named[$package->layer->package ?? ''])
 						|| isset($named[$package->package])
-						|| isset($covered[$path]))
+						|| isset($covered[$path])
+						|| isset($covered[$requirement ?? '']))
 					? $path
 					: null;
 			});
-			if ($layer !== [] && ($decisions[self::PackagesDecision] ?? null)?->value->getFlag()) {
+			$laid = $requirement === null
+				? ($decisions[self::PackagesDecision] ?? null)?->value->getFlag()
+				: ($decisions[$requirement] ?? null)?->value->isKept() === false;
+			if ($layer !== [] && $laid) {
 				$layers[] = [$package->layer, $layer];
 			}
 		}

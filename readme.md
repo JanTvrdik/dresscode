@@ -331,7 +331,8 @@ write alone (`upgrading.syntax.match: required`). The set `deprecations` goes wi
 deprecated: a parameter with the default `null` gets its `?`, the CSV functions get their `escape`
 argument, `${name}` in a string becomes `{$name}`, backticks become `shell_exec()` and `(integer)` becomes
 `(int)`, and what cannot be fixed is reported, such as a `return` inside `finally` or a class named `let`,
-which PHP 8.6 deprecated.
+which PHP 8.6 deprecated. The upgrading data of PHP, `upgrading.php.deprecatedApi`, remove what newer PHP no
+longer needs, such as `curl_close()` or `setAccessible()`.
 
 Upgrade tools such as Rector work on an abstract syntax tree, which keeps what the code means but not how
 it is laid out, so they need a coding standard tool after them; Rector's own readme says so. DressCode is

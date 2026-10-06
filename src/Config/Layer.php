@@ -19,6 +19,8 @@ final readonly class Layer
 		public ?string $name = null,
 		/** the package an upgrading file ships with */
 		public ?string $package = null,
+		/** the requirement that lays the upgrading file and what it says is reported under, null for the flag `upgrading.packages` */
+		public ?string $decision = null,
 	) {
 	}
 

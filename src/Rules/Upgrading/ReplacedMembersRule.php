@@ -45,7 +45,7 @@ use PhpSyntax\Nodes\Scalar\StringNode;
 #[RuleInfo(
 	Stage::Structure,
 	typesRequired: true,
-	decisions: ['upgrading.packages', 'upgrading.api.replacedMembers'],
+	decisions: ['upgrading.packages', 'upgrading.php.deprecatedApi', 'upgrading.api.replacedMembers'],
 	reads: [MemberMapGrammar::ReplacedCalls],
 	analyses: [Types::class, NameResolver::class],
 )]
@@ -138,6 +138,7 @@ final class ReplacedMembersRule extends NodeRule
 		if (!$context->report(
 			$node->name,
 			$pattern->describeAccess($access, $node) . ' is replaced by ' . $target->describe($access->kind, $pattern) . $refusal . '.',
+			decision: $entry->decision,
 			fixable: $refusal === null,
 			risk: $risk === null ? null : Risk::BehaviorChanges,
 			because: $risk,
@@ -193,6 +194,7 @@ final class ReplacedMembersRule extends NodeRule
 		if ($context->report(
 			$node->name,
 			$pattern->describe($kind) . ' is replaced by ' . $target->describe($kind, $pattern) . ($refusal ?? '') . '.',
+			decision: $entry->decision,
 			fixable: $refusal === null,
 		)) {
 			$node->name->text = $target->name;
@@ -229,6 +231,7 @@ final class ReplacedMembersRule extends NodeRule
 		if ($context->report(
 			$callable->literal,
 			$pattern->describe($access->kind) . ' is replaced by ' . $target->describe($access->kind, $pattern) . $refusal . '.',
+			decision: $entry->decision,
 			fixable: $refusal === null,
 			risk: $risk === null ? null : Risk::BehaviorChanges,
 			because: $risk,

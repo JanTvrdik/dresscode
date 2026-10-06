@@ -227,6 +227,7 @@ mistakes:
 
 upgrading:
 	php:
+		deprecatedApi: forbidden              # `mb_convert_encoding()`, not `utf8_encode()`, `E_STRICT` reported
 		deprecatedArgument: forbidden         # `trigger_error($m, E_USER_ERROR)` reported
 		dollarBraceInterpolation: forbidden   # `{$name}`, not `${name}`
 		implicitNullable: forbidden           # `?int $x = null`, not `int $x = null`

@@ -441,7 +441,7 @@ test(
 			"package: acme/lib\n\nrules:\n\treplacedClasses: []\n"
 				=> 'Upgrading file `upgrading/upgrading.neon` of `acme/lib`: Unexpected key `rules`; the file holds `package`, `namespaces` and sections `since <version>`.',
 			"since 1.0:\n\treplacedClasses: []\n"
-				=> 'Upgrading file `upgrading/upgrading.neon` of `acme/lib`: The key `package` must name the package the sections are versions of, as `vendor/name`.',
+				=> 'Upgrading file `upgrading/upgrading.neon` of `acme/lib`: The key `package` must name the package the sections are versions of, as `vendor/name`, or `php`.',
 			"package: acme/lib\n\nsince 1.0: [a, b]\n"
 				=> 'Upgrading file `upgrading/upgrading.neon` of `acme/lib`: The section `since 1.0` must be a map of maps to their entries.',
 			"package: acme/lib\n\nsince 1.0:\n\treplacedClasses: [a: b\n" => 'Upgrading file `upgrading/upgrading.neon` of `acme/lib` is not valid NEON: %a%',
@@ -623,7 +623,8 @@ test('dresscode config lists the upgrading data with the sections the lowest ver
 	$resolution = $factory->resolve(new Config, $root);
 	$printer = new ConfigPrinter($resolution->resolvedConfig, $resolution->upgradingData);
 	Assert::match(
-		'%A%Packages   1 with upgrading data%A%      acme/lib 3.2 %a%upgrading/upgrading.neon of acme/lib, upgrading further to 3.3 (reported), 4.0%A%',
+		'%A%Packages   2 with upgrading data%A%      acme/lib 3.2 %a%upgrading/upgrading.neon of acme/lib, upgrading further to 3.3 (reported), 4.0
+      php 8.0 %a%php.neon of php, upgrading further to 8.1 (reported), %A%',
 		$printer->print(new Console(colorDepth: ColorDepth::None)),
 	);
 	Assert::same(

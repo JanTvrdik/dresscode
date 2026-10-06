@@ -1,0 +1,203 @@
+# What PHP itself retired, the upgrading data of PHP written as those of a library: a deprecated function or
+# constant reported, a call written as what replaces it, a call doing nothing since a version removed.
+# @generated from the reflection dumps, UPGRADING and the entries kept by hand, do not edit.
+
+package: php
+
+since 8.6:
+	forbiddenFunctions:
+		doubleval: null
+		is_double: null
+		is_integer: null
+		is_long: null
+		mb_ereg: null
+		mb_ereg_match: null
+		mb_ereg_replace: null
+		mb_ereg_replace_callback: null
+		mb_ereg_search: null
+		mb_ereg_search_getpos: null
+		mb_ereg_search_getregs: null
+		mb_ereg_search_init: null
+		mb_ereg_search_pos: null
+		mb_ereg_search_regs: null
+		mb_ereg_search_setpos: null
+		mb_eregi: null
+		mb_eregi_replace: null
+		mb_regex_encoding: null
+		mb_regex_set_options: null
+		mb_split: null
+		metaphone: null
+		mysqli_get_charset: null
+		mysqli_stmt_init: null
+		spl_classes: null
+		spl_object_hash: null
+		strcoll: null
+
+since 8.5:
+	forbiddenConstants:
+		DATE_RFC7231: null
+		FILTER_DEFAULT: null
+		MHASH_*: null
+	forbiddenFunctions:
+		mysqli_execute: null
+		socket_set_timeout: null
+	replacedCalls:
+		'curl_close($handle)': {write: removed, from: '8.0'}
+		'curl_share_close($share_handle)': {write: removed, from: '8.0'}
+		'finfo_close($finfo)': {write: removed, from: '8.1'}
+		'imagedestroy($image)': {write: removed, from: '8.0'}
+		'xml_parser_free($parser)': {write: removed, from: '8.0'}
+	replacedMembers:
+		'SplObjectStorage::attach()': {write: offsetSet, from: '8.0'}
+		'SplObjectStorage::contains()': {write: offsetExists, from: '8.0'}
+		'SplObjectStorage::detach()': {write: offsetUnset, from: '8.0'}
+
+since 8.4:
+	forbiddenConstants:
+		DOM_PHP_ERR: null
+		E_STRICT: null
+		MYSQLI_STORE_RESULT_COPY_DATA: null
+		SOAP_FUNCTIONS_ALL: null
+		SUNFUNCS_RET_DOUBLE: null
+		SUNFUNCS_RET_STRING: null
+		SUNFUNCS_RET_TIMESTAMP: null
+	forbiddenFunctions:
+		intlcal_set: null
+		intlgregcal_create_instance: null
+		lcg_value: null
+		mysqli_kill: null
+		mysqli_ping: null
+		mysqli_refresh: null
+		xml_set_object: null
+
+since 8.3:
+	forbiddenConstants:
+		ASSERT_*: null
+		MT_RAND_PHP: null
+	forbiddenFunctions:
+		assert_options: null
+
+since 8.2:
+	replacedCalls:
+		'utf8_decode($string)': {write: "mb_convert_encoding($string, 'ISO-8859-1', 'UTF-8')", because: a build without mbstring answers the call with an error, from: '8.0'}
+		'utf8_encode($string)': {write: "mb_convert_encoding($string, 'UTF-8', 'ISO-8859-1')", because: a build without mbstring answers the call with an error, from: '8.0'}
+
+since 8.1:
+	forbiddenConstants:
+		FILE_BINARY: null
+		FILE_TEXT: null
+		FILTER_SANITIZE_STRING: null
+		FILTER_SANITIZE_STRIPPED: null
+		NIL: null
+	forbiddenFunctions:
+		date_sunrise: null
+		date_sunset: null
+		gmstrftime: null
+		mhash: null
+		mhash_count: null
+		mhash_get_block_size: null
+		mhash_get_hash_name: null
+		mhash_keygen_s2k: null
+		odbc_result_all: null
+		strftime: null
+		strptime: null
+	replacedCalls:
+		'ReflectionMethod::setAccessible($accessible)': removed
+		'ReflectionProperty::setAccessible($accessible)': removed
+
+since 8.0:
+	forbiddenConstants:
+		ENCHANT_ISPELL: null
+		ENCHANT_MYSPELL: null
+	forbiddenFunctions:
+		enchant_broker_free: null
+		enchant_broker_free_dict: null
+		enchant_broker_get_dict_path: null
+		enchant_broker_set_dict_path: null
+		enchant_dict_add_to_personal: null
+		enchant_dict_is_in_session: null
+		libxml_disable_entity_loader: null
+		ocibindbyname: null
+		ocicancel: null
+		ocicollappend: null
+		ocicollassignelem: null
+		ocicollgetelem: null
+		ocicollmax: null
+		ocicollsize: null
+		ocicolltrim: null
+		ocicolumnisnull: null
+		ocicolumnname: null
+		ocicolumnprecision: null
+		ocicolumnscale: null
+		ocicolumnsize: null
+		ocicolumntype: null
+		ocicolumntyperaw: null
+		ocicommit: null
+		ocidefinebyname: null
+		ocierror: null
+		ociexecute: null
+		ocifetch: null
+		ocifetchinto: null
+		ocifetchstatement: null
+		ocifreecollection: null
+		ocifreecursor: null
+		ocifreedesc: null
+		ocifreestatement: null
+		ociloadlob: null
+		ocilogoff: null
+		ocilogon: null
+		ocinewcollection: null
+		ocinewcursor: null
+		ocinewdescriptor: null
+		ocinlogon: null
+		ocinumcols: null
+		ociparse: null
+		ocipasswordchange: null
+		ociplogon: null
+		ociresult: null
+		ocirollback: null
+		ocirowcount: null
+		ocisavelob: null
+		ocisavelobfile: null
+		ociserverversion: null
+		ocisetprefetch: null
+		ocistatementtype: null
+		ociwritelobtofile: null
+		openssl_free_key: null
+		openssl_pkey_free: null
+		openssl_x509_free: null
+		pg_clientencoding: null
+		pg_cmdtuples: null
+		pg_errormessage: null
+		pg_fieldisnull: null
+		pg_fieldname: null
+		pg_fieldnum: null
+		pg_fieldprtlen: null
+		pg_fieldsize: null
+		pg_fieldtype: null
+		pg_freeresult: null
+		pg_getlastoid: null
+		pg_loclose: null
+		pg_locreate: null
+		pg_loexport: null
+		pg_loimport: null
+		pg_loopen: null
+		pg_loread: null
+		pg_loreadall: null
+		pg_lounlink: null
+		pg_lowrite: null
+		pg_numfields: null
+		pg_numrows: null
+		pg_result: null
+		pg_setclientencoding: null
+		shmop_close: null
+		zip_close: null
+		zip_entry_close: null
+		zip_entry_compressedsize: null
+		zip_entry_compressionmethod: null
+		zip_entry_filesize: null
+		zip_entry_name: null
+		zip_entry_open: null
+		zip_entry_read: null
+		zip_open: null
+		zip_read: null

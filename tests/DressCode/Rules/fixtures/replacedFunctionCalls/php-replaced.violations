@@ -1,0 +1,6 @@
+4: Function `utf8_encode()` is replaced by `mb_convert_encoding($string, 'UTF-8', 'ISO-8859-1')`.
+	risky BehaviorChanges: a build without mbstring answers the call with an error
+5: Function `utf8_decode()` is replaced by `mb_convert_encoding($string, 'ISO-8859-1', 'UTF-8')`.
+	risky BehaviorChanges: a build without mbstring answers the call with an error
+6: Function `utf8_encode()` is replaced by `mb_convert_encoding($string, 'UTF-8', 'ISO-8859-1')`.
+	risky BehaviorChanges: a build without mbstring answers the call with an error

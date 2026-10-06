@@ -300,7 +300,8 @@ final readonly class Layer
 	public readonly DressCode\Config\LayerKind $kind
 	public readonly ?string $name
 	public readonly ?string $package
-	public function __construct(DressCode\Config\LayerKind $kind, ?string $name = null, ?string $package = null)
+	public readonly ?string $decision
+	public function __construct(DressCode\Config\LayerKind $kind, ?string $name = null, ?string $package = null, ?string $decision = null)
 	public function describe(): string
 	public function formatReference(): string
 	public function isProject(): bool
@@ -835,7 +836,7 @@ final readonly class MemberMap
 	/** @template V */
 	public static function fromValues(DressCode\Values $values, string $path, ?Closure(mixed, DressCode\Upgrading\MemberPattern, string): V $convert = null): ($convert is null ? DressCode\Upgrading\MemberMap<mixed> : DressCode\Upgrading\MemberMap<V>)
 	/** @template V */
-	public static function fromEntries(array<string, mixed> $entries, Closure(mixed, DressCode\Upgrading\MemberPattern, string): V $convert): DressCode\Upgrading\MemberMap<V>
+	public static function fromEntries(array<string, mixed> $entries, Closure(mixed, DressCode\Upgrading\MemberPattern, string): V $convert, string $decision): DressCode\Upgrading\MemberMap<V>
 	public function getEntries(string $name): list<DressCode\Upgrading\MemberMapEntry<T>>
 	public function has(DressCode\Analyses\MemberAccess $access, DressCode\Analyses\Types $types): bool
 	public function findAccess(DressCode\Analyses\MemberAccess $access, DressCode\Analyses\Types $types, ?PhpSyntax\Nodes\ArgumentListNode $arguments = null, ?list<DressCode\Analyses\Parameter> $parameters = null): ?DressCode\Upgrading\MemberMapMatch<T>
@@ -852,6 +853,7 @@ final readonly class MemberMap
 final readonly class MemberMapEntry
 	public readonly DressCode\Upgrading\MemberPattern $pattern
 	public readonly T $value
+	public readonly string $decision
 ```
 
 ## `DressCode\Upgrading\MemberMapGrammar`
@@ -957,6 +959,7 @@ final readonly class Values
 	public function readMap(string $path): array<mixed>
 	public function findWithdrawnNames(string $path): list<string>
 	public function findPackageEntries(string $path): array<string, true>
+	public function getEntryDecision(string $path, string $key): string
 	public function isKept(string $path): bool
 	public function isSelected(string $path): bool
 ```

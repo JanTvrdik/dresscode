@@ -11,7 +11,7 @@ use DressCode\{
 	Analyses, Config, ConfigurationException, ConvergenceException, Decision, ImportStyle,
 	LineSplits, Profile, Rule, RuleException, RuleInfo, Style, Values, Violation,
 };
-use DressCode\Config\{Catalogue, DecisionResolver, Layer, LayerKind, RuleBuilder};
+use DressCode\Config\{Catalogue, DecisionResolver, Layer, LayerKind, PackageDiscovery, ProjectPackages, RuleBuilder};
 use DressCode\Engine\{Diff, Gate, Helpers, PassLoop, PassResult, ReportPolicy, RulePlan};
 use Nette\Neon\Neon;
 use PhpSyntax\Analyses\NamespacedSymbols;
@@ -340,11 +340,19 @@ final class RuleTester
 			$layers[] = [new Layer(LayerKind::Caller), (array) Neon::decodeFile($base)];
 		}
 
-		$layers[] = [new Layer(LayerKind::Caller), self::expandPaths($class, self::readOptions($code))];
+		$tree = self::expandPaths($class, self::readOptions($code));
+		$layers[] = [new Layer(LayerKind::Caller), $tree];
+		$phpTarget = $phpVersion ?? self::readPhpVersion($code) ?? self::getDefaultPhpVersion($class);
+		if (($tree['upgrading']['php']['deprecatedApi'] ?? 'keep') !== 'keep') {
+			// the upgrading data of PHP lie beneath, as a run lays them
+			$data = PackageDiscovery::readPhpData((new ProjectPackages)->withPhp($phpTarget)) ?? throw new \LogicException;
+			array_unshift($layers, [$data->layer, $data->buildDecisions(fn(string $map) => "upgrading.api.$map")]);
+		}
+
 		$catalogue = Catalogue::fromRules(self::getRules($class, $layers));
 		$resolver = new DecisionResolver(
 			$catalogue,
-			phpTarget: $phpVersion ?? self::readPhpVersion($code) ?? self::getDefaultPhpVersion($class),
+			phpTarget: $phpTarget,
 			project: null,
 			typesAnalyzed: true,
 			certainNames: self::readNamespacedSymbols($code)->complete,

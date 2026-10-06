@@ -40,17 +40,31 @@ final readonly class MemberMap
 	 */
 	public static function fromValues(Values $values, string $path, ?\Closure $convert = null): self
 	{
-		return self::fromEntries($values->readMap($path), $convert ?? fn(mixed $value) => $value);
+		return self::build($values->readMap($path), $convert, fn(string $key) => $values->getEntryDecision($path, $key));
 	}
 
 
 	/**
+	 * The map of entries a use of each of which is reported under the decision.
 	 * @template V
 	 * @param  array<string, mixed>  $entries  as `Values::readMap()` gives them
 	 * @param  \Closure(mixed, MemberPattern, string): V  $convert  what the rule keeps of a value, given also the key as written
 	 * @return self<V>
 	 */
-	public static function fromEntries(array $entries, \Closure $convert): self
+	public static function fromEntries(array $entries, \Closure $convert, string $decision): self
+	{
+		return self::build($entries, $convert, fn() => $decision);
+	}
+
+
+	/**
+	 * @template V
+	 * @param  array<mixed>  $entries
+	 * @param  ?\Closure(mixed, MemberPattern, string): V  $convert
+	 * @param  \Closure(string): string  $decide  the key as written => the decision its entry is reported under
+	 * @return self<V>
+	 */
+	private static function build(array $entries, ?\Closure $convert, \Closure $decide): self
 	{
 		$byName = [];
 		foreach ($entries as $key => $value) {
@@ -59,7 +73,11 @@ final readonly class MemberMap
 			}
 
 			$pattern = MemberPattern::fromKey((string) $key);
-			$byName[$pattern->getLookupName()][] = new MemberMapEntry($pattern, $convert($value, $pattern, (string) $key));
+			$byName[$pattern->getLookupName()][] = new MemberMapEntry(
+				$pattern,
+				$convert === null ? $value : $convert($value, $pattern, (string) $key),
+				$decide((string) $key),
+			);
 		}
 
 		return new self($byName);

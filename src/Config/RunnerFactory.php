@@ -43,7 +43,7 @@ final readonly class RunnerFactory
 	public function resolve(Config $config, string $root, ?Profile $commandLine = null, ?array $only = null): ResolvedProject
 	{
 		[$target, $source] = $this->getPhpTarget($config, $root);
-		$project = $this->readProjectPackages($config, $root);
+		$project = $this->readProjectPackages($config, $root, $target);
 		$packages = PackageDiscovery::discover($project);
 		[$packagePlugins, $skipped, $unnamed] = $this->admitPackagePlugins(
 			$packages->plugins,
@@ -75,7 +75,7 @@ final readonly class RunnerFactory
 				? "The configuration names package `$package` in `targets`, but that is the project itself, whose code is any version of it; skipped."
 				: "The configuration names package `$package` in `targets`, but it is not installed; skipped.",
 			array_filter(
-				array_keys(array_diff_key($config->targets, ['php' => true])),
+				array_keys(array_diff_key($config->targets, [PackageDiscovery::Php => true])),
 				fn(string $package) => !$project->has($package) || $package === $project->rootName,
 			),
 		);
@@ -603,9 +603,14 @@ final readonly class RunnerFactory
 	}
 
 
-	/** The packages of the project with the versions the configuration says. */
-	public function readProjectPackages(Config $config, string $root): ProjectPackages
+	/**
+	 * The packages of the project with the versions the configuration says, PHP among them by the target, which a caller
+	 * that has it already gives.
+	 */
+	public function readProjectPackages(Config $config, string $root, ?string $phpTarget = null): ProjectPackages
 	{
-		return ProjectPackages::read($root)->withTargets(array_diff_key($config->targets, ['php' => true]));
+		return ProjectPackages::read($root)
+			->withTargets(array_diff_key($config->targets, [PackageDiscovery::Php => true]))
+			->withPhp($phpTarget ?? $this->getPhpTarget($config, $root)[0]);
 	}
 }

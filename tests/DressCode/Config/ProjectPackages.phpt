@@ -153,6 +153,18 @@ test('the packages installed in a newer minor version than the oldest one the pr
 });
 
 
+test('PHP is had in the versions of the target, a version alone being the oldest the code runs on', function () {
+	$project = new ProjectPackages;
+	Assert::false($project->has('php'));
+	Assert::null($project->findConstraint('php'));
+
+	Assert::true($project->withPhp('8.2')->has('php'));
+	Assert::same('>=8.2', $project->withPhp('8.2')->findConstraint('php'));
+	Assert::same('^8.1, >=8.3', $project->withPhp('^8.1, >=8.3')->findConstraint('php'));
+	Assert::same('>=8.2', $project->withPhp('8.2')->withTargets(['acme/lib' => '1.0'])->findConstraint('php'));
+});
+
+
 test('a project without packages has none', function () {
 	$project = new ProjectPackages;
 	Assert::null($project->rootPath);

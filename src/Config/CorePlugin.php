@@ -373,6 +373,11 @@ final class CorePlugin implements Plugin
 					default: false,
 				),
 				new Decision(
+					PackageDiscovery::PhpDecision,
+					Domain::state('forbidden'),
+					'A function, a constant or a member PHP deprecated, written as what replaces it as the upgrading data of PHP say, `mb_convert_encoding()` for `utf8_encode()`, or reported',
+				),
+				new Decision(
 					MemberMapGrammar::ReplacedClasses,
 					new Map(new GrammarEntry, wildcards: false, grammar: self::createReplacedClassesGrammar(), caseInsensitive: true),
 					'A class written instead of another one, both fully qualified (`Acme\\Old\\Mailer: Acme\\Mail\\Mailer`)',

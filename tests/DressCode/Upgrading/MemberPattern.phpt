@@ -226,7 +226,7 @@ test('an entry is found under the key of the nearest class, and under the first 
 	 *   the arguments left to `...`
 	 */
 	$find = function (array $map, ?string $call, string ...$classes) use ($types): ?array {
-		$memberMap = MemberMap::fromEntries($map, fn(string $value) => $value);
+		$memberMap = MemberMap::fromEntries($map, fn(string $value) => $value, 'upgrading.api.replacedCalls');
 		$access = new MemberAccess(MemberKind::Method, 'getCacheKey', array_values($classes ?: ['App\MyStorage']), declared: true);
 		$node = $call === null ? null : (new Builder)->expression($call);
 		$found = $memberMap->findAccess($access, $types, $node instanceof FunctionCallNode ? $node->arguments : null);
@@ -281,7 +281,7 @@ test('a declaration is found under the key of the nearest class, and of two keys
 	$file = (new Parser)->parse($code);
 	$types = new Analyses\Types($file, $path, new Analyses\PhpStan($stubs, [$stubs, $path], dirname($path) . '/cache'));
 	$declaration = $file->find(MethodNode::class, fn(MethodNode $method) => $method->name->text === 'getCacheKey')[0];
-	$find = fn(array $map) => MemberMap::fromEntries($map, fn(string $value) => $value)
+	$find = fn(array $map) => MemberMap::fromEntries($map, fn(string $value) => $value, 'upgrading.api.replacedMembers')
 		->findDeclaration($declaration, $types)
 		?->value;
 

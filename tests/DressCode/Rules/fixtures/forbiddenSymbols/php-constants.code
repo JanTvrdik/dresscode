@@ -1,0 +1,13 @@
+<?php
+// {"php": {"deprecatedApi": "forbidden"}}
+namespace App;
+use const App\Config\E_STRICT_MODE;
+error_reporting(E_ALL & ~E_STRICT);
+$a = \E_STRICT;
+$b = filter_var($s, FILTER_SANITIZE_STRING);
+$c = MHASH_MD5;
+$d = ASSERT_ACTIVE;
+$e = ENCHANT_MYSPELL;
+$f = E_STRICT_MODE;
+$g = Foo::E_STRICT;
+$h = E_ALL;

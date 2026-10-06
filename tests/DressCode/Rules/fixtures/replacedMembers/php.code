@@ -1,0 +1,22 @@
+<?php
+// {"php": {"deprecatedApi": "forbidden"}, "api": {"replacedMembers": {"SplObjectStorage::detach()": "removeAll"}}}
+
+namespace App;
+
+
+function track(\SplObjectStorage $storage, object $item): bool
+{
+	$storage->attach($item);
+	$storage->detach($item);
+	$callback = [$storage, 'attach'];
+	return $storage->contains($item);
+}
+
+
+class Tracker extends \SplObjectStorage
+{
+	public function contains(object $object): bool
+	{
+		return false;
+	}
+}

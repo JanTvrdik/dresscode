@@ -82,7 +82,7 @@ test('a key that does not read as a member is an error that names it', function 
 
 test('the entries are found by the name of the member in any letter case', function () {
 	$options = process("'A::old()': renamed\nA::\$old: \$new\nB::Old: other");
-	$map = MemberMap::fromEntries($options, fn(string $value, MemberPattern $pattern) => "$pattern->class: $value");
+	$map = MemberMap::fromEntries($options, fn(string $value, MemberPattern $pattern) => "$pattern->class: $value", 'project.renames');
 	Assert::same(
 		[
 			[MemberPatternKind::Method, 'A: renamed'],
@@ -91,6 +91,7 @@ test('the entries are found by the name of the member in any letter case', funct
 		],
 		array_map(fn(MemberMapEntry $entry) => [$entry->pattern->kind, $entry->value], $map->getEntries('old')),
 	);
+	Assert::same('project.renames', $map->getEntries('old')[0]->decision);
 	Assert::same($map->getEntries('old'), $map->getEntries('OLD'));
 	Assert::same([], $map->getEntries('new'));
 });

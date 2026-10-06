@@ -1,0 +1,3 @@
+4: Function `curl_close()` does nothing, but its value is used.
+5: Function `imagedestroy()` does nothing, but its value is used.
+6: Function `curl_close()` does nothing.

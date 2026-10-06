@@ -1,0 +1,3 @@
+4: Function `curl_close()` does nothing, but it is the body of a construct without braces.
+5: Function `curl_close()` does nothing, but it is the body of a construct without braces.
+7: Function `curl_close()` does nothing.

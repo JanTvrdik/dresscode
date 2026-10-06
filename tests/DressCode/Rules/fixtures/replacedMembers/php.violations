@@ -1,0 +1,5 @@
+9: Method `SplObjectStorage::attach()` is replaced by `SplObjectStorage::offsetSet()`.
+10: Method `SplObjectStorage::detach()` is replaced by `SplObjectStorage::removeAll()`.
+11: Method `SplObjectStorage::attach()` is replaced by `SplObjectStorage::offsetSet()`.
+12: Method `SplObjectStorage::contains()` is replaced by `SplObjectStorage::offsetExists()`.
+18: Method `SplObjectStorage::contains()` is replaced by `SplObjectStorage::offsetExists()`.

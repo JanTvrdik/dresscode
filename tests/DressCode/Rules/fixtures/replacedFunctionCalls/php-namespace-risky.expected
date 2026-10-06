@@ -1,0 +1,4 @@
+<?php
+// {"php": {"deprecatedApi": "forbidden"}}
+// risky
+namespace App;

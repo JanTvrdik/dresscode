@@ -46,6 +46,8 @@ final readonly class ProjectPackages
 		private array $targets = [],
 		/** @var array<string, string>  package => the installed one that replaces it with its own version */
 		private array $replaced = [],
+		/** the versions of PHP the code must work with, null where nobody said them */
+		private ?string $php = null,
 	) {
 	}
 
@@ -120,16 +122,40 @@ final readonly class ProjectPackages
 			$this->installed,
 			$versions,
 			$this->replaced,
+			$this->php,
 		);
 	}
 
 
-	/** Whether the project has the package: it is the project itself, it is installed, or an installed one replaces it. */
+	/**
+	 * The same project with the versions of PHP its code must work with, the target as a Composer constraint, a version
+	 * alone being the oldest the code runs on and standing for the later ones too.
+	 */
+	public function withPhp(string $target): self
+	{
+		return new self(
+			$this->rootName,
+			$this->rootPath,
+			$this->rootExtra,
+			$this->required,
+			$this->installed,
+			$this->targets,
+			$this->replaced,
+			Versions::isVersion($target) ? ">=$target" : $target,
+		);
+	}
+
+
+	/**
+	 * Whether the project has the package: it is the project itself, it is installed, an installed one replaces it, or
+	 * it is PHP, whose versions the project said.
+	 */
 	public function has(string $package): bool
 	{
 		return $package === $this->rootName
 			|| isset($this->installed[$package])
-			|| isset($this->replaced[$package]);
+			|| isset($this->replaced[$package])
+			|| ($package === PackageDiscovery::Php && $this->php !== null);
 	}
 
 
@@ -142,7 +168,9 @@ final readonly class ProjectPackages
 	public function findConstraint(string $package): ?string
 	{
 		$required = $this->required[$package] ?? null;
-		if (isset($this->replaced[$package])) {
+		if ($package === PackageDiscovery::Php) {
+			return $this->php;
+		} elseif (isset($this->replaced[$package])) {
 			return $this->targets[$package] ?? $required ?? $this->findConstraint($this->replaced[$package]);
 		} elseif ($package === $this->rootName || !isset($this->installed[$package])) {
 			return null;

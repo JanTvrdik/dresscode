@@ -14,17 +14,27 @@ use function array_key_exists, is_array, is_string;
 /**
  * What the installed packages bring to a project without being named in its configuration: the upgrading files under
  * the directory `extra.dresscode.upgrading-dir` names, read for the versions of their package the code must work with
- * (`UpgradingFile::selectFor()`), and the plugin under `extra.dresscode.plugin`, which the project lets in by naming
- * the package or the plugin in `use`, as Composer lets in its own plugins. The root package takes part too, and a file
- * about the root itself applies whole. Such a file never turns a rule on itself; its maps, and the requirements of the
- * rules of the plugin of its package, are laid under those of the project where the project says
- * `upgrading.packages: yes`.
+ * (`UpgradingFile::selectFor()`), with those of PHP for its target (`readPhpData()`), and the plugin under
+ * `extra.dresscode.plugin`, which the project lets in by naming the package or the plugin in `use`, as Composer lets in
+ * its own plugins. The root package takes part too, and a file about the root itself applies whole. Such a file never
+ * turns a rule on itself; its maps, and the requirements of the rules of the plugin of its package, are laid under those
+ * of the project where the project says `upgrading.packages: yes`, those of PHP where it says
+ * `upgrading.php.deprecatedApi: forbidden`.
  * @internal
  */
 final readonly class PackageDiscovery
 {
 	/** the keys of `extra.dresscode` a package may use */
 	public const Keys = ['upgrading-dir', 'plugin'];
+
+	/** the platform package of Composer the upgrading data of PHP are about, which DressCode ships itself */
+	public const Php = 'php';
+
+	/** the upgrading data of PHP */
+	public const PhpFile = __DIR__ . '/../Rules/Upgrading/php.neon';
+
+	/** the requirement that lays the upgrading data of PHP, under which what they say is reported */
+	public const PhpDecision = 'upgrading.php.deprecatedApi';
 
 
 	private function __construct(
@@ -83,7 +93,19 @@ final readonly class PackageDiscovery
 			}
 		}
 
-		return new self($upgradingData, $plugins, $warnings);
+		$php = self::readPhpData($project);
+		return new self($php === null ? $upgradingData : [...$upgradingData, $php], $plugins, $warnings);
+	}
+
+
+	/** The upgrading data of PHP cut to the versions of PHP the project says it is written for; null where it says none. */
+	public static function readPhpData(ProjectPackages $project): ?UpgradingData
+	{
+		return self::readFile(
+			self::PhpFile,
+			new Layer(LayerKind::Package, basename(self::PhpFile), self::Php, self::PhpDecision),
+			$project,
+		);
 	}
 
 

@@ -49,3 +49,25 @@ test('what a section reached rewrites is not reported again, however its key is 
 		$data->retirements,
 	);
 });
+
+
+test('the sentence names the package and the version, PHP as PHP', function () {
+	$upgrading = readUpgradingFile(<<<'XX'
+		package: php
+
+		since 8.5:
+			forbiddenFunctions:
+				socket_set_timeout:
+			replacedCalls:
+				'curl_close($handle)': {write: removed, from: '8.0'}
+		XX);
+
+	$data = $upgrading->selectFor('>=8.0', new Layer(LayerKind::Package, 'php.neon', 'php'));
+	Assert::same(
+		[
+			'replacedCalls' => ['curl_close($handle)' => 'removed'],
+			'forbiddenFunctions' => ['socket_set_timeout' => 'since PHP 8.5'],
+		],
+		$data->buildDecisions(fn(string $map) => $map),
+	);
+});

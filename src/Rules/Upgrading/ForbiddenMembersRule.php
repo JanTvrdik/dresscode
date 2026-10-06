@@ -43,7 +43,7 @@ use PhpSyntax\Nodes\Scalar\StringNode;
 	Stage::Structure,
 	typesRequired: true,
 	analyses: [Types::class, NameResolver::class],
-	decisions: ['upgrading.packages', 'upgrading.api.forbiddenMembers'],
+	decisions: ['upgrading.packages', 'upgrading.php.deprecatedApi', 'upgrading.api.forbiddenMembers'],
 )]
 final class ForbiddenMembersRule extends NodeRule
 {
@@ -163,6 +163,7 @@ final class ForbiddenMembersRule extends NodeRule
 		$context->report(
 			$node instanceof NewNode ? $node->class : $node->name,
 			"$described " . self::formatVerdict($entry->value, $types->knowsMember($pattern->class, $access->kind, $access->name)),
+			decision: $entry->decision,
 			fixable: false,
 		);
 		return true;
@@ -211,6 +212,7 @@ final class ForbiddenMembersRule extends NodeRule
 				$entry->pattern->describe(MemberKind::Method)
 				. ' '
 				. self::formatVerdict($entry->value, $types->knowsMember($entry->pattern->class, MemberKind::Method, $method)),
+				decision: $entry->decision,
 				fixable: false,
 			);
 		}
@@ -241,6 +243,7 @@ final class ForbiddenMembersRule extends NodeRule
 				$entry->pattern->describe($access->kind)
 				. ' '
 				. self::formatVerdict($entry->value, $types->knowsMember($entry->pattern->class, $access->kind, $access->name)),
+				decision: $entry->decision,
 				fixable: false,
 			);
 		}
@@ -261,6 +264,7 @@ final class ForbiddenMembersRule extends NodeRule
 			$context->report(
 				$node->name,
 				$entry->pattern->describe($kind) . ' ' . self::formatVerdict($entry->value, $exists),
+				decision: $entry->decision,
 				fixable: false,
 			);
 		}
@@ -292,6 +296,7 @@ final class ForbiddenMembersRule extends NodeRule
 				$context->report(
 					$at,
 					$entry->pattern->describe($kind) . ' ' . self::formatVerdict($entry->value, $exists),
+					decision: $entry->decision,
 					fixable: false,
 				);
 			}

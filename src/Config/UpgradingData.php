@@ -52,6 +52,7 @@ final readonly class UpgradingData
 	 */
 	public function buildDecisions(\Closure $findPath): array
 	{
+		$package = $this->package === PackageDiscovery::Php ? 'PHP' : $this->package;
 		$tree = [];
 		foreach ($this->maps as $map => $entries) {
 			$path = $findPath($map);
@@ -61,7 +62,7 @@ final readonly class UpgradingData
 
 			foreach ($this->retirements[$map] ?? [] as $key => $version) {
 				$sentence = $entries[$key];
-				$entries[$key] = (is_string($sentence) ? rtrim($sentence, '.') . ', ' : '') . "since $this->package $version";
+				$entries[$key] = (is_string($sentence) ? rtrim($sentence, '.') . ', ' : '') . "since $package $version";
 			}
 
 			$tree = Helpers::placeValue($tree, $path, $entries);

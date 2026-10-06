@@ -1,0 +1,5 @@
+<?php
+// {"php": {"deprecatedApi": "forbidden"}, "api": {"replacedCalls": {"curl_close($handle)": "keep"}}}
+$ch = curl_init();
+curl_close($ch);
+finfo_close($finfo);
