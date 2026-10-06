@@ -9,7 +9,7 @@
 
 <h3>
 
-✅ Fixes style, [upgrades PHP](#upgrading-code-to-newer-php-from-80-to-86), in one run<br>
+✅ Fixes style, [upgrades PHP and libraries](#upgrading-code-to-newer-php-from-80-to-86), in one run<br>
 ✅ Changes only what it fixes, [not a byte more](#changes-only-what-it-touches-a-lossless-syntax-tree-instead-of-a-token-array)<br>
 ✅ [PER Coding Style, PSR-12, Nette](#coding-standards-and-decisions-per-coding-style-31-psr-12-nette) built in<br>
 ✅ [More of PER Coding Style and PSR-12](#how-much-of-the-standard-per-coding-style-and-psr-12-against-php-cs-fixer-and-php_codesniffer) than PHP CS Fixer or PHP_CodeSniffer fixes
@@ -186,7 +186,7 @@ such as tests or legacy code, can get values of its own under the key `overrides
 | set | what it decides |
 |---|---|
 | `modernizations` | the construct newer PHP has, where an older one says the same |
-| `deprecations` | what newer PHP deprecated or removed |
+| `deprecations` | what newer PHP or a library deprecated or removed |
 | `cleanup` | code that is there for nothing |
 | `correctness` | what is most likely a mistake |
 | `types` | types written where PHP reads them |
@@ -243,6 +243,54 @@ and `phpcbf` reports but cannot add.
 Where a specification leaves room for reading, the presets follow its text: [`perCs`](src/Presets/perCs.neon)
 and [`psr12`](src/Presets/psr12.neon) are written section by section, each decision under the number of the
 section it comes from.
+
+ <!---->
+
+Findings that say why: compared with PHP_CodeSniffer and PHP CS Fixer
+=====================================================================
+
+Every finding of DressCode is a sentence about your code, and where a fix may change what the code does, it says
+what exactly may break. Two small files checked against PER Coding Style with a few decisions of `classes`,
+`correctness` and `upgrading` and the types from PHPStan:
+
+```
+src/Settings.php
+  risky  7:37  Parameter `$name` of `offsetGet()` must be named `$key`, as in `ArrayObject::offsetGet()`.  classes.overridingMethod.parameterName
+               Risky because a call naming the argument `name:` stops working.
+
+src/Users.php
+  error  12:16  The `in_array()` call must pass `$strict = true`.                    mistakes.strictArgument
+  risky  17:16  The `in_array()` call must pass `$strict = true`.                    mistakes.strictArgument
+                Risky because a strict search no longer finds a value of another type.
+  error  22:18  Method `Acme\Mail\Mailer::sendMessage()` is deprecated: use send().  upgrading.declarations.deprecatedMember
+```
+
+`Settings` overrides `offsetGet()` of `ArrayObject` and names its parameter `$name`. PHP accepts that, but
+`$settings->offsetGet(key: 'theme')`, which works on every `ArrayObject`, ends with `Unknown named parameter $key`.
+Renaming it breaks the callers that already write `name:`, so the fix is risky, and the finding says why.
+
+Both calls of `in_array()` get the same advice, not the same treatment. On line 12 the types say an `int` is
+searched among `list<int>`, where a strict search finds the same, so `fix` adds `true` by itself. On line 17
+the value is `mixed`: that fix waits for your consent and says what it would change.
+
+The library marks `sendMessage()` with `@deprecated use send()`. The finding quotes that advice and `fix`
+writes `send()`.
+
+PHP_CodeSniffer reports none of these lines in any standard it ships; Slevomat, installed on top, reports both
+calls of `in_array()` with one and the same sentence. PHP CS Fixer reports none with `@PER-CS`. With its risky
+fixer `strict_param` and `--allow-risky=yes` it adds `true` to both calls and lists the file:
+
+```
+   1) src/Users.php (strict_param)
+```
+
+It gives the reason once, for every place, in `php-cs-fixer describe strict_param`: "Risky when the fixed
+function is overridden or if the code relies on non-strict usage." A flat array of tokens does not say which
+of the two calls that is.
+
+Findings about layout speak the same way, with the measured value (`Expected the statement indented by 12
+spaces, 10 spaces found.`), and a violation the fix itself brings stands right under the one causing it, as
+`Then also:`.
 
  <!---->
 
@@ -344,6 +392,53 @@ PHP 8.5, a file PHP 8.4 itself would reject.
 
  <!---->
 
+Upgrading libraries: Nette, Symfony and Laravel
+===============================================
+
+When a library renames a class, a constant, a method or a parameter, DressCode rewrites your code for you,
+and what it cannot rewrite it reports together with what to write instead. What changed in which version
+comes as data in an upgrade package for the ecosystem: `dresscode/upgrade-nette` knows all the Nette
+libraries, most of them from version 3.0 to the current one, `dresscode/upgrade-symfony` dozens of components
+and bridges of Symfony from 6.0, and `dresscode/upgrade-laravel` the framework Laravel from 6. Install the
+package and DressCode finds it by itself:
+
+```diff
+- /** @persistent */
++ #[Persistent]
+
+- $this->invalidateControl('list');
++ $this->redrawControl('list');
+
+- $form->addText('title')->addRule(Form::MAX_LENGTH, null, 100);
++ $form->addText('title')->addRule(Form::MaxLength, null, 100);
+
+- $page = $this->getParameter('page', 1);
++ $page = $this->getParameter('page') ?? 1;
+
+- Json::encode($values, Json::PRETTY)
++ Json::encode($values, pretty: true)
+```
+
+None of this is a search and replace: an annotation became an attribute along with its import, the default
+of a parameter moved behind `??` and a flag became a named argument. And DressCode knows that `$form` is a
+form and `$this` a presenter, because it asks PHPStan about the types.
+
+The set `deprecations` lets the data of the installed packages in, and naming the package in `use` brings
+its rules too. Most rewrites ask PHPStan about the [types](#types-from-phpstan); without them only classes,
+functions and annotations are fixed:
+
+```neon
+typeAnalysis: phpstan
+
+use:
+	- upgrade-nette
+	- deprecations
+```
+
+An upgrade package can be written for any library, and it can ship rules of its own besides the data.
+
+ <!---->
+
 Types from PHPStan
 ==================
 
@@ -357,8 +452,9 @@ and one line of the configuration does the rest:
 typeAnalysis: phpstan
 ```
 
-That unlocks the rules a style tool cannot otherwise have: `UserRepository::class` in place of a string
-naming an existing class, and, once you set `upgrading.classes.Override: required`, `#[\Override]` on a method that overrides a
+That unlocks the rules a style tool cannot otherwise have: the deprecated API of a library rewritten
+according to what the variable really is, `UserRepository::class` in place of a string naming an existing
+class, and, once you set `upgrading.classes.Override: required`, `#[\Override]` on a method that overrides a
 method of its parent. PHPStan only answers; it rewrites and reports nothing. Without the key, a decision that
 needs types stays out where a standard makes it, and where your configuration does, the run says what is
 missing.
