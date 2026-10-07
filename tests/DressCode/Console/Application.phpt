@@ -287,8 +287,8 @@ test('stdin: check reports, fix writes the result to stdout', function () use ($
 	Assert::same('', $err);
 
 	// a path the configured ones do not hold is checked, unless the caller asks to skip it
-	Assert::same(1, runApp($root, ['check', '--stdin', 'lib/x.php'], "<?php\n\$a;\n")[0]);
-	Assert::same(0, runApp($root, ['check', '--stdin', 'lib/x.php', '--skip-excluded'], "<?php\n\$a;\n")[0]);
+	Assert::same(1, runApp($root, ['check', '--stdin', 'lib/x.php', '-f', 'lines'], "<?php\n\$a;\n")[0]);
+	Assert::same([0, '', ''], runApp($root, ['check', '--stdin', 'lib/x.php', '-f', 'lines', '--skip-excluded'], "<?php\n\$a;\n"));
 });
 
 
@@ -364,7 +364,7 @@ test('errors go to stderr with exit code 3', function () use ($root) {
 	Assert::same("Error: The command line: Unknown preset `test/nonee`.\n", $err);
 	[$code, , $err] = runApp($root, ['check', '--format', 'xml']);
 	Assert::same(3, $code);
-	Assert::match('Error: Option `--format`: expects `console`, `github`, `json` or `checkstyle`, `xml` given.%A%', $err);
+	Assert::match('Error: Option `--format`: expects `console`, `lines`, `github`, `json` or `checkstyle`, `xml` given.%A%', $err);
 	[$code, , $err] = runApp($root, ['config', '--format', 'markdown']);
 	Assert::same(3, $code);
 	Assert::match('Error: Option `--format`: expects `console` or `json`, `markdown` given.%A%', $err);
@@ -393,9 +393,9 @@ test('a named file the configuration excludes is checked unless the caller asks 
 	$root = createConsoleProject();
 	mkdir("$root/vendor");
 	file_put_contents("$root/vendor/v.php", "<?php\n\$a;\n");
-	[$code, $out] = runApp($root, ['check', 'vendor/v.php']);
+	[$code, $out] = runApp($root, ['check', '-f', 'lines', 'vendor/v.php']);
 	Assert::same(1, $code);
-	Assert::match("%A%vendor%a%v.php\n  error  2:1  Rename \$a.  project.rename\n%A%", $out);
+	Assert::same("vendor/v.php:2:1: error: Rename \$a. [project.rename]\n", $out);
 	[$code, $out] = runApp($root, ['fix', 'vendor/v.php', '--skip-excluded']);
 	Assert::same(0, $code);
 	Assert::match("%A%Nothing to fix: no file in %a%v.php\n", $out);

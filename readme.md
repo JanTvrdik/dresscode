@@ -465,7 +465,8 @@ Continuous integration and Git hooks
 ====================================
 
 The output comes in the formats `console`, `github` (annotations right in the pull request, chosen
-automatically in GitHub Actions), `checkstyle` and `json`. Files are processed in parallel, and a
+automatically in GitHub Actions), `checkstyle`, `json` and `lines` (one line per finding, the way a compiler
+writes it, for Git hooks and the linters of editors). Files are processed in parallel, and a
 file already known to be clean is skipped on the next run.
 
 A pre-commit hook should check what goes into the commit, not the working tree, and `--stdin` does exactly
@@ -473,7 +474,7 @@ that:
 
 ```shell
 for file in $(git diff --cached --name-only --diff-filter=ACM -- '*.php'); do
-	git show ":$file" | dresscode check --stdin "$file" || exit 1
+	git show ":$file" | dresscode check --stdin "$file" -f lines || exit 1
 done
 ```
 

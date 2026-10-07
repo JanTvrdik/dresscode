@@ -465,6 +465,7 @@ final readonly class CheckCommand
 	): Reporter
 	{
 		return match ($format) {
+			'lines' => new Reporters\LinesReporter($stream, $root, Helpers::canonicalizePath($this->context->workingDirectory)),
 			'json' => new Reporters\JsonReporter($stream),
 			'checkstyle' => new Reporters\CheckstyleReporter($stream),
 			'github' => new Reporters\GithubReporter($stream, $root, self::findEnv('GITHUB_WORKSPACE')),

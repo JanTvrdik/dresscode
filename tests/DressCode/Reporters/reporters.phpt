@@ -2,7 +2,7 @@
 
 use DressCode\Engine\{FileSummary, RunInfo, RunResult, TypeAnalysisStatus};
 use DressCode\{FileResult, Reporter, Risk, Severity, Violation};
-use DressCode\Reporters\{CheckstyleReporter, ConsoleReporter, GithubReporter, JsonReporter};
+use DressCode\Reporters\{CheckstyleReporter, ConsoleReporter, GithubReporter, JsonReporter, LinesReporter};
 use Nette\CommandLine\{ColorDepth, Console};
 use Tester\Assert;
 
@@ -248,6 +248,67 @@ test('console: a fix of warnings alone counts every file, not the ones it touche
 	]), fix: true));
 	rewind($stream);
 	Assert::same("FIXED  3 files, all up to the dress code\n", stream_get_contents($stream));
+});
+
+
+test('lines: one line for every event, in the shape of a compiler, and nothing for a clean file', function () {
+	Assert::same(toLf(<<<'XX'
+		src/a.php: warning: Rule test/x is faulty: it changed the file without reporting a violation.
+		src/a.php:2:1: error: Rename $a. [test/rename]
+		src/a.php:2: warning: Variable "b" & <c>. [test/report]
+		src/a.php:3:1: error: Rename $c. [test/rename]
+		src/broken.php:2: error: Syntax error: Unexpected `;`
+		src/fail.php: failure: Rule test/x failed in src/fail.php: boom
+
+		XX), capture(fn($s) => new LinesReporter($s), fix: false));
+
+	// a fix lists what the fixed text still has, at the column its span starts on
+	Assert::same(toLf(<<<'XX'
+		src/a.php: warning: Rule test/x is faulty: it changed the file without reporting a violation.
+		src/a.php:2:3: warning: Variable "b" & <c>. [test/report]
+		src/broken.php:2: error: Syntax error: Unexpected `;`
+		src/fail.php: failure: Rule test/x failed in src/fail.php: boom
+
+		XX), capture(fn($s) => new LinesReporter($s), fix: true));
+});
+
+
+test('lines: the path relative to the working directory or absolute, a message on one line, the risk beside the decision', function () {
+	$stream = memory();
+	$reporter = new LinesReporter($stream, root: 'C:/work/app', cwd: 'C:/work/app/src');
+	$reporter->start(new RunInfo('', false, 2));
+	$reporter->reportFile(new FileResult('src/Žluťoučký.php', '', '', [
+		new Violation(
+			'expressions.comparison.loose',
+			"The `==` comparison\nmust be written `===`.",
+			4,
+			12,
+			Severity::Warning,
+			fingerprint: 'f1',
+			risk: Risk::TypeUnknown,
+			refused: true,
+		),
+	]));
+	$reporter->reportFile(new FileResult('D:/other/b.php', '', '', [
+		new Violation('mistakes.errorSuppression', 'The `@` operator must not be used.', 7, 3, Severity::Error, fingerprint: 'f2'),
+	]));
+	rewind($stream);
+	$output = (string) stream_get_contents($stream);
+	Assert::same(toLf(<<<'XX'
+		Žluťoučký.php:4:12: warning: The `==` comparison must be written `===`. [expressions.comparison.loose; risk=typeUnknown]
+		D:/other/b.php:7:3: error: The `@` operator must not be used. [mistakes.errorSuppression]
+
+		XX), $output);
+
+	// the pattern a problem matcher of VS Code reads it with, which the manual gives
+	$pattern = '~^(.+?):(\d+)(?::(\d+))?: (error|warning): (.*?)(?: \[([^\]]+)\])?$~';
+	Assert::same(1, preg_match($pattern, explode("\n", $output)[1], $m));
+	Assert::same(
+		['D:/other/b.php', '7', '3', 'error', 'The `@` operator must not be used.', 'mistakes.errorSuppression'],
+		array_slice($m, 1),
+	);
+	Assert::same(1, preg_match($pattern, 'src/broken.php:2: error: Syntax error: Unexpected `;`', $m));
+	Assert::same(['src/broken.php', '2', '', 'error', 'Syntax error: Unexpected `;`'], array_slice($m, 1));
 });
 
 
