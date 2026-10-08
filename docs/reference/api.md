@@ -507,6 +507,8 @@ final class FileResult
 	public readonly list<DressCode\Violation> $remaining
 	public private(set) bool $written
 	public readonly bool $cached
+	public readonly list<array{kind: 'class'|'function'|'const', name: string, alias: ?string, namespace: string}> $removedImports
+	public readonly list<class-string<DressCode\Rule>> $mutatedRules
 ```
 
 ## `DressCode\Gap`

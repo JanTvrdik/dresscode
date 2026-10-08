@@ -340,3 +340,28 @@ test('the style follows the line ending of the file unless told otherwise', func
 		),
 	);
 });
+
+
+test('the result names the imports the fixes removed, nothing using them', function () {
+	$rule = RuleBuilder::createRule(DressCode\Rules\Namespaces\NoUnusedImportsRule::class);
+	$code = implode("\n", [
+		'<?php',
+		'namespace App;',
+		'',
+		'use Acme\Form;',
+		'use Acme\Mail as Post;',
+		'use function Acme\run as go;',
+		'use const Acme\{LIMIT, USED};',
+		'',
+		'echo USED;',
+		'',
+	]);
+	Assert::same([
+		['kind' => 'class', 'name' => 'Acme\Form', 'alias' => null, 'namespace' => 'App'],
+		['kind' => 'class', 'name' => 'Acme\Mail', 'alias' => 'Post', 'namespace' => 'App'],
+		['kind' => 'function', 'name' => 'Acme\run', 'alias' => 'go', 'namespace' => 'App'],
+		['kind' => 'const', 'name' => 'Acme\LIMIT', 'alias' => null, 'namespace' => 'App'],
+	], processor([$rule])->process('a.php', $code)->removedImports);
+
+	Assert::same([], processor([$rule])->process('a.php', "<?php\nuse Acme\\Form;\nnew Form;\n")->removedImports);
+});

@@ -21,9 +21,9 @@ final readonly class RunOptions
 		#[Cli\Argument('Files or directories; the configured paths when omitted', repeatable: true)]
 		public array $paths = [],
 		#[Cli\Option(
-			'Output format, `github` by default in GitHub Actions; `lines` writes one line per finding as a compiler does',
+			'Output format, `github` by default in GitHub Actions; `agent` tells an AI agent what changed and what to do about the rest, `lines` writes one line per finding as a compiler does',
 			alias: '-f',
-			enum: ['console', 'lines', 'github', 'json', 'checkstyle'],
+			enum: ['console', 'agent', 'lines', 'github', 'json', 'checkstyle'],
 		)]
 		public ?string $format = null,
 		#[Cli\Flag('Skip a named file that `excludePaths` leaves out or `paths` do not hold, as a hook or an editor passing every file it touches needs')]

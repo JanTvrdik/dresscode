@@ -42,6 +42,8 @@ final readonly class Runner
 		/** @var ?\Closure(): ?list<string>  the files the results depend on beyond the configuration, once the run knows them */
 		public ?\Closure $findDependencies = null,
 		private TypeAnalysisStatus $typeAnalysis = TypeAnalysisStatus::Unavailable,
+		/** a rule the configuration turns on does not run without the types */
+		private bool $typesMissing = false,
 		/** the configuration lists functions or constants the namespaces declare */
 		private bool $namespacesListed = false,
 	) {
@@ -53,7 +55,7 @@ final readonly class Runner
 	/** What a reporter is told of the run before the first file. */
 	public function createRunInfo(bool $fix, int $fileCount): RunInfo
 	{
-		return new RunInfo($this->root, $fix, $fileCount, $this->typeAnalysis, $this->namespacesListed);
+		return new RunInfo($this->root, $fix, $fileCount, $this->typeAnalysis, $this->typesMissing, $this->namespacesListed);
 	}
 
 

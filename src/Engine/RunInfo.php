@@ -20,6 +20,8 @@ final readonly class RunInfo
 		public bool $fix,
 		public int $fileCount,
 		public TypeAnalysisStatus $typeAnalysis = TypeAnalysisStatus::Unavailable,
+		/** a rule the configuration turns on does not run without the types */
+		public bool $typesMissing = false,
 		/** the configuration lists functions or constants the namespaces declare */
 		public bool $namespacesListed = false,
 	) {

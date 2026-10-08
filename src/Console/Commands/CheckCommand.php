@@ -8,7 +8,7 @@
 namespace DressCode\Console\Commands;
 
 use DressCode\{Config, Reporter, Reporters};
-use DressCode\Config\{Loader, PluginRegistry};
+use DressCode\Config\{Loader, PluginRegistry, ResolvedProject};
 use DressCode\Console\{CommandContext, Markup, ProgressBar, RiskReview};
 use DressCode\Engine\{Baseline, FileSummary, Helpers, Runner, RunResult, Worker, WorkerPool};
 use Nette\CommandLine\{Attributes as Cli, Console, ParseResult, UsageException};
@@ -112,7 +112,9 @@ final readonly class CheckCommand
 			refreshCache: (bool) $run->noCache,
 		);
 		[$out, $err] = [$this->context->out, $this->context->err];
-		foreach ($formatter ? [] : $resolution->warnings as $warning => $docs) { // only the parent warns, a worker has returned above
+		$format = self::resolveFormat($run->format, detect: true);
+		// only the parent warns, a worker has returned above; an agent can do nothing about the configuration
+		foreach ($formatter || $format === 'agent' ? [] : $resolution->warnings as $warning => $docs) {
 			$err->writeLine(Markup::highlightCode($err, "Warning: $warning", 'yellow'));
 			if ($docs !== null) {
 				$err->writeLine(Markup::formatDocsLink($err, $docs));
@@ -122,7 +124,6 @@ final readonly class CheckCommand
 		$stdinPath = $check?->stdin;
 		$paths = array_values(array_unique(array_map($this->context->resolvePath(...), $run->paths)));
 		$maxWarnings = $check?->maxWarnings;
-		$format = self::resolveFormat($run->format, detect: true);
 		if ($askRisky && ($check?->fixRisky || is_string($stdinPath))) {
 			throw new UsageException(
 				'`--ask-risky` asks about the risky fixes one by one, so it goes with neither `--fix-risky` nor `--stdin`.',
@@ -147,7 +148,7 @@ final readonly class CheckCommand
 					(bool) $check->diff,
 					$runner,
 					$factory->registry,
-					$root,
+					$resolution,
 					$stdinPath,
 					$maxWarnings,
 					(bool) $run->skipExcluded,
@@ -197,7 +198,17 @@ final readonly class CheckCommand
 				return $this->generateBaseline($runner, $config, $root, $configFile, $files, $workers, $format);
 			}
 
-			$reporter = $this->createReporter((bool) $check?->diff, $out, $this->context->stdout, $root, $format, $factory->registry);
+			$reporter = $this->createReporter(
+				(bool) $check?->diff,
+				$out,
+				$this->context->stdout,
+				$root,
+				$format,
+				$factory->registry,
+				$runner,
+				$resolution,
+				$run->paths,
+			);
 			$result = $runner->run($files, $fix, $reporter, $workers, $onProgress, $maxWarnings);
 			return $askRisky
 				? $this->review($runner, $result, $files, $root, $maxWarnings, $factory->registry)
@@ -218,14 +229,24 @@ final readonly class CheckCommand
 		bool $diff,
 		Runner $runner,
 		PluginRegistry $registry,
-		string $root,
+		ResolvedProject $resolution,
 		string $path,
 		?int $maxWarnings,
 		bool $skipExcluded,
 		array $configured,
 	): int
 	{
-		$reporter = $this->createReporter($diff, $this->context->out, $this->context->stdout, $root, $format, $registry);
+		$reporter = $this->createReporter(
+			$diff,
+			$this->context->out,
+			$this->context->stdout,
+			$resolution->root,
+			$format,
+			$registry,
+			$runner,
+			$resolution,
+			[$path],
+		);
 		$code = (string) stream_get_contents($this->context->stdin);
 		$absolute = $this->context->resolvePath($path);
 		$skipped = $skipExcluded && $runner->excludes($absolute, $configured);
@@ -454,6 +475,7 @@ final readonly class CheckCommand
 	/**
 	 * @param  resource  $stream  the same place as the console; a machine-readable format is no text of a console
 	 * @param  string  $root  the paths of the results are relative to it
+	 * @param  list<string>  $paths  the paths as the command line gave them
 	 */
 	private function createReporter(
 		bool $diff,
@@ -462,10 +484,33 @@ final readonly class CheckCommand
 		string $root,
 		string $format,
 		PluginRegistry $registry,
+		Runner $runner,
+		ResolvedProject $resolution,
+		array $paths,
 	): Reporter
 	{
 		return match ($format) {
 			'lines' => new Reporters\LinesReporter($stream, $root, Helpers::canonicalizePath($this->context->workingDirectory)),
+			'agent' => new Reporters\AgentReporter(
+				$stream,
+				$root,
+				Helpers::canonicalizePath($this->context->workingDirectory),
+				givenPaths: array_combine(
+					array_map(fn(string $path) => Helpers::canonicalizePath($this->context->resolvePath($path)), $paths),
+					$paths,
+				),
+				findSuppressionExamples: function (string $path) use ($runner, $resolution): array {
+					$config = $resolution->resolveFor($runner->findOverridesFor($path));
+					$examples = [];
+					foreach ($config->suppressionComments as $pattern => $decisions) {
+						foreach (isset($config->suppressionExamples[$pattern]) ? $decisions : [] as $decision) {
+							$examples[$decision][] = $config->suppressionExamples[$pattern];
+						}
+					}
+
+					return $examples;
+				},
+			),
 			'json' => new Reporters\JsonReporter($stream),
 			'checkstyle' => new Reporters\CheckstyleReporter($stream),
 			'github' => new Reporters\GithubReporter($stream, $root, self::findEnv('GITHUB_WORKSPACE')),

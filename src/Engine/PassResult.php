@@ -7,7 +7,7 @@
 
 namespace DressCode\Engine;
 
-use DressCode\Violation;
+use DressCode\{Rule, Violation};
 
 
 /**
@@ -25,7 +25,7 @@ final readonly class PassResult
 		public bool $mutated,
 		/** @var list<string> fingerprints of the violations the baseline matched */
 		public array $baselined = [],
-		/** @var list<string> rules that mutated the file */
+		/** @var list<class-string<Rule>> rules that mutated the file */
 		public array $mutatedRules = [],
 		/**
 		 * @var ?list<Violation> what the fixed text violates, as a run over it would report it; null where the passes
@@ -34,6 +34,11 @@ final readonly class PassResult
 		public ?array $remaining = null,
 		/** the tree printed after the passes; null where they changed nothing */
 		public ?string $output = null,
+		/**
+		 * @var list<array{kind: 'class'|'function'|'const', name: string, alias: ?string, namespace: string}>  imports the
+		 * fixes removed
+		 */
+		public array $removedImports = [],
 	) {
 	}
 }

@@ -27,21 +27,21 @@ final class PassLoop
 	private const MaxPasses = 10;
 
 	/**
-	 * @var array<string, array<class-string, list<array{NodeRule, RuleContext, string}>>>  stage => node class =>
+	 * @var array<string, array<class-string, list<array{NodeRule, RuleContext, class-string<NodeRule>}>>>  stage => node class =>
 	 * rules entering it, with their contexts and names
 	 */
 	private array $entering = [];
 
-	/** @var array<string, array<class-string, list<array{NodeRule, RuleContext, string}>>>  the same for `leave()` */
+	/** @var array<string, array<class-string, list<array{NodeRule, RuleContext, class-string<NodeRule>}>>>  the same for `leave()` */
 	private array $leaving = [];
 
-	/** @var array<string, RuleContext> */
+	/** @var array<class-string<Rule>, RuleContext> */
 	private array $contexts = [];
 
 	/** the gap rules, applied together along the traversal of the formatting stage */
 	private readonly Resolver $gaps;
 
-	/** @var array<string, true>  rules that mutated the file in the current pass */
+	/** @var array<class-string<Rule>, true>  rules that mutated the file in the current pass */
 	private array $mutatedRules = [];
 
 	/** @var array<string, Violation>  by fingerprint, so that a pass repeating a report adds nothing */
@@ -179,6 +179,9 @@ final class PassLoop
 			// what the baseline holds is decided by the lines of the fixed text, which only another run has
 			remaining: $mutated && $this->policy->baseline === null ? $this->collectRemaining($last) : null,
 			output: $mutated ? $last : null,
+			removedImports: array_merge(
+				...array_values(array_map(fn(RuleContext $context) => $context->takeRemovedImports(), $this->contexts)),
+			),
 		);
 	}
 
@@ -408,7 +411,7 @@ final class PassLoop
 
 	/**
 	 * The rules the plan dispatches the class of the node to, with their contexts in this file.
-	 * @return list<array{NodeRule, RuleContext, string}>
+	 * @return list<array{NodeRule, RuleContext, class-string<NodeRule>}>
 	 */
 	private function resolveRules(string $stage, Node|Token $node, bool $enter): array
 	{
@@ -452,6 +455,7 @@ final class PassLoop
 	 * true; what the rule wrote after a denied report, up to its next one, it wrote for that report. After the last
 	 * report the rule may be fixing any of those it was allowed earlier, so that one is judged only where none was. A
 	 * report the baseline holds is not denied, only not recorded.
+	 * @param class-string<Rule> $ruleClass
 	 * @param int $before  the revision of the file before the callback
 	 * @param bool $checkRevisions  whether the revisions are the rule's doing, which along the gap traversal they need
 	 *                              not be, because they then cover every rule

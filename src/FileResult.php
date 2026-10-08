@@ -49,6 +49,13 @@ final class FileResult
 		public private(set) bool $written = false,
 		/** the content was known to be clean, so it was not processed */
 		public readonly bool $cached = false,
+		/**
+		 * @var list<array{kind: 'class'|'function'|'const', name: string, alias: ?string, namespace: string}>  the imports
+		 * the fixes removed, nothing using them, which the code that was processed may have meant to use
+		 */
+		public readonly array $removedImports = [],
+		/** @var list<class-string<Rule>>  the rules whose fixes changed the text */
+		public readonly array $mutatedRules = [],
 	) {
 	}
 

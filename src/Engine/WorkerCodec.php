@@ -7,8 +7,8 @@
 
 namespace DressCode\Engine;
 
-use DressCode\{FileResult, Risk, Severity, Violation};
-use function is_array;
+use DressCode\{FileResult, Risk, Rule, Severity, Violation};
+use function is_array, is_string;
 
 
 /**
@@ -35,6 +35,8 @@ final class WorkerCodec
 			'remaining' => array_map(self::encodeViolation(...), $result->remaining),
 			'written' => $result->written,
 			'cached' => $result->cached,
+			'removedImports' => $result->removedImports,
+			'mutatedRules' => $result->mutatedRules,
 		];
 	}
 
@@ -61,6 +63,17 @@ final class WorkerCodec
 			remaining: self::decodeViolations($data['remaining']),
 			written: (bool) $data['written'],
 			cached: (bool) $data['cached'],
+			removedImports: array_values(array_map(fn(array $import) => [
+				'kind' => match ($import['kind']) {
+					'function' => 'function',
+					'const' => 'const',
+					default => 'class',
+				},
+				'name' => (string) $import['name'],
+				'alias' => $import['alias'] === null ? null : (string) $import['alias'],
+				'namespace' => (string) $import['namespace'],
+			], is_array($data['removedImports']) ? $data['removedImports'] : [])),
+			mutatedRules: is_array($data['mutatedRules']) ? array_values(array_filter($data['mutatedRules'], self::isRule(...))) : [],
 		);
 	}
 
@@ -104,5 +117,12 @@ final class WorkerCodec
 			$item['offset'] === null ? null : (int) $item['offset'],
 			$item['length'] === null ? null : (int) $item['length'],
 		), is_array($data) ? $data : []));
+	}
+
+
+	/** @phpstan-assert-if-true class-string<Rule> $class */
+	private static function isRule(mixed $class): bool
+	{
+		return is_string($class) && is_a($class, Rule::class, allow_string: true);
 	}
 }

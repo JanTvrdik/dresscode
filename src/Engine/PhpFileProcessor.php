@@ -73,6 +73,7 @@ final readonly class PhpFileProcessor implements FileProcessor
 		$seen = [];
 		$settled = false;
 		$remaining = null;
+		$removedImports = $mutatedRules = [];
 
 		// a mutated tree is not the tree the parser would build from the printed text, so a rule can miss what another
 		// one has just written; the strict run makes the text settle in rounds, the others take what the last pass
@@ -101,6 +102,8 @@ final readonly class PhpFileProcessor implements FileProcessor
 
 			$first ??= $result;
 			$passes += $result->passes;
+			array_push($removedImports, ...$result->removedImports);
+			array_push($mutatedRules, ...$result->mutatedRules);
 			$printed = $result->output ?? $text;
 			$settled = $printed === $text;
 			$seen[hash('xxh3', $text)] = true;
@@ -131,6 +134,8 @@ final readonly class PhpFileProcessor implements FileProcessor
 			passes: $passes,
 			baselined: $first->baselined,
 			remaining: $remaining ?? $result->violations, // the last round is a check of the text the fix writes
+			removedImports: $removedImports,
+			mutatedRules: array_values(array_unique($mutatedRules)),
 		);
 	}
 

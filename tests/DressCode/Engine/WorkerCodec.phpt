@@ -39,6 +39,10 @@ test('a result survives the way from a worker to the parent and back', function 
 		passes: 2,
 		baselined: ['99'],
 		remaining: [$violation],
+		removedImports: [
+			['kind' => 'function', 'name' => 'Acme\run', 'alias' => 'go', 'namespace' => 'App'],
+			['kind' => 'class', 'name' => 'Acme\Form', 'alias' => null, 'namespace' => ''],
+		],
 	);
 	$result->markWritten();
 	Assert::equal($result, $roundTrip($result));

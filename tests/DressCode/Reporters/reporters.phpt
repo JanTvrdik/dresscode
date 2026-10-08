@@ -2,7 +2,7 @@
 
 use DressCode\Engine\{FileSummary, RunInfo, RunResult, TypeAnalysisStatus};
 use DressCode\{FileResult, Reporter, Risk, Severity, Violation};
-use DressCode\Reporters\{CheckstyleReporter, ConsoleReporter, GithubReporter, JsonReporter, LinesReporter};
+use DressCode\Reporters\{AgentReporter, CheckstyleReporter, ConsoleReporter, GithubReporter, JsonReporter, LinesReporter};
 use Nette\CommandLine\{ColorDepth, Console};
 use Tester\Assert;
 
@@ -695,4 +695,193 @@ test('checkstyle', function () {
 		</checkstyle>
 
 		XX, capture(fn($s) => new CheckstyleReporter($s), fix: true));
+});
+
+
+/**
+ * @param list<FileResult> $results
+ * @param ?Closure(string): array<string, list<string>> $examples
+ * @param array<string, string> $givenPaths
+ */
+function captureAgent(
+	array $results,
+	bool $fix,
+	?Closure $examples = null,
+	array $givenPaths = [],
+	bool $typesMissing = false,
+): string
+{
+	$stream = memory();
+	$reporter = new AgentReporter($stream, givenPaths: $givenPaths, findSuppressionExamples: $examples);
+	$reporter->start(new RunInfo('', $fix, count($results), TypeAnalysisStatus::Available, $typesMissing));
+	foreach ($results as $result) {
+		$reporter->reportFile($result);
+	}
+
+	$reporter->finish(new RunResult(array_map(FileSummary::of(...), $results), $fix));
+	rewind($stream);
+	return (string) stream_get_contents($stream);
+}
+
+
+test('agent: a check lists what it found in sentences, and says nothing of a clean file', function () {
+	Assert::same(toLf(<<<'XX'
+		Found in `src/a.php`:
+		- line 2: rename $a (`test/rename`). Fixing it settles 1 more on line 3.
+		- line 2 (warning): variable "b" & <c> (`test/report`).
+
+		DressCode fixes 2 of them itself when run as `fix`.
+
+		DressCode warns about `src/a.php`: rule test/x is faulty: it changed the file without reporting a violation.
+
+		`src/broken.php` has a syntax error on line 2, so DressCode left it as it was: unexpected `;`.
+
+		DressCode failed on `src/fail.php` and left the file as it was: Rule test/x failed in src/fail.php: boom
+
+		XX), captureAgent(results(), fix: false));
+
+	Assert::same('', captureAgent([new FileResult('src/clean.php', "<?php\n", "<?php\n")], fix: true));
+});
+
+
+test('agent: a rule the configuration turns on that did not run without the types is said once, after what was found', function () {
+	$output = captureAgent(results(), fix: false, typesMissing: true);
+	Assert::true(str_ends_with(
+		$output,
+		"left the file as it was: Rule test/x failed in src/fail.php: boom\n\n"
+		. "The checks that need the types of the code did not run, the configuration having no `typeAnalysis: phpstan`.\n",
+	));
+	Assert::same(1, substr_count($output, 'the types of the code'));
+	Assert::same('', captureAgent([new FileResult('src/clean.php', "<?php\n", "<?php\n")], fix: true, typesMissing: true));
+});
+
+
+test('agent: a fix shows what it wrote as a diff and names the imports it removed', function () {
+	$result = new FileResult(
+		'src/a.php',
+		"<?php\nuse Acme\\Mail as Post;\nuse function Acme\\run;\n\$a;\n",
+		"<?php\n\$b;\n",
+		remaining: [new Violation('test/report', 'Variable "b".', 2, null, Severity::Error, fingerprint: 'f2', fixable: false)],
+		removedImports: [
+			['kind' => 'class', 'name' => 'Acme\Mail', 'alias' => 'Post', 'namespace' => ''],
+			['kind' => 'function', 'name' => 'Acme\run', 'alias' => null, 'namespace' => ''],
+		],
+	);
+	$result->markWritten();
+	Assert::same(toLf(<<<'XX'
+		DressCode changed `src/a.php`; the changes below are already in the file:
+
+		- removed the import of `Acme\Mail` as `Post`: nothing used it; if you meant to use it, add the import in the same edit as the use.
+		- removed the import of function `Acme\run`: nothing used it; if you meant to use it, add the import in the same edit as the use.
+
+		```diff
+		@@ -1,4 +1,2 @@
+		 <?php
+		-use Acme\Mail as Post;
+		-use function Acme\run;
+		-$a;
+		+$b;
+		```
+
+		Left in `src/a.php`, at the lines of the file as it is now:
+		- line 2: variable "b" (`test/report`).
+
+		XX), captureAgent([$result], fix: true));
+
+	// a text that differs but was not written is no rewrite
+	Assert::same('', captureAgent([new FileResult('src/a.php', "<?php\n\$a;\n", "<?php\n\$b;\n")], fix: true));
+});
+
+
+test('agent: a risky violation says why it was not fixed, and offers the comment the project accepts', function () {
+	$violations = [
+		new Violation(
+			'expressions.comparison.loose',
+			'The `==` comparison must be written `===`.',
+			4,
+			12,
+			Severity::Warning,
+			fingerprint: 'f1',
+			risk: Risk::TypeUnknown,
+			refused: true,
+		),
+		new Violation(
+			'file.strictTypes.declaration',
+			'Expected `declare(strict_types=1)` at the start of the file.',
+			1,
+			null,
+			Severity::Error,
+			fingerprint: 'f2',
+			risk: Risk::BehaviorChanges,
+			refused: true,
+			because: 'PHP then refuses an argument of a scalar type it used to convert',
+		),
+		new Violation(
+			'mistakes.errorSuppression',
+			'The `@` operator must not be used.',
+			7,
+			3,
+			Severity::Error,
+			fingerprint: 'f3',
+			fixable: false,
+		),
+		new Violation('test/plain', 'Plain.', 8, 3, Severity::Error, fingerprint: 'f4', fixable: false),
+	];
+	$examples = fn(string $path) => [
+		'expressions.comparison.loose' => ['// intentionally =='],
+		'mistakes.errorSuppression' => ['// @ <why>'],
+	];
+	Assert::same(toLf(<<<'XX'
+		Left in `src/a.php`, at the lines of the file as it is now:
+		- line 4 (warning): the `==` comparison must be written `===` (`expressions.comparison.loose`). Not fixed, because the type of the value is unknown. Change it where you have verified that the intended behaviour stays the same; where the current code is intended and you know why, keep it with a comment on its line, `// intentionally ==`; otherwise tell the user.
+		- line 1: expected `declare(strict_types=1)` at the start of the file (`file.strictTypes.declaration`). Not fixed, because PHP then refuses an argument of a scalar type it used to convert. Change it only where the task asks for the behaviour the fix gives; otherwise tell the user.
+		- line 7: the `@` operator must not be used (`mistakes.errorSuppression`). Fix it; where the current code is intended and you know why, keep it with a comment on its line, `// @ <why>`, giving the real reason for `<why>`; otherwise tell the user.
+		- line 8: plain (`test/plain`).
+
+		XX), captureAgent([new FileResult('src/a.php', '', '', remaining: $violations)], fix: true, examples: $examples));
+});
+
+
+test('agent: the message keeps to its budget and counts what it leaves out', function () {
+	// a rewrite too long to show is summed up by the decisions whose rules made it
+	$code = '<?php' . str_repeat("\n\$a;\n", AgentReporter::MaxLines);
+	$result = new FileResult(
+		'src/a.php',
+		$code,
+		str_replace('$a', '$b', $code),
+		mutatedRules: [DressCode\Rules\Literals\StringQuotesRule::class],
+	);
+	$result->markWritten();
+	Assert::same(toLf(<<<'XX'
+		DressCode changed `src/a.php`; the changes below are already in the file:
+
+		The changes, in 1 place, are too long to show here: read the file again before you edit it. They come from the rules of `literals.quotes`, an indication rather than an exact account.
+
+		XX), captureAgent([$result], fix: true));
+
+	// what does not fit is counted, and the whole message stays within the budget
+	$violations = array_map(
+		fn(int $i) => new Violation('test/plain', 'Plain.', $i, null, Severity::Error, fingerprint: "f$i", fixable: false),
+		range(1, AgentReporter::MaxLines * 2),
+	);
+	$output = captureAgent([new FileResult('src/a.php', '', '', remaining: $violations)], fix: true);
+	Assert::true(substr_count($output, "\n") <= AgentReporter::MaxLines);
+	Assert::match('%A%- line %d%: plain (`test/plain`).%A?%%d% further violations are not listed here.%A?%', $output);
+});
+
+
+test('agent: the diff is fenced off from the sentences, and the file is named as the command line named it', function () {
+	$result = new FileResult('src/a.php', "<?php\n// ```\n", "<?php\n// ````\n");
+	$result->markWritten();
+	Assert::same(toLf(<<<'XX'
+		DressCode changed `./src/a.php`; the changes below are already in the file:
+
+		`````diff
+		@@ -1,2 +1,2 @@
+		 <?php
+		-// ```
+		+// ````
+		`````
+
+		XX), captureAgent([$result], fix: true, givenPaths: ['src/a.php' => './src/a.php']));
 });

@@ -26,6 +26,9 @@ final class RuleContext
 	/** @var list<array{string, Node}>  nodes the fixes of the current callback wrote anew, by the fingerprint of the report */
 	private array $rewritten = [];
 
+	/** @var list<array{kind: 'class'|'function'|'const', name: string, alias: ?string, namespace: string}>  imports the fixes removed */
+	private array $removedImports = [];
+
 
 	/** @internal created by the pass loop */
 	public function __construct(
@@ -317,6 +320,31 @@ final class RuleContext
 	public function dropPassAnalysis(string $class): void
 	{
 		$this->analyses->dropPassAnalysis($this->file, $class);
+	}
+
+
+	/**
+	 * Says that the fix of the last report removed an import, which the output for an agent names, the agent's code
+	 * possibly having meant to use it.
+	 * @param  array{kind: 'class'|'function'|'const', name: string, alias: ?string, namespace: string}  $import
+	 * @internal
+	 */
+	public function recordRemovedImport(array $import): void
+	{
+		$this->removedImports[] = $import;
+	}
+
+
+	/**
+	 * Takes the imports removed since the last call.
+	 * @return list<array{kind: 'class'|'function'|'const', name: string, alias: ?string, namespace: string}>
+	 * @internal
+	 */
+	public function takeRemovedImports(): array
+	{
+		$imports = $this->removedImports;
+		$this->removedImports = [];
+		return $imports;
 	}
 
 

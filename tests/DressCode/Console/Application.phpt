@@ -292,6 +292,39 @@ test('stdin: check reports, fix writes the result to stdout', function () use ($
 });
 
 
+test('the format for an agent names the file as it was given and offers the comment the configuration of the file accepts', function () {
+	$root = createConsoleProject();
+	file_put_contents(
+		"$root/dresscode.php",
+		"<?php\nreturn new DressCode\\Config(rules: ConsoleRules, decisions: ['project' => ['rename' => 'forbidden', 'riskyRename' => 'forbidden']], paths: ['src'], targets: ['php' => '8.3'], suppressionComments: ['~^// keep~' => ['decisions' => 'project.riskyRename', 'example' => '// keep: <why>']]);\n",
+	);
+	file_put_contents("$root/src/a.php", "<?php\n\$a;\n\$r;\n");
+
+	// a warning of the configuration is not printed, the agent can do nothing about it
+	[$code, $out, $err] = runApp($root, ['fix', './src/a.php', '-f', 'agent', '--set', 'classes.instantiationWrapping=forbidden']);
+	Assert::same('', $err);
+	Assert::same(1, $code);
+	Assert::match(<<<'XX'
+		DressCode changed `./src/a.php`; the changes below are already in the file:
+
+		```diff
+		@@ -1,3 +1,3 @@
+		 <?php
+		-$a;
+		+$b;
+		 $r;
+		```
+
+		Left in `./src/a.php`, at the lines of the file as it is now:
+		- line 3: rename $r (`project.riskyRename`). Not fixed, because %a%; where the current code is intended and you know why, keep it with a comment on its line, `// keep: <why>`, giving the real reason for `<why>`; otherwise tell the user.
+		%A?%
+		XX, $out);
+
+	// a clean file says nothing
+	Assert::same([0, '', ''], runApp($root, ['check', 'src/b.php', '-f', 'agent']));
+});
+
+
 test('fix --stdin is a formatter: the whole text on stdout, nothing else, and exit 0 whatever is left', function () use ($root) {
 	file_put_contents(
 		"$root/formatter.php",
@@ -364,7 +397,10 @@ test('errors go to stderr with exit code 3', function () use ($root) {
 	Assert::same("Error: The command line: Unknown preset `test/nonee`.\n", $err);
 	[$code, , $err] = runApp($root, ['check', '--format', 'xml']);
 	Assert::same(3, $code);
-	Assert::match('Error: Option `--format`: expects `console`, `lines`, `github`, `json` or `checkstyle`, `xml` given.%A%', $err);
+	Assert::match(
+		'Error: Option `--format`: expects `console`, `agent`, `lines`, `github`, `json` or `checkstyle`, `xml` given.%A%',
+		$err,
+	);
 	[$code, , $err] = runApp($root, ['config', '--format', 'markdown']);
 	Assert::same(3, $code);
 	Assert::match('Error: Option `--format`: expects `console` or `json`, `markdown` given.%A%', $err);

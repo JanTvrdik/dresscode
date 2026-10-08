@@ -76,7 +76,18 @@ final class NoUnusedImportsRule extends NodeRule
 				continue;
 			}
 
+			$name = $item->fullName; // read while the item is still in the group of its prefix
 			NodeHelpers::removeMergingGaps($item, $context->style->lineEnding);
+			$context->recordRemovedImport([
+				'kind' => match ($kind) {
+					SymbolKind::Function => 'function',
+					SymbolKind::Constant => 'const',
+					default => 'class',
+				},
+				'name' => $name,
+				'alias' => $item->alias?->text,
+				'namespace' => $node instanceof NamespaceNode ? ltrim($node->name->text ?? '', '\\') : '',
+			]);
 		}
 	}
 }

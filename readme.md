@@ -12,7 +12,8 @@
 ✅ Fixes style, [upgrades PHP and libraries](#upgrading-code-to-newer-php-from-80-to-86), in one run<br>
 ✅ Changes only what it fixes, [not a byte more](#changes-only-what-it-touches-a-lossless-syntax-tree-instead-of-a-token-array)<br>
 ✅ [PER Coding Style, PSR-12, Nette](#coding-standards-and-decisions-per-coding-style-31-psr-12-nette) built in<br>
-✅ [More of PER Coding Style and PSR-12](#how-much-of-the-standard-per-coding-style-and-psr-12-against-php-cs-fixer-and-php_codesniffer) than PHP CS Fixer or PHP_CodeSniffer fixes
+✅ [More of PER Coding Style and PSR-12](#how-much-of-the-standard-per-coding-style-and-psr-12-against-php-cs-fixer-and-php_codesniffer) than PHP CS Fixer or PHP_CodeSniffer fixes<br>
+✅ [Made for AI coding agents](#made-for-ai-coding-agents-claude-code-and-codex): it tells the agent what it changed
 
 </h3>
 
@@ -461,12 +462,69 @@ missing.
 
  <!---->
 
+Made for AI coding agents: Claude Code and Codex
+================================================
+
+An agent writes code fast, and in a style of its own. A formatter run after every edit puts it into yours, and any
+formatter can do that much. What decides whether the agent's next edit lands is what it learns about the rewrite,
+and what the rewrite leaves alone:
+
+- **It says what it changed.** The diff of the rewrite comes with the result of the edit, so the next edit lands without
+  reading the file again.
+- **It names the imports it removed**, with the advice to add one in the same edit as its use, so an import written
+  before its code does not just vanish.
+- **It says what to do about every violation left**, and offers the comment the project accepts for an intended
+  exception, never a blanket ignore.
+- **It says nothing about a clean file**, which costs the agent no context.
+
+In Claude Code it is two commands, and the plugin then runs DressCode after every edit of a PHP file:
+
+```shell
+/plugin marketplace add nette/agent-plugins
+/plugin install php-fixer@nette
+```
+
+Codex takes the same plugin (`codex plugin add php-fixer@nette`), and any other agent can run the command itself
+after each write:
+
+```shell
+dresscode fix src/Cart.php -f agent --skip-excluded
+```
+
+````
+DressCode changed `src/Cart.php`; the changes below are already in the file:
+
+- removed the import of `Acme\Shop\Payment\Gateway`: nothing used it; if you meant to use it, add the import in the same edit as the use.
+
+```diff
+@@ -12,7 +10,7 @@
+
+ 	public function add(string $name, int $price): void
+ 	{
+-		$this->items[] = ["name" => $name, "price" => $price];
++		$this->items[] = ['name' => $name, 'price' => $price];
+ 	}
+
+
+```
+
+Left in `src/Cart.php`, at the lines of the file as it is now:
+- line 19: the `@` operator must not be used (`mistakes.errorSuppression`). Fix it; where the current code is intended and you know why, keep it with a comment on its line, `// @ <why>`, giving the real reason for `<why>`; otherwise tell the user.
+````
+
+A rewrite longer than the message can carry comes as the advice to read the file again, never cut off. A risky fix
+is never made behind the agent's back: it is reported with what may go wrong, and the agent is told to change the
+code only where the task asks for that behaviour. `--skip-excluded` leaves alone a file the configuration
+excludes, such as a test fixture the agent wrote.
+
+ <!---->
+
 Continuous integration and Git hooks
 ====================================
 
 The output comes in the formats `console`, `github` (annotations right in the pull request, chosen
-automatically in GitHub Actions), `checkstyle`, `json` and `lines` (one line per finding, the way a compiler
-writes it, for Git hooks and the linters of editors). Files are processed in parallel, and a
+automatically in GitHub Actions), `checkstyle`, `json`, `lines` (one line per finding, the way a compiler
+writes it, for Git hooks and the linters of editors) and `agent`. Files are processed in parallel, and a
 file already known to be clean is skipped on the next run.
 
 A pre-commit hook should check what goes into the commit, not the working tree, and `--stdin` does exactly

@@ -220,6 +220,7 @@ final readonly class RunnerFactory
 				$this->isPhpStanInstalled() => TypeAnalysisStatus::Available,
 				default => TypeAnalysisStatus::Unavailable,
 			},
+			typesMissing: array_any($resolved->rules, fn(ResolvedRule $rule) => $rule->inactiveReason === InactiveReason::Types),
 			namespacesListed: $resolved->namespacedFunctions !== [] || $resolved->namespacedConstants !== [],
 		);
 	}

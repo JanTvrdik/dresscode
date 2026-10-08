@@ -485,6 +485,28 @@ test('types without PHPStan beside DressCode are a warning, and the run goes wit
 });
 
 
+test('the run tells the reporter a rule did not run without the types only where the configuration turns it on', function () {
+	$root = createTempDir('types-turned-on');
+	$factory = new RunnerFactory(phpstanInstalled: true);
+	$missing = fn(Config $config) => $factory->createRunner($factory->resolve($config, $root), cache: false)
+		->createRunInfo(fix: false, fileCount: 0)
+		->typesMissing;
+
+	Assert::true($missing(new Config(use: ['deprecations'])));
+	Assert::false($missing(new Config(use: ['deprecations'], typeAnalysis: 'phpstan')));
+	Assert::false($missing(new Config(use: ['psr12'])));
+	// a decision kept is not one the run misses
+	$resolution = $factory->resolve(
+		new Config(use: ['deprecations'], decisions: ['upgrading' => ['declarations' => ['deprecatedMember' => 'keep']]]),
+		$root,
+	);
+	Assert::same(
+		DressCode\Config\InactiveReason::TurnedOff,
+		$resolution->resolvedConfig->findRule(DressCode\Rules\Upgrading\NoDeprecatedMembersRule::class)?->inactiveReason,
+	);
+});
+
+
 test('what the data of PHP say is reported under the requirement that lays them, without the types too', function () {
 	$root = createTempDir('php-data');
 	$factory = new RunnerFactory(phpstanInstalled: false);

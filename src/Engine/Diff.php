@@ -7,7 +7,7 @@
 
 namespace DressCode\Engine;
 
-use function count, sprintf;
+use function count;
 
 
 /**
@@ -26,10 +26,25 @@ final class Diff
 			return '';
 		}
 
+		$output = "--- $path\n+++ " . ($newPath ?? $path) . "\n";
+		foreach (self::computeHunks($old, $new) as $hunk) {
+			$output .= $hunk->header . "\n" . implode("\n", $hunk->lines) . "\n";
+		}
+
+		return $output;
+	}
+
+
+	/**
+	 * The changes of the second text against the first, each with three lines of context.
+	 * @return list<DiffHunk>
+	 */
+	public static function computeHunks(string $old, string $new): array
+	{
 		$a = preg_split('~(?<=\n)~', $old, -1, PREG_SPLIT_NO_EMPTY);
 		$b = preg_split('~(?<=\n)~', $new, -1, PREG_SPLIT_NO_EMPTY);
 		$edits = self::computeEdits($a, $b);
-		$output = "--- $path\n+++ " . ($newPath ?? $path) . "\n";
+		$hunks = [];
 		$count = count($edits);
 		$i = 0;
 		while ($i < $count) {
@@ -66,22 +81,29 @@ final class Diff
 				$newStart += $edits[$j][0] !== '-' ? 1 : 0;
 			}
 
-			$body = '';
+			$lines = [];
 			for ($j = $start; $j < $end; $j++) {
 				[$kind, $line] = $edits[$j];
 				$oldLines += $kind !== '+' ? 1 : 0;
 				$newLines += $kind !== '-' ? 1 : 0;
-				$body .= $kind . rtrim($line, "\r\n") . "\n";
+				$lines[] = $kind . rtrim($line, "\r\n");
 				if (!str_ends_with($line, "\n")) {
-					$body .= "\\ No newline at end of file\n";
+					$lines[] = '\ No newline at end of file';
 				}
 			}
 
-			$output .= sprintf("@@ -%d,%d +%d,%d @@\n", $oldStart + 1, $oldLines, $newStart + 1, $newLines) . $body;
+			// a side without lines names the line after which they would stand
+			$hunks[] = new DiffHunk(
+				$oldLines ? $oldStart + 1 : $oldStart,
+				$oldLines,
+				$newLines ? $newStart + 1 : $newStart,
+				$newLines,
+				$lines,
+			);
 			$i = $end;
 		}
 
-		return $output;
+		return $hunks;
 	}
 
 
