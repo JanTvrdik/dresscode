@@ -509,6 +509,7 @@ final class FileResult
 	public readonly bool $cached
 	public readonly list<array{kind: 'class'|'function'|'const', name: string, alias: ?string, namespace: string}> $removedImports
 	public readonly list<class-string<DressCode\Rule>> $mutatedRules
+	public readonly int $unlisted
 ```
 
 ## `DressCode\Gap`
@@ -983,7 +984,8 @@ final readonly class Violation
 	public readonly ?string $derivedFrom
 	public readonly ?int $offset
 	public readonly ?int $length
-	public function __construct(string $decision, string $message, int $line, ?int $column, DressCode\Severity $severity, string $fingerprint, bool $fixable = true, ?DressCode\Risk $risk = null, bool $refused = false, ?string $because = null, ?string $derivedFrom = null, ?int $offset = null, ?int $length = null)
+	public readonly ?array{int, int} $originalLines
+	public function __construct(string $decision, string $message, int $line, ?int $column, DressCode\Severity $severity, string $fingerprint, bool $fixable = true, ?DressCode\Risk $risk = null, bool $refused = false, ?string $because = null, ?string $derivedFrom = null, ?int $offset = null, ?int $length = null, ?array{int, int} $originalLines = null)
 	public function findSpanStart(string $text): ?array{int, int}
 	public function findSpanEnd(string $text): ?array{int, int}
 	public static function formatCode(string $code): string

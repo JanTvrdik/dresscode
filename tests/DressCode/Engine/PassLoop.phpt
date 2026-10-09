@@ -615,6 +615,17 @@ test('a token whose text a fix changed has no place in the file as read, and the
 });
 
 
+test('a violation keeps the lines of the file as read its span covers, and so does what the fix leaves', function () {
+	$lines = fn(array $violations) => array_map(fn($v) => [$v->message, $v->line, $v->originalLines], $violations);
+	[, $result] = run("<?php\n/* x\n yy */\n\$a\n\t= 1;\n", [new ReportStatementAndComment]);
+	Assert::same([['Comment.', 3, [3, 3]], ['Statement.', 4, [4, 5]]], $lines($result->violations));
+
+	// the variable the fix wrote has no place in the file as read and takes the line of the code beside it
+	[, $result] = run("<?php\n\$a = [\n\t1,\n];\nf(\$b);\n", [new ReplaceVariable, new ReportVariables]);
+	Assert::same([['Variable $b.', 2, [2, 2]], ['Variable $b.', 5, [5, 5]]], $lines($result->remaining ?? []));
+});
+
+
 test('an analysis asked for again after a mutation is a new one, while one of the pass stays for the pass', function () {
 	$rule = new AsksAcrossMutation;
 	[$file] = run("<?php\n\$a;\n\$a;\n", [$rule]);

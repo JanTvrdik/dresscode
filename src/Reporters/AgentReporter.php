@@ -88,6 +88,13 @@ final class AgentReporter implements Reporter
 
 		$violations = $this->fix ? $result->remaining : $result->violations;
 		$listing = $violations ? $this->describeViolations($violations, $path, $result->path) : [];
+		if ($result->unlisted) {
+			$one = $result->unlisted === 1;
+			$further = $violations ? ' further' : '';
+			$listing[] = ($one ? "1$further violation" : "$result->unlisted$further violations") . ($violations ? '' : " in $path")
+				. ($one ? ' is' : ' are') . ' outside the edited lines; ' . ($one ? 'it is' : 'they are') . ' not listed here.';
+		}
+
 		foreach ($result->warnings as $warning) {
 			$listing[] = "DressCode warns about $path: " . self::formatSentence($warning) . '.';
 		}

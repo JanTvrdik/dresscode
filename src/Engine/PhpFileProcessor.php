@@ -7,7 +7,7 @@
 
 namespace DressCode\Engine;
 
-use DressCode\{Analyses, ConfigurationException, ConvergenceException, FileResult, Rule, RuleException, Style};
+use DressCode\{Analyses, ConfigurationException, ConvergenceException, FileResult, Rule, RuleException, Style, Violation};
 use PhpSyntax\Nodes\FileNode;
 use PhpSyntax\Nodes\Statement\{NamespaceNode, UseNode};
 use PhpSyntax\{ParseException, Parser, SymbolKind};
@@ -125,6 +125,10 @@ final readonly class PhpFileProcessor implements FileProcessor
 			}
 		}
 
+		// the last round is a check of the text the fix writes; a round after the first parsed that text, not the file as read
+		$remaining ??= $result === $first
+			? $result->violations
+			: array_map(fn(Violation $v) => new Violation(...[...get_object_vars($v), 'originalLines' => null]), $result->violations);
 		return new FileResult(
 			$path,
 			$code,
@@ -133,7 +137,7 @@ final readonly class PhpFileProcessor implements FileProcessor
 			$first->warnings,
 			passes: $passes,
 			baselined: $first->baselined,
-			remaining: $remaining ?? $result->violations, // the last round is a check of the text the fix writes
+			remaining: $remaining,
 			removedImports: $removedImports,
 			mutatedRules: array_values(array_unique($mutatedRules)),
 		);

@@ -325,6 +325,82 @@ test('the format for an agent names the file as it was given and offers the comm
 });
 
 
+test('--lines lists what stands on the lines of the file as it was read, counts the rest and fixes the whole file', function () {
+	$root = createConsoleProject();
+	$code = "<?php\nuse Acme\\Unused;\n\$x;\n\$a;\n";
+	$fix = fn(string ...$lines) => runApp($root, [
+		'fix', 'src/c.php', '-f', 'agent', '--set', 'imports.unused=forbidden', '--set', 'project.report=forbidden',
+		...array_merge(...array_map(fn($range) => ['--lines', $range], $lines)),
+	]);
+
+	// the removed import moved the lines up: line 4 as read is line 3 of the fixed text
+	file_put_contents("$root/src/c.php", $code);
+	[$exit, $out] = $fix('4');
+	Assert::same(1, $exit);
+	Assert::same("<?php\n\$x;\n\$b;\n", file_get_contents("$root/src/c.php"));
+	Assert::match(<<<'XX'
+		DressCode changed `src/c.php`; the changes below are already in the file:
+
+		- removed the import of `Acme\Unused`: %a%
+
+		```diff
+		%A%
+		```
+
+		Left in `src/c.php`, at the lines of the file as it is now:
+		- line 3: seen (`project.report`).
+
+		1 further violation is outside the edited lines; it is not listed here.
+		%A?%
+		XX, $out);
+
+	// what stands outside does not decide the exit code, and the rewrite is reported wherever it is
+	file_put_contents("$root/src/c.php", $code);
+	[$exit, $out] = $fix('2');
+	Assert::same(0, $exit);
+	Assert::contains('DressCode changed `src/c.php`', $out);
+	Assert::contains('2 violations in `src/c.php` are outside the edited lines; they are not listed here.', $out);
+	Assert::notContains('Left in', $out);
+
+	// ranges join, and one past the end of the file is its last line
+	file_put_contents("$root/src/c.php", $code);
+	Assert::notContains('outside the edited lines', $fix('3', '9')[1]);
+
+	// a check reports by the same lines, and the cache keeps what the whole file holds
+	file_put_contents("$root/src/c.php", $code);
+	[$exit, $out] = runApp($root, ['check', 'src/c.php', '-f', 'agent', '--set', 'project.report=forbidden', '--lines', '1']);
+	Assert::same(0, $exit);
+	Assert::match("3 violations in `src/c.php` are outside the edited lines; they are not listed here.\n%A?%", $out);
+	Assert::same(1, runApp($root, ['check', 'src/c.php', '-f', 'agent', '--set', 'project.report=forbidden'])[0]);
+
+	// a syntax error is never narrowed away
+	file_put_contents("$root/src/d.php", "<?php\n\$a = ;\n");
+	[$exit, $out] = runApp($root, ['check', 'src/d.php', '-f', 'agent', '--lines', '1']);
+	Assert::same(1, $exit);
+	Assert::contains('has a syntax error on line 2', $out);
+});
+
+
+test('--lines takes the lines of one file in the agent format, anything else is exit code 3', function () use ($root) {
+	foreach (['0', '-2', '5-2', 'x', '2-'] as $range) {
+		[$code, , $err] = runApp($root, ['check', 'src/a.php', '-f', 'agent', '--lines', $range]);
+		Assert::same(3, $code);
+		Assert::match("Error: Option `--lines`: expects a line or a range of lines such as `20-21`, `$range` given.%A%", $err);
+	}
+
+	foreach ([
+		[['check', 'src/a.php', '--lines', '2'], '`--lines` narrows what the `agent` format reports, %a%'],
+		[['check', 'src/a.php', '-f', 'agent', '--lines', '2', '--strict-rules'], '`--lines` names the lines of the file %a%'],
+		[['check', 'src', '-f', 'agent', '--lines', '2'], '`--lines` names the lines of one file, but 2 files are to be run.'],
+		[['fix', '--stdin', 'src/a.php', '--lines', '2'], '`fix --stdin` writes the fixed code alone, so it takes no `--lines`;%a%'],
+	] as [$args, $error]) {
+		[$code, , $err] = runApp($root, $args);
+		Assert::same(3, $code);
+		Assert::match("Error: $error%A%", $err);
+	}
+});
+
+
 test('fix --stdin is a formatter: the whole text on stdout, nothing else, and exit 0 whatever is left', function () use ($root) {
 	file_put_contents(
 		"$root/formatter.php",

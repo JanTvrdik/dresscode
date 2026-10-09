@@ -66,6 +66,7 @@ final readonly class Runner
 	 * @param list<string> $files  as `findFiles()` returned them
 	 * @param ?\Closure(int, array<string, float>, ?int): void $onProgress  files done, the paths in progress and, when
 	 *   nothing is heard of the one in progress until it is done, its size
+	 * @param ?LineRanges $lines  the lines of the files the run reports on
 	 */
 	public function run(
 		array $files,
@@ -74,6 +75,7 @@ final readonly class Runner
 		?WorkerPool $workers = null,
 		?\Closure $onProgress = null,
 		?int $maxWarnings = null,
+		?LineRanges $lines = null,
 	): RunResult
 	{
 		$reporter->start($this->createRunInfo($fix, count($files)));
@@ -102,7 +104,7 @@ final readonly class Runner
 
 		$ordered = $requeued = [];
 		$scope = []; // the files the run can say something about to the baseline, and by which decisions
-		$report = function () use (&$ready, &$ordered, &$scope, &$requeued, &$sizes, $order, $reporter): void {
+		$report = function () use (&$ready, &$ordered, &$scope, &$requeued, &$sizes, $order, $reporter, $lines, $fix): void {
 			for ($next = count($ordered); isset($order[$next], $ready[$order[$next]]); $next++) {
 				$path = $order[$next];
 				$result = $ready[$path];
@@ -133,6 +135,7 @@ final readonly class Runner
 					$scope[$path] = $this->narrowed ? $this->processors->get($path)->getReportedDecisions() : null;
 				}
 
+				$result = $lines?->select($result, $fix) ?? $result;
 				$reporter->reportFile($result);
 				$ordered[] = FileSummary::of($result);
 			}

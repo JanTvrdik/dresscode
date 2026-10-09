@@ -485,7 +485,7 @@ In Claude Code it is two commands, and the plugin then runs DressCode after ever
 ```
 
 Codex takes the same plugin (`codex plugin add php-fixer@nette`), and any other agent can run the command itself
-after each write:
+after each write, with `--lines 12-14` for the lines it wrote:
 
 ```shell
 dresscode fix src/Cart.php -f agent --skip-excluded

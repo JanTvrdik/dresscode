@@ -7,7 +7,8 @@
 
 namespace DressCode\Console\Commands;
 
-use Nette\CommandLine\{Attributes as Cli, Normalizers};
+use DressCode\Engine\LineRanges;
+use Nette\CommandLine\{Attributes as Cli, HelpRenderer, Normalizers};
 
 
 /**
@@ -46,6 +47,14 @@ final readonly class CheckOptions
 			repeatable: true,
 		)]
 		public array $only = [],
+		/** @var list<array{int, int}> */
+		#[Cli\Option(
+			'Report only on these lines of the file as it was read, `20` or `20-21`, the rest counted; the whole file is fixed (`agent` format, one file)',
+			valueName: 'range',
+			normalizer: [self::class, 'parseLines'],
+			repeatable: true,
+		)]
+		public array $lines = [],
 	) {
 	}
 
@@ -53,5 +62,13 @@ final readonly class CheckOptions
 	public static function parseMaxWarnings(string $value): int
 	{
 		return Normalizers::int($value, min: 0);
+	}
+
+
+	/** @return array{int, int} */
+	public static function parseLines(string $value): array
+	{
+		return LineRanges::parseRange($value)
+			?? throw new \InvalidArgumentException('expects a line or a range of lines such as `20-21`, ' . HelpRenderer::formatCode($value) . ' given.');
 	}
 }

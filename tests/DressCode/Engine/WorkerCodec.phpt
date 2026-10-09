@@ -28,6 +28,7 @@ test('a result survives the way from a worker to the parent and back', function 
 		derivedFrom: 'f0',
 		offset: 6,
 		length: 2,
+		originalLines: [2, 3],
 	);
 	$unfixable = new Violation('test/b', 'B.', 3, null, Severity::Error, fingerprint: '5678', fixable: false);
 	$result = new FileResult(

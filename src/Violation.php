@@ -54,6 +54,11 @@ final readonly class Violation
 		public ?int $offset = null,
 		/** length of the span in bytes, 0 for the place of missing whitespace */
 		public ?int $length = null,
+		/**
+		 * @var ?array{int, int}  the first and the last line of the file as read the reported code stands on, of what a fix
+		 * leaves too, code a fix wrote taking the lines of the code beside it; null where the fixed text was read anew
+		 */
+		public ?array $originalLines = null,
 	) {
 		if ($risk === null && ($refused || $because !== null)) {
 			throw new \InvalidArgumentException("Violation of `$decision`: `refused` and `because` belong to a risky violation, but no risk is given.");

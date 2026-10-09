@@ -14,7 +14,7 @@ use DressCode\{
 use DressCode\Engine\Gaps\{Fixer, Resolver};
 use PhpSyntax\{Node, Printer, Token, Traverser, Trivia};
 use PhpSyntax\Nodes\FileNode;
-use function strlen;
+use function count, strlen;
 
 
 /**
@@ -212,6 +212,7 @@ final class PassLoop
 				$line,
 				$token?->getCurrentColumn(),
 				$spans->find($report->at, $report->trivia, $report->lineInTrivia, $report->gap, $report->follows),
+				$this->findOriginalLines($report),
 				$severity,
 				$opened,
 				$moved,
@@ -227,6 +228,7 @@ final class PassLoop
 	 * The violation of the report, derived from what opened, closed or moved its line, and the line its fix opens
 	 * or closes marked for what follows.
 	 * @param ?array{int, int} $span  the offset and the length of what was reported
+	 * @param array{int, int} $originalLines  the first and the last line of what was reported in the original file
 	 * @param \WeakMap<Token, string> $opened
 	 * @param \WeakMap<Token, string> $moved
 	 */
@@ -236,6 +238,7 @@ final class PassLoop
 		int $line,
 		?int $column,
 		?array $span,
+		array $originalLines,
 		Severity $severity,
 		\WeakMap $opened,
 		\WeakMap $moved,
@@ -257,6 +260,7 @@ final class PassLoop
 			derivedFrom: $derivedFrom === $fingerprint ? null : $derivedFrom,
 			offset: $span[0] ?? null,
 			length: $span[1] ?? null,
+			originalLines: $originalLines,
 		);
 	}
 
@@ -499,6 +503,7 @@ final class PassLoop
 				$report->line,
 				$this->findOriginalColumn($report->at),
 				$report->span,
+				$this->findOriginalLines($report),
 				$severity,
 				$this->opened,
 				$this->moved,
@@ -610,5 +615,38 @@ final class PassLoop
 		$lineStart = $this->lineOffsets[$token->line - 1] ?? 0;
 		$before = substr($this->code, $lineStart, $token->pos - $lineStart);
 		return strlen($before) - preg_match_all('~[\x80-\xBF]~', $before) + 1;
+	}
+
+
+	/**
+	 * The first and the last line of the original file the span of the report covers, or the line of the report where
+	 * it has no span.
+	 * @return array{int, int}
+	 */
+	private function findOriginalLines(Report $report): array
+	{
+		if ($report->span === null) {
+			return [$report->line, $report->line];
+		}
+
+		[$offset, $length] = $report->span;
+		return [$this->findOriginalLineAt($offset), $this->findOriginalLineAt($offset + max($length - 1, 0))];
+	}
+
+
+	/** The line of the original file the byte offset stands on, from 1. */
+	private function findOriginalLineAt(int $offset): int
+	{
+		[$low, $high] = [0, count($this->lineOffsets) - 1];
+		while ($low < $high) {
+			$middle = intdiv($low + $high + 1, 2);
+			if ($this->lineOffsets[$middle] <= $offset) {
+				$low = $middle;
+			} else {
+				$high = $middle - 1;
+			}
+		}
+
+		return $low + 1;
 	}
 }

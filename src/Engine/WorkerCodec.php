@@ -95,6 +95,7 @@ final class WorkerCodec
 			'derivedFrom' => $violation->derivedFrom,
 			'offset' => $violation->offset,
 			'length' => $violation->length,
+			'originalLines' => $violation->originalLines,
 		];
 	}
 
@@ -116,6 +117,7 @@ final class WorkerCodec
 			$item['derivedFrom'] === null ? null : (string) $item['derivedFrom'],
 			$item['offset'] === null ? null : (int) $item['offset'],
 			$item['length'] === null ? null : (int) $item['length'],
+			is_array($item['originalLines']) ? [(int) $item['originalLines'][0], (int) $item['originalLines'][1]] : null,
 		), is_array($data) ? $data : []));
 	}
 

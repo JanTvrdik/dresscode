@@ -56,7 +56,39 @@ final class FileResult
 		public readonly array $removedImports = [],
 		/** @var list<class-string<Rule>>  the rules whose fixes changed the text */
 		public readonly array $mutatedRules = [],
+		/** the violations left out of what the run reports, standing outside the lines it was narrowed to */
+		public readonly int $unlisted = 0,
 	) {
+	}
+
+
+	/**
+	 * The result reporting only the violations given, the others counted as left out.
+	 * @param  list<Violation>  $violations
+	 * @param  list<Violation>  $remaining
+	 * @internal
+	 */
+	public function withListed(array $violations, array $remaining, int $unlisted): self
+	{
+		return new self(
+			$this->path,
+			$this->code,
+			$this->output,
+			$violations,
+			$this->warnings,
+			$this->syntaxError,
+			$this->syntaxErrorLine,
+			$this->passes,
+			$this->failure,
+			$this->failureDocs,
+			$this->baselined,
+			$remaining,
+			$this->written,
+			$this->cached,
+			$this->removedImports,
+			$this->mutatedRules,
+			$unlisted,
+		);
 	}
 
 

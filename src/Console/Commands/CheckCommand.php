@@ -10,7 +10,7 @@ namespace DressCode\Console\Commands;
 use DressCode\{Config, Reporter, Reporters};
 use DressCode\Config\{Loader, PluginRegistry, ResolvedProject};
 use DressCode\Console\{CommandContext, Markup, ProgressBar, RiskReview};
-use DressCode\Engine\{Baseline, FileSummary, Helpers, Runner, RunResult, Worker, WorkerPool};
+use DressCode\Engine\{Baseline, FileSummary, Helpers, LineRanges, Runner, RunResult, Worker, WorkerPool};
 use Nette\CommandLine\{Attributes as Cli, Console, ParseResult, UsageException};
 use Nette\Utils\FileSystem;
 use function count, in_array, is_string, sprintf, strlen;
@@ -77,6 +77,7 @@ final readonly class CheckCommand
 			'--diff' => $check?->diff,
 			'--max-warnings' => $check?->maxWarnings,
 			'--ask-risky' => $askRisky ?: null,
+			'--lines' => $check?->lines ?: null,
 		] as $option => $value) {
 			if ($formatter && $value !== null) {
 				throw new UsageException(
@@ -136,6 +137,16 @@ final readonly class CheckCommand
 			);
 		}
 
+		$lines = $check?->lines ? new LineRanges($check->lines) : null;
+		if ($lines && $format !== 'agent') {
+			throw new UsageException('`--lines` narrows what the `agent` format reports, so it goes with no other format.', $args->command);
+		} elseif ($lines && $run->strictRules) {
+			throw new UsageException(
+				'`--lines` names the lines of the file as it was read, which `--strict-rules` reads again in every round.',
+				$args->command,
+			);
+		}
+
 		if (is_string($stdinPath)) {
 			if ($paths) {
 				throw new UsageException('Paths cannot be combined with `--stdin`.', $args->command);
@@ -153,6 +164,7 @@ final readonly class CheckCommand
 					$maxWarnings,
 					(bool) $run->skipExcluded,
 					$config->paths,
+					$lines,
 				);
 		}
 
@@ -182,6 +194,13 @@ final readonly class CheckCommand
 			$this->writeScope(files: $files, paths: $scope, root: $root, fix: $fix, narrowed: $paths && $scope !== $paths);
 		}
 
+		if ($lines && count($files) > 1) {
+			throw new UsageException(
+				'`--lines` names the lines of one file, but ' . count($files) . ' files are to be run.',
+				$args->command,
+			);
+		}
+
 		// a worker costs about the processing of a few files to start, so by default one for every four files at most
 		$jobs = $run->jobs ?? max(1, min(WorkerPool::detectCpuCount(), intdiv(count($files), 4)));
 		$command = $jobs > 1 && $files ? $this->buildWorkerCommand($args, $configuration, $run, $check) : null;
@@ -209,7 +228,7 @@ final readonly class CheckCommand
 				$resolution,
 				$run->paths,
 			);
-			$result = $runner->run($files, $fix, $reporter, $workers, $onProgress, $maxWarnings);
+			$result = $runner->run($files, $fix, $reporter, $workers, $onProgress, $maxWarnings, $lines);
 			return $askRisky
 				? $this->review($runner, $result, $files, $root, $maxWarnings, $factory->registry)
 				: $result->getExitCode();
@@ -234,6 +253,7 @@ final readonly class CheckCommand
 		?int $maxWarnings,
 		bool $skipExcluded,
 		array $configured,
+		?LineRanges $lines,
 	): int
 	{
 		$reporter = $this->createReporter(
@@ -252,6 +272,7 @@ final readonly class CheckCommand
 		$skipped = $skipExcluded && $runner->excludes($absolute, $configured);
 		$reporter->start($runner->createRunInfo(false, $skipped ? 0 : 1));
 		$result = $skipped ? null : $runner->processPath($absolute, fix: false, code: $code);
+		$result = $result === null ? null : $lines?->select($result, fix: false) ?? $result;
 		if ($result) {
 			$reporter->reportFile($result);
 		}
