@@ -38,6 +38,8 @@ final readonly class ReportPolicy
 		public bool|array $fixRisky = false,
 		/** @var array<string, true>  decisions whose violations are reported and never fixed */
 		public array $reportOnly = [],
+		/** @var array<string, true>  decisions the file broke before an edit, which the run leaves as the file writes them */
+		public array $leftAsWritten = [],
 		/** a broken rule contract throws instead of warning */
 		public bool $strict = false,
 	) {
@@ -56,5 +58,12 @@ final readonly class ReportPolicy
 	public function isReportedOnly(string $decision): bool
 	{
 		return isset($this->reportOnly[$decision]);
+	}
+
+
+	/** Whether the run leaves the decision as the file writes it, the file having broken it before the edit. */
+	public function isLeftAsWritten(string $decision): bool
+	{
+		return isset($this->leftAsWritten[$decision]);
 	}
 }

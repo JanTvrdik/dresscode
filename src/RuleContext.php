@@ -55,7 +55,8 @@ final class RuleContext
 
 	/**
 	 * Reports a violation at the node, or at one of the trivia of the token when the problem lies in whitespace
-	 * or a comment; returns false when a comment silences it, and then the rule must not fix it. A violation the
+	 * or a comment; returns false when a comment silences it or the run leaves its decision as the file writes it, and then the
+	 * rule must not fix it. A violation the
 	 * baseline holds is not recorded, and the rule fixes it like any other. `$lineInTrivia` places it on a line of
 	 * a trivia spanning several, 0 being the one the trivia starts on.
 	 * `$risk` says that fixing this occurrence may change what the code does, and what would decide that it does
@@ -221,6 +222,7 @@ final class RuleContext
 		$fixable = $fixable && !$this->policy->isReportedOnly($decision);
 		$risk = $fixable ? $risk : null;
 		$refused = $risk !== null && !$this->policy->acceptsRisk($decision) && !isset($this->acceptedRisks[$fingerprint]);
+		$left = $this->policy->isLeftAsWritten($decision);
 		$this->reports[] = new Engine\Report(
 			decision: $decision,
 			at: $at,
@@ -239,11 +241,12 @@ final class RuleContext
 			fixable: $fixable,
 			because: $risk === null ? null : $because,
 			refused: $refused,
+			left: $left,
 			construct: $construct,
 			lineInTrivia: $lineInTrivia,
 			span: $this->spans?->find($at, $trivia, $lineInTrivia, $gap, $follows),
 		);
-		return $fixable && !$refused;
+		return $fixable && !$refused && !$left;
 	}
 
 

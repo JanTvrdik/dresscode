@@ -58,6 +58,8 @@ final class FileResult
 		public readonly array $mutatedRules = [],
 		/** the violations left out of what the run reports, standing outside the lines it was narrowed to */
 		public readonly int $unlisted = 0,
+		/** @var list<string>  the decisions the file broke before an edit and still does, left as the file writes them */
+		public readonly array $leftDecisions = [],
 	) {
 	}
 
@@ -66,9 +68,10 @@ final class FileResult
 	 * The result reporting only the violations given, the others counted as left out.
 	 * @param  list<Violation>  $violations
 	 * @param  list<Violation>  $remaining
+	 * @param  list<string>  $leftDecisions
 	 * @internal
 	 */
-	public function withListed(array $violations, array $remaining, int $unlisted): self
+	public function withListed(array $violations, array $remaining, int $unlisted, array $leftDecisions = []): self
 	{
 		return new self(
 			$this->path,
@@ -88,6 +91,7 @@ final class FileResult
 			$this->removedImports,
 			$this->mutatedRules,
 			$unlisted,
+			$leftDecisions,
 		);
 	}
 

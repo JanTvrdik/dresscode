@@ -473,6 +473,10 @@ and what the rewrite leaves alone:
   reading the file again.
 - **It names the imports it removed**, with the advice to add one in the same edit as its use, so an import written
   before its code does not just vanish.
+- **It keeps the style of the file.** What the file did not follow before the edit stays as the file writes it, so a
+  file not yet up to your standard is not rewritten far from the edit, and the agent is told to write there in the style
+  of the file. What the edit broke is fixed wherever it reaches: the import whose last use it removed, the lines it put
+  into a new block.
 - **It says what to do about every violation left**, and offers the comment the project accepts for an intended
   exception, never a blanket ignore.
 - **It says nothing about a clean file**, which costs the agent no context.
@@ -485,7 +489,7 @@ In Claude Code it is two commands, and the plugin then runs DressCode after ever
 ```
 
 Codex takes the same plugin (`codex plugin add php-fixer@nette`), and any other agent can run the command itself
-after each write, with `--lines 12-14` for the lines it wrote:
+after each write, with `--before <file>` for the text before the edit and `--lines 12-14` for the lines it wrote:
 
 ```shell
 dresscode fix src/Cart.php -f agent --skip-excluded

@@ -50,6 +50,8 @@ final readonly class Report
 		public ?string $because = null,
 		/** its fix is risky and the run does not make it */
 		public bool $refused = false,
+		/** the run leaves the decision as the file writes it, so the rule must not fix it */
+		public bool $left = false,
 		/** the construct the reports of the rule about it are one violation of in a pass */
 		public ?Node $construct = null,
 		/** the line of the trivia the report stands on, 0 being the one the trivia starts on */

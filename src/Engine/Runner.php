@@ -341,6 +341,13 @@ final readonly class Runner
 	}
 
 
+	/** Whether the cache knows the text standing for the file to be clean, so that processing it would report nothing. */
+	public function isKnownClean(string $path, string $code): bool
+	{
+		return $this->cache?->findClean(ResultCache::hashContent($this->relativize($path), $code)) !== null;
+	}
+
+
 	/**
 	 * Indexes of the overrides that apply to the file.
 	 * @return list<int>

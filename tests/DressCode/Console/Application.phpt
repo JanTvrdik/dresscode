@@ -381,6 +381,27 @@ test('--lines lists what stands on the lines of the file as it was read, counts 
 });
 
 
+test('--before leaves what the file broke before the edit as the file writes it, and fixes the rest in the whole file', function () {
+	$root = createConsoleProject();
+	file_put_contents("$root/before.php", "<?php\nuse Acme\\Unused;\nnew Unused;\n\$a;\n");
+	file_put_contents("$root/src/c.php", "<?php\nuse Acme\\Unused;\n\$a;\n\$a;\n");
+	$args = ['fix', 'src/c.php', '-f', 'agent', '--set', 'imports.unused=forbidden', '--before', 'before.php', '--lines', '4'];
+
+	// the import the edit left unused goes though it stands outside the lines, the renaming the file never kept stays
+	[$exit, $out] = runApp($root, $args);
+	Assert::same(0, $exit);
+	Assert::same("<?php\n\$a;\n\$a;\n", file_get_contents("$root/src/c.php"));
+	Assert::contains('removed the import of `Acme\Unused`', $out);
+	Assert::contains(
+		'Before the edit `src/c.php` did not follow `project.rename`, so DressCode leaves it as the file writes it; write the code there in the style of the rest of the file.',
+		$out,
+	);
+
+	Assert::same(3, runApp($root, [...$args, '-f', 'json'])[0]);
+	Assert::same(3, runApp($root, ['fix', 'src/c.php', '-f', 'agent', '--before', 'missing.php'])[0]);
+});
+
+
 test('--lines takes the lines of one file in the agent format, anything else is exit code 3', function () use ($root) {
 	foreach (['0', '-2', '5-2', 'x', '2-'] as $range) {
 		[$code, , $err] = runApp($root, ['check', 'src/a.php', '-f', 'agent', '--lines', $range]);

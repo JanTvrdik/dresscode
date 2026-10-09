@@ -510,6 +510,7 @@ final class FileResult
 	public readonly list<array{kind: 'class'|'function'|'const', name: string, alias: ?string, namespace: string}> $removedImports
 	public readonly list<class-string<DressCode\Rule>> $mutatedRules
 	public readonly int $unlisted
+	public readonly list<string> $leftDecisions
 ```
 
 ## `DressCode\Gap`

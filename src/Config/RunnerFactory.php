@@ -110,6 +110,7 @@ final readonly class RunnerFactory
 	 * @param  bool  $fixRisky  every fix that may change what the code does is made, not only those of the decisions
 	 *                           the configuration names in fixRisky
 	 * @param  bool  $baseline  the configured baseline leaves what it knows unrecorded; a run generating one sees everything
+	 * @param  list<string>  $leftAsWritten  decisions the file broke before an edit, left as the file writes them
 	 * @throws ConfigurationException
 	 */
 	public function createRunner(
@@ -120,6 +121,7 @@ final readonly class RunnerFactory
 		bool $fixRisky = false,
 		bool $baseline = true,
 		bool $refreshCache = false,
+		array $leftAsWritten = [],
 	): Runner
 	{
 		$config = $resolution->config;
@@ -150,7 +152,9 @@ final readonly class RunnerFactory
 		$registry = $this->registry;
 		$processors = new FileProcessors(
 			array_map(fn(Override $override) => $override->paths, $config->overrides),
-			function (array $overrides) use ($resolution, $registry, $analyses, $strict, $baselineFile, $fixRisky): FileProcessor {
+			function (array $overrides) use (
+				$resolution, $registry, $analyses, $strict, $baselineFile, $fixRisky, $leftAsWritten,
+			): FileProcessor {
 				$variant = $resolution->resolveFor($overrides);
 				$style = $variant->createStyle();
 				$analysisRegistry = $variant->createAnalyses($style);
@@ -171,6 +175,7 @@ final readonly class RunnerFactory
 						warningDecisions: $variant->warningDecisions,
 						fixRisky: $fixRisky ?: $variant->fixRisky,
 						reportOnly: $variant->reportOnly,
+						leftAsWritten: array_fill_keys($leftAsWritten, true),
 						strict: $strict,
 					),
 					gates: $variant->getGates(),

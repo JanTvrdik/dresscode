@@ -55,6 +55,11 @@ final readonly class CheckOptions
 			repeatable: true,
 		)]
 		public array $lines = [],
+		#[Cli\Option(
+			'The file as it was before the edit: what it did not follow stays as the file writes it, and only what waits for a judgement on `--lines` is reported; the rest is fixed in the whole file (`agent` format, one file)',
+			valueName: 'file',
+		)]
+		public ?string $before = null,
 	) {
 	}
 

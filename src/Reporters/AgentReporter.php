@@ -88,7 +88,9 @@ final class AgentReporter implements Reporter
 
 		$violations = $this->fix ? $result->remaining : $result->violations;
 		$listing = $violations ? $this->describeViolations($violations, $path, $result->path) : [];
-		if ($result->unlisted) {
+		if ($result->leftDecisions) {
+			$listing[] = self::describeLeftDecisions($result->leftDecisions, $path);
+		} elseif ($result->unlisted) {
 			$one = $result->unlisted === 1;
 			$further = $violations ? ' further' : '';
 			$listing[] = ($one ? "1$further violation" : "$result->unlisted$further violations") . ($violations ? '' : " in $path")
@@ -203,6 +205,24 @@ final class AgentReporter implements Reporter
 		}
 
 		return $text;
+	}
+
+
+	/**
+	 * The decisions the file did not follow before the edit, which the run leaves as the file writes them.
+	 * @param  non-empty-list<string>  $decisions
+	 */
+	private static function describeLeftDecisions(array $decisions, string $path): string
+	{
+		$shown = array_map(fn(string $decision) => "`$decision`", array_slice($decisions, 0, self::ShownDecisions));
+		$more = count($decisions) - count($shown);
+		$names = implode(', ', $shown) . ($more ? " and $more more" : '');
+		$one = count($decisions) === 1;
+		return "Before the edit $path did not follow $names, so DressCode leaves "
+			. ($one ? 'it' : 'them')
+			. ' as the file writes '
+			. ($one ? 'it' : 'them')
+			. '; write the code there in the style of the rest of the file.';
 	}
 
 

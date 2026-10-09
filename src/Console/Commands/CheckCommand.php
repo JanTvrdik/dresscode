@@ -78,6 +78,7 @@ final readonly class CheckCommand
 			'--max-warnings' => $check?->maxWarnings,
 			'--ask-risky' => $askRisky ?: null,
 			'--lines' => $check?->lines ?: null,
+			'--before' => $check?->before,
 		] as $option => $value) {
 			if ($formatter && $value !== null) {
 				throw new UsageException(
@@ -102,16 +103,16 @@ final readonly class CheckCommand
 			return Worker::run($run->worker, $runner, $fix);
 		}
 
-		$runner = $factory->createRunner(
-			$resolution,
-			strict: (bool) $run->strictRules,
+		$options = [
+			'strict' => (bool) $run->strictRules,
 			// the counts of a file served from the cache are those the baseline left
-			cache: !$generate,
-			configFile: $configFile,
-			fixRisky: $fixRisky,
-			baseline: !$generate,
-			refreshCache: (bool) $run->noCache,
-		);
+			'cache' => !$generate,
+			'configFile' => $configFile,
+			'fixRisky' => $fixRisky,
+			'baseline' => !$generate,
+			'refreshCache' => (bool) $run->noCache,
+		];
+		$runner = $factory->createRunner($resolution, ...$options);
 		[$out, $err] = [$this->context->out, $this->context->err];
 		$format = self::resolveFormat($run->format, detect: true);
 		// only the parent warns, a worker has returned above; an agent can do nothing about the configuration
@@ -138,8 +139,14 @@ final readonly class CheckCommand
 		}
 
 		$lines = $check?->lines ? new LineRanges($check->lines) : null;
+		$before = $check?->before;
 		if ($lines && $format !== 'agent') {
 			throw new UsageException('`--lines` narrows what the `agent` format reports, so it goes with no other format.', $args->command);
+		} elseif ($before !== null && ($format !== 'agent' || is_string($stdinPath))) {
+			throw new UsageException(
+				'`--before` tells the `agent` format what an edit of a file did, so it goes with no other format and no `--stdin`.',
+				$args->command,
+			);
 		} elseif ($lines && $run->strictRules) {
 			throw new UsageException(
 				'`--lines` names the lines of the file as it was read, which `--strict-rules` reads again in every round.',
@@ -194,11 +201,21 @@ final readonly class CheckCommand
 			$this->writeScope(files: $files, paths: $scope, root: $root, fix: $fix, narrowed: $paths && $scope !== $paths);
 		}
 
-		if ($lines && count($files) > 1) {
+		if (($lines || $before !== null) && count($files) > 1) {
 			throw new UsageException(
-				'`--lines` names the lines of one file, but ' . count($files) . ' files are to be run.',
+				($lines ? '`--lines` names the lines of one file' : '`--before` names the text of one file')
+				. ', but ' . count($files) . ' files are to be run.',
 				$args->command,
 			);
+		} elseif ($before !== null && $files) {
+			$code = @file_get_contents($this->context->resolvePath($before)); // @ the failure is said below
+			if ($code === false) {
+				throw new UsageException("Cannot read file `$before`, which `--before` names.", $args->command);
+			}
+
+			$left = $this->findBrokenDecisions($runner, $files[0], $code);
+			$runner = $factory->createRunner($resolution, ...$options, leftAsWritten: $left);
+			$lines = new LineRanges($check->lines, array_fill_keys($left, true));
 		}
 
 		// a worker costs about the processing of a few files to start, so by default one for every four files at most
@@ -235,6 +252,21 @@ final readonly class CheckCommand
 		} finally {
 			$progress?->clear(); // an error must not be written into the bar
 		}
+	}
+
+
+	/**
+	 * The decisions the file as it was before an edit broke, which the run then leaves as the file writes them.
+	 * @return list<string>
+	 */
+	private function findBrokenDecisions(Runner $runner, string $file, string $code): array
+	{
+		if ($runner->isKnownClean($file, $code)) { // the text the previous fix of the file wrote, most often
+			return [];
+		}
+
+		$decisions = array_column($runner->processCode($file, $code)->violations, 'decision');
+		return array_values(array_unique($decisions));
 	}
 
 

@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 
 use DressCode\Engine\LineRanges;
-use DressCode\{FileResult, Severity, Violation};
+use DressCode\{FileResult, Risk, Severity, Violation};
 use Tester\Assert;
 
 require __DIR__ . '/../../bootstrap.php';
@@ -51,3 +51,34 @@ test('a range past the end of the file is its last line, the line ending of whic
 	Assert::same(0, new LineRanges([[3, 9]])->select($result, fix: false)->unlisted);
 	Assert::same(1, new LineRanges([[1, 1]])->select($result, fix: false)->unlisted);
 });
+
+
+test(
+	'knowing the file before the edit, what it kept is listed anywhere, what it broke only where judgement is due',
+	function () {
+		$violation = fn(string $decision, int $line, bool $fixable = true, ?Risk $risk = null) => new Violation(
+			$decision,
+			"$decision $line",
+			$line,
+			null,
+			Severity::Error,
+			fingerprint: "$decision $line",
+			fixable: $fixable,
+			risk: $risk,
+			originalLines: [$line, $line],
+		);
+		$remaining = [
+			$violation('kept.unused', 1, fixable: false),
+			$violation('left.quotes', 2),
+			$violation('left.quotes', 5),
+			$violation('left.loose', 5, risk: Risk::TypeUnknown),
+			$violation('left.loose', 7, risk: Risk::TypeUnknown),
+			$violation('left.silence', 5, fixable: false),
+		];
+		$result = new FileResult('a.php', str_repeat("x\n", 8), null, remaining: $remaining);
+		$fix = new LineRanges([[5, 5]], ['left.quotes' => true, 'left.loose' => true, 'left.silence' => true])->select($result, fix: true);
+		Assert::same(['kept.unused 1', 'left.loose 5', 'left.silence 5'], array_map(fn($v) => $v->message, $fix->remaining));
+		Assert::same(3, $fix->unlisted);
+		Assert::same(['left.quotes'], $fix->leftDecisions); // the risky one outside the lines is no style to follow
+	},
+);

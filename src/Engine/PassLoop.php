@@ -471,7 +471,7 @@ final class PassLoop
 		$reports = $context->takeReports();
 		foreach ($reports as $i => $report) {
 			$fingerprint = $report->fingerprint;
-			$denied = !$report->fixable || $report->silenced || $report->refused;
+			$denied = !$report->fixable || $report->silenced || $report->refused || $report->left;
 			$end = $reports[$i + 1]->revision ?? ($allowed ? null : $after);
 			if ($checkRevisions && $denied && $end !== null && $end > $report->revision) {
 				$this->violateContract($ruleClass, $report->fixable
@@ -562,7 +562,7 @@ final class PassLoop
 	 */
 	private static function markLine(Report $report, string $origin, \WeakMap $opened, \WeakMap $moved): void
 	{
-		if ($report->gap === null || $report->refused) {
+		if ($report->gap === null || $report->refused || $report->left) {
 			return;
 		} elseif ($report->breaks) {
 			$opened[$report->gap] ??= $origin;
@@ -574,13 +574,13 @@ final class PassLoop
 
 	/**
 	 * A pass that changed nothing left every occurrence it reported as it was, so the rule had no fix for one it did not
-	 * report with `fixable: false`, or refused as risky.
+	 * report with `fixable: false`, refused as risky, or left as the file writes it.
 	 */
 	private function checkUnfixed(): void
 	{
 		$rules = [];
 		foreach ($this->reported as [$ruleClass, $report]) {
-			if ($report->fixable && !$report->refused && $report->gap === null) { // a gap is the engine's to fix, and a comment may keep it from that
+			if ($report->fixable && !$report->refused && !$report->left && $report->gap === null) { // a gap is the engine's to fix, and a comment may keep it from that
 				$rules[$ruleClass] = true;
 			}
 		}
